@@ -1,18 +1,11 @@
-const path = require('path');
 const express = require('express');
+const path = require('path');
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-// 网站首页
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+// 提供静态文件
+app.use(express.static(path.join(__dirname, 'public')));
 
-// 测试接口
-app.get('/api/hello', (req, res) => {
-  res.json({ message: 'Railway后端正常运行' });
-});
-
-app.listen(port, () => {
-  console.log(`运行在端口 ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
