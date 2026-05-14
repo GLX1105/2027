@@ -1,143 +1,350 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>港澳订单识别系统</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>港澳识别系统</title>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<div class="navbar">
-  <div class="navbar-title">港澳订单识别系统</div>
-  <div class="navbar-actions">
+<div class="navbar" id="mainNavbar">
+  <div class="navbar-title">港澳识别系统</div>
+  <div class="navbar-actions" id="navbarActions">
+    <button class="btn" onclick="showRecognizeModal()">识别</button>
+    <button class="btn btn-reset" onclick="resetTable()">清空</button>
+    <button class="btn btn-save-order" onclick="showOrderRecord()">订单记录</button>
+    <button class="btn btn-primary" onclick="showReportOrderRecord()">上报数据</button>
+    <button class="btn btn-primary" onclick="showUserManager()">添加用户</button>
     <button class="btn btn-primary" onclick="showDatabase()">数据库</button>
-    <button class="btn btn-primary" onclick="exportData()">导出备份</button>
-    <button class="btn btn-primary" onclick="importData()">导入恢复</button>
-    <button class="btn btn-reset" onclick="resetTable()">清空所有记录</button>
-    <button class="btn btn-clear" onclick="clearAllInput()">清空输入框</button>
+    <button class="btn btn-primary" onclick="showReplacePreset()">替换预设</button>
+    <button class="btn btn-primary" onclick="showCategoryAliases()">分类缩写</button>
+    <button class="btn btn-export" onclick="exportData()">导出</button>
+    <button class="btn btn-import" onclick="importData()">导入</button>
+    <button class="btn btn-primary" id="cardMgrBtn" style="display:none;" onclick="showCardManager()">卡密管理</button>
+    <button class="btn btn-clear" onclick="logout()">退出登录</button>
   </div>
 </div>
 
-<div class="container">
-  <div class="card recognize-wrap">
-    <div class="order-input-container">
-      <div class="input-column">
-        <div class="box-label">原始订单粘贴</div>
-        <textarea class="source-order-input" placeholder="粘贴原始订单"></textarea>
+<div class="container" id="mainContent">
+  <div class="recognize-wrap">
+      <div class="card" style="margin-top:0;">
+        <div class="card-title">下注统计</div>
+        <div class="freq-container">
+          <div class="freq-card">
+            <div class="freq-title">号码次数<div class="amount-stat-box" id="numberTotalBox" style="display:none; margin-left:8px;"><span id="numberTotalAmount">0</span></div></div>
+            <table class="freq-table" id="numberFreqTable"></table>
+          </div>
+          <div class="freq-card">
+            <div class="freq-title">生肖次数<div class="amount-stat-box" id="zodiacTotalBox" style="display:none; margin-left:8px;"><span id="zodiacTotalAmount">0</span></div></div>
+            <table class="freq-table" id="zodiacFreqTable"></table>
+          </div>
+        </div>
       </div>
-      <div class="result-column">
-        <div class="box-label">识别结果</div>
-        <textarea id="orderResult" class="result-content" readonly></textarea>
+
+      <div class="card" style="margin-top:0;">
+        <div class="card-title">金额次数统计</div>
+        <div class="freq-container">
+          <div class="freq-card">
+            <div class="freq-title">号码金额次数 <span style="font-size:11px;font-weight:normal;margin-left:8px;">范围：<input type="number" id="numAmountMin" class="range-input" value="1" min="1"> - <input type="number" id="numAmountMax" class="range-input" value="50000" min="1"></span></div>
+            <table class="freq-table" id="numberAmountFreqTable"></table>
+          </div>
+          <div class="freq-card">
+            <div class="freq-title">生肖金额次数 <span style="font-size:11px;font-weight:normal;margin-left:8px;">范围：<input type="number" id="zodiacAmountMin" class="range-input" value="1" min="1"> - <input type="number" id="zodiacAmountMax" class="range-input" value="50000" min="1"></span></div>
+            <table class="freq-table" id="zodiacAmountFreqTable"></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:0;">
+        <div class="card-title">上报控制</div>
+        <div class="freq-container">
+          <div class="freq-card">
+            <div class="freq-title">截断阈值：<input type="number" id="reportCapInput" class="range-input" value="" placeholder="当前最大..." oninput="applyReportCap()"><button class="btn-copy" onclick="copyReportCapText()" style="padding:4px 10px;font-size:12px;margin-left:4px;">复制</button></div>
+            <div id="reportCapInfo" style="font-size:12px;margin-top:5px;color:#333;line-height:1.6;"></div>
+          </div>
+          <div class="freq-card">
+            <div class="freq-title">上报号码金额<div class="amount-stat-box" id="reportAmountTotalBox" style="display:none; margin-left:8px;"><span id="reportAmountTotalValue">0</span></div></div>
+            <table class="freq-table" id="reportAmountTable"></table>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="btn-group">
-      <button class="btn btn-primary" onclick="convertOrderText()">开始识别</button>
-      <button class="btn btn-paste" onclick="pasteOrder()">粘贴剪贴板</button>
-      <button class="btn btn-save-order" onclick="saveOrder()">保存订单</button>
-      <button class="btn btn-report" onclick="saveReportOrder()">上报订单</button>
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-item">
-        <label>日期：</label>
-        <input type="date" id="orderDate">
-      </div>
-      <div class="summary-item">
-        <label>用户：</label>
-        <select id="orderUserSelect"></select>
-      </div>
-      <div class="summary-item" id="orderTotalAmountBox">
-        总金额：<span id="orderTotalAmount">0</span>
-      </div>
-    </div>
-
-    <div class="freq-container">
-      <div class="card freq-card">
-        <div class="freq-title">号码投注统计</div>
-        <table class="freq-table">
-          <thead><tr><th>号码</th><th>金额</th></tr></thead>
-          <tbody id="numberFreqTable"></tbody>
-        </table>
-      </div>
-      <div class="card freq-card">
-        <div class="freq-title">生肖投注统计</div>
-        <table class="freq-table">
-          <thead><tr><th>生肖</th><th>金额</th></tr></thead>
-          <tbody id="zodiacFreqTable"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div class="card risk-report-area">
-    <div class="card-title">
-      <div class="title-left">
-        风险报表 & 上报查询
-      </div>
-    </div>
-
-    <div class="summary-row">
-      <div class="summary-item">
-        <label>日期：</label>
-        <input type="date" id="filterDate" onchange="generateRiskTable()">
-      </div>
-      <div class="summary-item">
-        <label>用户：</label>
-        <select id="viewUserSelect" onchange="generateRiskTable()"></select>
-      </div>
-      <div class="summary-item">
-        <label>倍数：</label>
-        <input type="number" class="small-input" id="multipleVal" value="47" onchange="generateRiskTable()">
-      </div>
-      <div class="summary-item">
-        <label>返点 %：</label>
-        <input type="number" class="small-input" id="rebateRate" value="4" onchange="generateRiskTable()">
-      </div>
-      <button class="btn btn-copy" onclick="copyTable()">复制表格</button>
-      <button class="btn btn-screenshot" onclick="screenshotTable('riskTable')">截图表格</button>
-    </div>
-
-    <div class="table-container">
-      <table id="riskTable">
-        <thead>
-          <tr>
-            <th>号码</th>
-            <th>投注</th>
-            <th>风险</th>
-            <th>用户</th>
-            <th>排名</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-      </table>
-    </div>
-
-    <div class="summary-row" style="margin-top:10px">
-      <div class="summary-item">总投注：<span id="totalBet">0</span></div>
-      <div class="summary-item">总返点：<span id="totalRebate">0</span></div>
-    </div>
-  </div>
-
-  <div class="storage-info">
-    已用空间：<span id="usedSpace">0</span> | 总记录数：<span id="orderCount">0</span>
-  </div>
-</div>
-
-<div id="databaseModal" class="database-modal" style="display:none">
-  <div class="database-modal-box">
-    <div class="database-modal-header">
-      <h3>数据库配置</h3>
-      <button class="close-database-btn" onclick="hideDatabase()">×</button>
-    </div>
-    <div class="data-config-actions">
-      <button class="btn btn-primary" onclick="hideDatabase()">关闭</button>
+    <div class="risk-report-area">
+        <div class="card">
+          <div class="card-title">
+            <div class="title-left">
+              <input type="date" id="filterDate" style="padding:4px;border-radius:4px;border:1px solid #ccc;" onchange="updateTableFromRecords()">
+              <select id="riskReportSwitcher" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:14px;" onchange="switchRiskReport()">
+                <option value="total" selected>总风险</option>
+                <option value="user">用户</option>
+                <option value="report">上报</option>
+              </select>
+              <select id="viewUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:14px;display:none;" onchange="generateRiskTable()"></select>
+            </div>
+            <div class="year-zodiac-area">
+              <span>本年生肖：</span>
+              <select id="startZodiacSelect">
+                <option value="马">马</option><option value="蛇">蛇</option><option value="龙">龙</option><option value="兔">兔</option><option value="虎">虎</option><option value="牛">牛</option><option value="鼠">鼠</option><option value="猪">猪</option><option value="狗">狗</option><option value="鸡">鸡</option><option value="猴">猴</option><option value="羊">羊</option>
+              </select>
+            </div>
+          </div>
+          <div id="riskSection">
+            <div class="summary-row">
+              <div class="summary-item">总下注：<span id="totalBet">0</span></div>
+              <div class="summary-item">返水%：<input type="number" id="rebateRate" class="small-input" value="4" min="0" max="100" step="0.1"></div>
+              <div class="summary-item">返水：<span id="totalRebate">0</span></div>
+              <div class="summary-item">倍数：<input type="number" id="multipleVal" class="small-input" value="47" min="0.1" step="0.1"><button class="btn btn-screenshot" onclick="screenshotTable('riskTable')" style="margin-left:4px;padding:2px 8px;font-size:12px;min-height:auto;">截图</button></div>
+            </div>
+            <div class="table-container">
+              <table id="riskTable"><thead><tr><th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th></tr></thead><tbody id="tableBody" onclick="handleTableRowClick(event)"></tbody></table>
+            </div>
+          </div>
+          <div id="reportSection" style="display:none;">
+            <div class="summary-row">
+              <div class="summary-item">总下注：<span id="reportTotalBet">0</span></div>
+              <div class="summary-item">返水%：<input type="number" id="reportRebateRate" class="small-input" value="4" min="0" max="100" step="0.1"></div>
+              <div class="summary-item">返水：<span id="reportTotalRebate">0</span></div>
+              <div class="summary-item">倍数：<input type="number" id="reportMultipleVal" class="small-input" value="47" min="0.1" step="0.1"><button class="btn btn-screenshot" onclick="screenshotTable('reportTable')" style="margin-left:4px;padding:2px 8px;font-size:12px;min-height:auto;">截图</button></div>
+            </div>
+            <div class="table-container">
+              <table id="reportTable"><thead><tr><th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th></tr></thead><tbody id="reportTableBody" onclick="handleTableRowClick(event)"></tbody></table>
+            </div>
+          </div>
+        </div>
     </div>
   </div>
 </div>
 
-<script src="config.js"></script>
-<script src="script.js"></script>
+<div class="storage-info" id="storageInfo">
+  <p><span class="label">订单数量：</span><span class="value" id="orderCount">0</span></p>
+  <p><span class="label">已用空间：</span><span class="value" id="usedSpace">0 MB</span></p>
+  <p><span class="label">剩余空间：</span><span class="value" id="freeSpace">50 MB</span></p>
+</div>
+
+<!-- 数据库弹窗（所有静态分类号码） -->
+<div class="database-modal" id="databaseModal" style="display:none;">
+  <div class="database-modal-box" id="databaseModalBox">
+    <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
+    <div class="database-modal-body">
+      <div class="card data-config-card">
+        <div class="card-title">分类数据配置<span style="font-size:12px;font-weight:normal;color:#666;">（可自定义）</span></div>
+
+        <!-- 十二生肖 -->
+        <div class="config-section"><div class="config-section-title">十二生肖</div>
+          <div class="config-item"><div class="config-label">鼠</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_shu" value="07 19 31 43"></div>
+          <div class="config-item"><div class="config-label">牛</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_niu" value="06 18 30 42"></div>
+          <div class="config-item"><div class="config-label">虎</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hu" value="05 17 29 41"></div>
+          <div class="config-item"><div class="config-label">兔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tu2" value="04 16 28 40"></div>
+          <div class="config-item"><div class="config-label">龙</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_long" value="03 15 27 39"></div>
+          <div class="config-item"><div class="config-label">蛇</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_she" value="02 14 26 38"></div>
+          <div class="config-item"><div class="config-label">马</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ma" value="01 13 25 37 49"></div>
+          <div class="config-item"><div class="config-label">羊</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_yang" value="12 24 36 48"></div>
+          <div class="config-item"><div class="config-label">猴</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hou" value="11 23 35 47"></div>
+          <div class="config-item"><div class="config-label">鸡</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ji" value="10 22 34 46"></div>
+          <div class="config-item"><div class="config-label">狗</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_gou" value="09 21 33 45"></div>
+          <div class="config-item"><div class="config-label">猪</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_zhu" value="08 20 32 44"></div>
+        </div>
+
+        <!-- 生肖属性 -->
+        <div class="config-section"><div class="config-section-title">生肖属性</div>
+          <div class="config-item"><div class="config-label">家禽</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_jiaqin" value="牛 马 羊 鸡 狗 猪"></div>
+          <div class="config-item"><div class="config-label">野兽</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yeshou" value="鼠 虎 兔 龙 蛇 猴"></div>
+          <div class="config-item"><div class="config-label">吉美</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_jimei" value="兔 龙 蛇 马 羊 鸡"></div>
+          <div class="config-item"><div class="config-label">凶丑</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_xiongchou" value="鼠 牛 虎 猴 狗 猪"></div>
+          <div class="config-item"><div class="config-label">阴性</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yinxing" value="鼠 龙 蛇 马 狗 猪"></div>
+          <div class="config-item"><div class="config-label">阳性</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yangxing" value="牛 虎 兔 羊 猴 鸡"></div>
+          <div class="config-item"><div class="config-label">天肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_tianxiao" value="兔 马 猴 猪 牛 龙"></div>
+          <div class="config-item"><div class="config-label">地肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_dixiao" value="蛇 羊 鸡 狗 鼠 虎"></div>
+          <div class="config-item"><div class="config-label">单笔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_danbi" value="鼠 龙 马 蛇 鸡 猪"></div>
+          <div class="config-item"><div class="config-label">双笔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_shuangbi" value="虎 猴 狗 兔 羊 牛"></div>
+          <div class="config-item"><div class="config-label">白边</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_baibian" value="鼠 牛 虎 鸡 狗 猪"></div>
+        </div>
+
+        <!-- 五行 -->
+        <div class="config-section"><div class="config-section-title">五行配置</div>
+          <div class="config-item"><div class="config-label">金</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_jin" value="04 05 12 13 26 27 34 35 42 43"></div>
+          <div class="config-item"><div class="config-label">木</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_mu" value="08 09 16 17 24 25 38 39 46 47"></div>
+          <div class="config-item"><div class="config-label">水</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_shui" value="01 14 15 22 23 30 31 44 45"></div>
+          <div class="config-item"><div class="config-label">火</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_huo" value="02 03 10 11 18 19 32 33 40 41 48 49"></div>
+          <div class="config-item"><div class="config-label">土</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tu" value="06 07 20 21 28 29 36 37"></div>
+        </div>
+
+        <!-- 波色 -->
+        <div class="config-section"><div class="config-section-title">波色配置</div>
+          <div class="config-item"><div class="config-label">红波</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hongbo" value="01 02 07 08 12 13 18 19 23 24 29 30 34 35 40 45 46"></div>
+          <div class="config-item"><div class="config-label">蓝波</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lanbo" value="03 04 09 10 14 15 20 25 26 31 36 37 41 42 47 48"></div>
+          <div class="config-item"><div class="config-label">绿波</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lvbo" value="05 06 11 16 17 21 22 27 28 32 33 38 39 43 44 49"></div>
+        </div>
+
+        <!-- 半波 -->
+        <div class="config-section"><div class="config-section-title">半波配置</div>
+          <div class="config-item"><div class="config-label">红双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hongshuang" value="02 08 12 18 24 30 34 40 46"></div>
+          <div class="config-item"><div class="config-label">红单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hongdan" value="01 07 13 19 23 29 35 45"></div>
+          <div class="config-item"><div class="config-label">蓝双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lanshuang" value="04 10 14 20 26 36 42 48"></div>
+          <div class="config-item"><div class="config-label">蓝单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_landan" value="03 09 15 25 31 37 41 47"></div>
+          <div class="config-item"><div class="config-label">绿双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lvshuang" value="06 16 22 28 32 38 44"></div>
+          <div class="config-item"><div class="config-label">绿单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lvdan" value="05 11 17 21 27 33 39 43 49"></div>
+        </div>
+
+        <!-- 单双 -->
+        <div class="config-section"><div class="config-section-title">单双属性</div>
+          <div class="config-item"><div class="config-label">单数</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_danshu" value="01 03 05 07 09 11 13 15 17 19 21 23 25 27 29 31 33 35 37 39 41 43 45 47 49"></div>
+          <div class="config-item"><div class="config-label">双数</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_shuangshu" value="02 04 06 08 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48"></div>
+        </div>
+
+        <!-- 尾数 -->
+        <div class="config-section"><div class="config-section-title">尾数属性</div>
+          <div class="config-item"><div class="config-label long-label">0尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_0" value="10 20 30 40"></div>
+          <div class="config-item"><div class="config-label long-label">1尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_1" value="01 11 21 31 41"></div>
+          <div class="config-item"><div class="config-label long-label">2尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_2" value="02 12 22 32 42"></div>
+          <div class="config-item"><div class="config-label long-label">3尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_3" value="03 13 23 33 43"></div>
+          <div class="config-item"><div class="config-label long-label">4尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_4" value="04 14 24 34 44"></div>
+          <div class="config-item"><div class="config-label long-label">5尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_5" value="05 15 25 35 45"></div>
+          <div class="config-item"><div class="config-label long-label">6尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_6" value="06 16 26 36 46"></div>
+          <div class="config-item"><div class="config-label long-label">7尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_7" value="07 17 27 37 47"></div>
+          <div class="config-item"><div class="config-label long-label">8尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_8" value="08 18 28 38 48"></div>
+          <div class="config-item"><div class="config-label long-label">9尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_9" value="09 19 29 39 49"></div>
+        </div>
+
+        <!-- 大小单双 -->
+        <div class="config-section"><div class="config-section-title">大小单双</div>
+          <div class="config-item"><div class="config-label">大单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dadan" value="25 27 29 31 33 35 37 39 41 43 45 47 49"></div>
+          <div class="config-item"><div class="config-label">大双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dashuang" value="26 28 30 32 34 36 38 40 42 44 46 48"></div>
+          <div class="config-item"><div class="config-label">小单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_xiaodan" value="01 03 05 07 09 11 13 15 17 19 21 23"></div>
+          <div class="config-item"><div class="config-label">小双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_xiaoshuang" value="02 04 06 08 10 12 14 16 18 20 22 24"></div>
+        </div>
+
+        <!-- 大小配置 -->
+        <div class="config-section"><div class="config-section-title">大小配置</div>
+          <div class="config-item"><div class="config-label">小</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dx_xiao" value="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24"></div>
+          <div class="config-item"><div class="config-label">大</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dx_da" value="25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49"></div>
+        </div>
+
+        <!-- 合数 -->
+        <div class="config-section"><div class="config-section-title">合数配置</div>
+          <div class="config-item"><div class="config-label long-label">01合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_01" value="01 10"></div>
+          <div class="config-item"><div class="config-label long-label">02合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_02" value="02 11 20"></div>
+          <div class="config-item"><div class="config-label long-label">03合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_03" value="03 12 21 30"></div>
+          <div class="config-item"><div class="config-label long-label">04合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_04" value="04 13 22 31 40"></div>
+          <div class="config-item"><div class="config-label long-label">05合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_05" value="05 14 23 32 41"></div>
+          <div class="config-item"><div class="config-label long-label">06合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_06" value="06 15 24 33 42"></div>
+          <div class="config-item"><div class="config-label long-label">07合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_07" value="07 16 25 34 43"></div>
+          <div class="config-item"><div class="config-label long-label">08合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_08" value="08 17 26 35 44"></div>
+          <div class="config-item"><div class="config-label long-label">09合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_09" value="09 18 27 36 45"></div>
+          <div class="config-item"><div class="config-label long-label">10合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_10" value="19 28 37 46"></div>
+          <div class="config-item"><div class="config-label long-label">11合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_11" value="29 38 47"></div>
+          <div class="config-item"><div class="config-label long-label">12合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_12" value="39 48"></div>
+          <div class="config-item"><div class="config-label long-label">13合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_13" value="49"></div>
+        </div>
+
+        <!-- 头数 -->
+        <div class="config-section"><div class="config-section-title">头数配置</div>
+          <div class="config-item"><div class="config-label long-label">0头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_0" value="01 02 03 04 05 06 07 08 09"></div>
+          <div class="config-item"><div class="config-label long-label">1头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_1" value="10 11 12 13 14 15 16 17 18 19"></div>
+          <div class="config-item"><div class="config-label long-label">2头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_2" value="20 21 22 23 24 25 26 27 28 29"></div>
+          <div class="config-item"><div class="config-label long-label">3头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_3" value="30 31 32 33 34 35 36 37 38 39"></div>
+          <div class="config-item"><div class="config-label long-label">4头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_4" value="40 41 42 43 44 45 46 47 48 49"></div>
+        </div>
+
+        <!-- 门数 -->
+        <div class="config-section"><div class="config-section-title">门数配置</div>
+          <div class="config-item"><div class="config-label long-label">1门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_1" value="01 02 03 04 05 06 07 08 09"></div>
+          <div class="config-item"><div class="config-label long-label">2门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_2" value="10 11 12 13 14 15 16 17 18"></div>
+          <div class="config-item"><div class="config-label long-label">3门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_3" value="19 20 21 22 23 24 25 26 27"></div>
+          <div class="config-item"><div class="config-label long-label">4门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_4" value="28 29 30 31 32 33 34 35 36 37"></div>
+          <div class="config-item"><div class="config-label long-label">5门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_5" value="38 39 40 41 42 43 44 45 46 47 48 49"></div>
+        </div>
+
+        <!-- 段位 -->
+        <div class="config-section"><div class="config-section-title">段位配置</div>
+          <div class="config-item"><div class="config-label long-label">1段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_1" value="01 02 03 04 05 06 07"></div>
+          <div class="config-item"><div class="config-label long-label">2段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_2" value="08 09 10 11 12 13 14"></div>
+          <div class="config-item"><div class="config-label long-label">3段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_3" value="15 16 17 18 19 20 21"></div>
+          <div class="config-item"><div class="config-label long-label">4段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_4" value="22 23 24 25 26 27 28"></div>
+          <div class="config-item"><div class="config-label long-label">5段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_5" value="29 30 31 32 33 34 35"></div>
+          <div class="config-item"><div class="config-label long-label">6段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_6" value="36 37 38 39 40 41 42"></div>
+          <div class="config-item"><div class="config-label long-label">7段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_7" value="43 44 45 46 47 48 49"></div>
+        </div>
+
+        <!-- 合大&合小 -->
+        <div class="config-section"><div class="config-section-title">合大&合小</div>
+          <div class="config-item"><div class="config-label">合小</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hdx_hexiao" value="01 02 03 04 05 06 10 11 12 13 14 15 20 21 22 23 24 30 31 32 33 40 41 42"></div>
+          <div class="config-item"><div class="config-label">合大</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hdx_heda" value="07 08 09 16 17 18 19 25 26 27 28 29 34 35 36 37 38 39 43 44 45 46 47 48 49"></div>
+        </div>
+
+        <!-- 尾大&尾小 -->
+        <div class="config-section"><div class="config-section-title">尾大&尾小</div>
+          <div class="config-item"><div class="config-label">尾小</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_wdx_weixiao" value="01 02 03 04 10 11 12 13 14 20 21 22 23 24 30 31 32 33 34 40 41 42 43 44"></div>
+          <div class="config-item"><div class="config-label">尾大</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_wdx_weida" value="05 06 07 08 09 15 16 17 18 19 25 26 27 28 29 35 36 37 38 39 45 46 47 48 49"></div>
+        </div>
+
+        <!-- 半单双 -->
+        <div class="config-section"><div class="config-section-title">半单双</div>
+          <div class="config-item"><div class="config-label">小单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_xiaodan" value="01 03 05 07 09 11 13 15 17 19 21 23"></div>
+          <div class="config-item"><div class="config-label">小双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_xiaoshuang" value="02 04 06 08 10 12 14 16 18 20 22 24"></div>
+          <div class="config-item"><div class="config-label">大单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_dadan" value="25 27 29 31 33 35 37 39 41 43 45 47 49"></div>
+          <div class="config-item"><div class="config-label">大双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_dashuang" value="26 28 30 32 34 36 38 40 42 44 46 48"></div>
+        </div>
+
+        <!-- 合尾 -->
+        <div class="config-section"><div class="config-section-title">合尾配置</div>
+          <div class="config-item"><div class="config-label long-label">0合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_0" value="19 28 37 46"></div>
+          <div class="config-item"><div class="config-label long-label">1合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_1" value="01 10 29 38 47"></div>
+          <div class="config-item"><div class="config-label long-label">2合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_2" value="02 11 20 39 48"></div>
+          <div class="config-item"><div class="config-label long-label">3合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_3" value="03 12 21 30 49"></div>
+          <div class="config-item"><div class="config-label long-label">4合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_4" value="04 13 22 31 40"></div>
+          <div class="config-item"><div class="config-label long-label">5合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_5" value="05 14 23 32 41"></div>
+          <div class="config-item"><div class="config-label long-label">6合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_6" value="06 15 24 33 42"></div>
+          <div class="config-item"><div class="config-label long-label">7合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_7" value="07 16 25 34 43"></div>
+          <div class="config-item"><div class="config-label long-label">8合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_8" value="08 17 26 35 44"></div>
+          <div class="config-item"><div class="config-label long-label">9合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_9" value="09 18 27 36 45"></div>
+        </div>
+
+        <!-- 合数单&双 -->
+        <div class="config-section"><div class="config-section-title">合数单&双</div>
+          <div class="config-item"><div class="config-label long-label">合数单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hsd_hsd" value="01 03 05 07 09 10 12 14 16 18 21 23 25 27 29 30 32 34 36 38 41 43 45 47 49"></div>
+          <div class="config-item"><div class="config-label long-label">合数双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hsd_hss" value="02 04 06 08 11 13 15 17 19 20 22 24 26 28 31 33 35 37 39 40 42 44 46 48"></div>
+        </div>
+
+        <!-- 头数单与双 -->
+        <div class="config-section"><div class="config-section-title">头数单与双配置</div>
+          <div class="config-item"><div class="config-label long-label">0头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_0dan" value="01 03 05 07 09"></div>
+          <div class="config-item"><div class="config-label long-label">0头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_0shuang" value="02 04 06 08"></div>
+          <div class="config-item"><div class="config-label long-label">1头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_1dan" value="11 13 15 17 19"></div>
+          <div class="config-item"><div class="config-label long-label">1头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_1shuang" value="10 12 14 16 18"></div>
+          <div class="config-item"><div class="config-label long-label">2头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_2dan" value="21 23 25 27 29"></div>
+          <div class="config-item"><div class="config-label long-label">2头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_2shuang" value="20 22 24 26 28"></div>
+          <div class="config-item"><div class="config-label long-label">3头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_3dan" value="31 33 35 37 39"></div>
+          <div class="config-item"><div class="config-label long-label">3头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_3shuang" value="30 32 34 36 38"></div>
+          <div class="config-item"><div class="config-label long-label">4头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_4dan" value="41 43 45 47 49"></div>
+          <div class="config-item"><div class="config-label long-label">4头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_4shuang" value="40 42 44 46 48"></div>
+        </div>
+
+        <!-- 动态自定义分类容器 -->
+        <div id="customConfigContainer"></div>
+
+        <div class="data-config-actions">
+          <button class="config-btn" style="background:#007bff;color:white" onclick="enableEditConfig()">修改</button>
+          <button class="config-btn" style="background:#6c757d;color:white" onclick="resetDataConfig()">默认</button>
+          <button class="config-btn" style="background:#28a745;color:white" onclick="saveDataConfig()">保存</button>
+          <button class="config-btn" style="background:#17a2b8;color:white" onclick="addCustomCategory()">添加分类</button>
+          <button class="config-btn" style="background:#dc3545;color:white" onclick="deleteCustomCategory()">删除分类</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/utils.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/drag.js"></script>
+<script src="js/config.js"></script>
+<script src="js/order.js"></script>
+<script src="js/table.js"></script>
+<script src="js/modal.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
