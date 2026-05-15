@@ -502,7 +502,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 </div>
 
 <script>
-// ========== API 基地址与认证 ==========
 const API_BASE = '';
 let authToken = localStorage.getItem('authToken') || null;
 let currentUser = null;
@@ -538,7 +537,6 @@ function showToast(msg) {
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 1000);
 }
 
-// ========== 自定义对话框（保留） ==========
 function showCustomDialog({ title = '提示', message = '', type = 'alert', defaultValue = '', placeholder = '' }) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay';
@@ -555,7 +553,6 @@ window.alert = async (msg) => { await showCustomDialog({ title: '提示', messag
 window.confirm = async (msg) => { return await showCustomDialog({ title: '请确认', message: msg, type: 'confirm' }); };
 window.prompt = async (msg, def) => { return await showCustomDialog({ title: '请输入', message: msg, type: 'prompt', defaultValue: def }); };
 
-// ========== 登录/注册界面 ==========
 function showLoginScreen() {
   const overlay = document.createElement('div');
   overlay.className = 'login-overlay';
@@ -595,17 +592,33 @@ function showLoginScreen() {
     } catch(e) { showToast(e.message); }
   };
 
+  // 管理员登录改为内嵌输入框
   document.getElementById('adminLoginBtnSmall').onclick = async () => {
-    const password = prompt('请输入管理员密码：');
-    if (!password) return;
-    try {
-      const data = await fetchApi('/api/auth/admin', { method:'POST', body: JSON.stringify({ password }) });
-      authToken = data.token;
-      localStorage.setItem('authToken', authToken);
-      currentUser = { username: 'admin', role: 'admin' };
-      overlay.remove();
-      initMainSystem();
-    } catch(e) { showToast(e.message); }
+    // 移除可能已有的输入区
+    const exist = document.getElementById('adminPwdArea');
+    if (exist) exist.remove();
+
+    const pwdDiv = document.createElement('div');
+    pwdDiv.id = 'adminPwdArea';
+    pwdDiv.innerHTML = `
+      <input type="password" id="adminPwdInput" placeholder="管理员密码" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-size:16px; margin-top:10px;">
+      <button id="confirmAdminPwd" class="btn" style="background:#2c3e50;color:#fff;margin-top:8px;">确认登录</button>
+    `;
+    const target = document.getElementById('adminLoginBtnSmall');
+    target.parentNode.insertBefore(pwdDiv, target.nextSibling);
+
+    document.getElementById('confirmAdminPwd').onclick = async () => {
+      const password = document.getElementById('adminPwdInput').value.trim();
+      if (!password) { showToast('请输入管理员密码'); return; }
+      try {
+        const data = await fetchApi('/api/auth/admin', { method:'POST', body: JSON.stringify({ password }) });
+        authToken = data.token;
+        localStorage.setItem('authToken', authToken);
+        currentUser = { username: 'admin', role: 'admin' };
+        overlay.remove();
+        initMainSystem();
+      } catch(e) { showToast(e.message); }
+    };
   };
 
   document.getElementById('registerBtn').onclick = async () => {
@@ -637,7 +650,6 @@ function logout() {
   location.reload();
 }
 
-// ========== 系统初始化 ==========
 function initMainSystem() {
   document.getElementById('mainContent').style.display = '';
   if (currentUser.role === 'admin') {
@@ -678,12 +690,9 @@ async function updateTableFromRecords() {
   const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
   const multiple = parseFloat(document.getElementById('multipleVal')?.value) || 47;
   try {
-    // 获取后端配置
     const config = await fetchApi('/api/config');
-    // 如果前端有自定义分类，可以合并到 config 中再发送
     const frontConfig = getAllConfigData();
     const mergedConfig = { ...config, weishu: { ...config.weishu, ...frontConfig.weishu } };
-
     const data = await fetchApi('/api/calculate', {
       method: 'POST',
       body: JSON.stringify({ date: fd, config: mergedConfig, rebateRate, multiple })
@@ -692,12 +701,8 @@ async function updateTableFromRecords() {
     renderRiskTable(data.list, data.totalBet, data.totalRebate);
     renderReportTable(data.list, data.totalBet, data.totalRebate);
     renderFrequencyCards(data.list);
-    // 更新订单数量
     updateOrderCount();
-  } catch(e) {
-    console.error(e);
-    showToast('加载数据失败：' + e.message);
-  }
+  } catch(e) { console.error(e); showToast('加载数据失败：'+e.message); }
 }
 
 async function updateOrderCount() {
@@ -735,9 +740,7 @@ function renderFrequencyCards(list) {
   const nt = document.getElementById('numberFreqTable');
   if (!nt) return;
   let html = '<thead><tr><th>号码</th><th>下注</th></tr></thead><tbody>';
-  for (const item of list) {
-    html += `<tr><td>${item.num}</td><td>${item.bet}</td></tr>`;
-  }
+  for (const item of list) html += `<tr><td>${item.num}</td><td>${item.bet}</td></tr>`;
   html += '</tbody>';
   nt.innerHTML = html;
 }
@@ -755,12 +758,8 @@ function renderAllTablesPlaceholder() {
   }
 }
 
-// 用户选择框更新
-function updateSelects() {
-  // 暂时留空，可在后续根据需要从后端获取用户列表
-}
+function updateSelects() {}
 
-// 风险切换（暂时使用同一数据源）
 function switchRiskReport() {
   const val = document.getElementById('riskReportSwitcher').value;
   if (val === 'total') {
@@ -780,19 +779,15 @@ function switchRiskReport() {
 }
 
 function generateRiskTable() {
-  if (window._riskData) {
-    renderRiskTable(window._riskData.list, window._riskData.totalBet, window._riskData.totalRebate);
-  }
+  if (window._riskData) renderRiskTable(window._riskData.list, window._riskData.totalBet, window._riskData.totalRebate);
 }
 
 function generateReportTable() {
-  if (window._riskData) {
-    renderReportTable(window._riskData.list, window._riskData.totalBet, window._riskData.totalRebate);
-  }
+  if (window._riskData) renderReportTable(window._riskData.list, window._riskData.totalBet, window._riskData.totalRebate);
 }
 
-function applyReportCap() { /* 可后续实现 */ }
-function copyReportCapText() { /* 可后续实现 */ }
+function applyReportCap() {}
+function copyReportCapText() {}
 function screenshotTable(tid) {
   const tbl = document.getElementById(tid);
   if (!tbl) return;
@@ -809,6 +804,7 @@ function handleTableRowClick(event) {
     tr.classList.add('selected-row');
   }
 }
+
 // ========== 识别弹窗 ==========
 let highestZ = 2000;
 
@@ -847,8 +843,7 @@ function maximizeWindow(winId) {
     win.style.left = win.getAttribute('data-orig-left') || '50%';
     win.style.top = win.getAttribute('data-orig-top') || '50%';
     win.style.transform = win.getAttribute('data-orig-transform') || 'translate(-50%, -50%)';
-    win.style.resize = 'both';
-    win.style.overflow = 'auto';
+    win.style.resize = 'both'; win.style.overflow = 'auto';
     win.setAttribute('data-maximized', 'false');
   } else {
     const rect = win.getBoundingClientRect();
@@ -857,12 +852,9 @@ function maximizeWindow(winId) {
     win.setAttribute('data-orig-left', win.style.left || rect.left + 'px');
     win.setAttribute('data-orig-top', win.style.top || rect.top + 'px');
     win.setAttribute('data-orig-transform', win.style.transform || '');
-    win.style.left = '0'; win.style.top = '0';
-    win.style.right = '0'; win.style.bottom = '0';
-    win.style.width = 'auto'; win.style.height = 'auto';
-    win.style.transform = 'none';
-    win.style.resize = 'none';
-    win.style.overflow = 'auto';
+    win.style.left = '0'; win.style.top = '0'; win.style.right = '0'; win.style.bottom = '0';
+    win.style.width = 'auto'; win.style.height = 'auto'; win.style.transform = 'none';
+    win.style.resize = 'none'; win.style.overflow = 'auto';
     win.setAttribute('data-maximized', 'true');
   }
 }
@@ -870,38 +862,21 @@ function maximizeWindow(winId) {
 function pinWindow(winId) {
   const win = document.getElementById(winId);
   if (!win) return;
-  highestZ += 1;
-  win.style.zIndex = highestZ;
+  highestZ += 1; win.style.zIndex = highestZ;
   showToast('窗口已置顶');
 }
 
-// 识别弹窗（从后端获取配置后渲染）
 async function showRecognizeModal() {
   if (document.getElementById('recognizeWin')) return;
-
-  // 获取后端配置，用于分类快捷按钮等
   let config = {};
   try { config = await fetchApi('/api/config'); } catch(e) {}
-
-  const allCategories = [];
-  if (config.zodiac) Object.keys(config.zodiac).forEach(k => allCategories.push(k));
-  if (config.shengxiaoAttr) Object.keys(config.shengxiaoAttr).forEach(k => allCategories.push(k));
-  if (config.wuxing) Object.keys(config.wuxing).forEach(k => allCategories.push(k));
-  if (config.bose) Object.keys(config.bose).forEach(k => allCategories.push(k));
-  if (config.banbo) Object.keys(config.banbo).forEach(k => allCategories.push(k));
-  // 简单取前几个常用分类，也可全取
   const quickCats = ['家禽','野兽','红波','蓝波','绿波','红双','红单','蓝双','蓝单','绿双','绿单','单数','双数','鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪','金','木','水','火','土'];
-
   let catBtns = quickCats.map(cat => `<button class="category-btn" onclick="quickAddWithAmount('${cat}', this)">${cat}</button>`).join('');
 
-  const win = document.createElement('div');
-  win.className = 'floating-window';
-  win.id = 'recognizeWin';
-  win.style.width = '850px'; win.style.height = '650px';
-  win.style.left = '50%'; win.style.top = '50%';
+  const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recognizeWin';
+  win.style.width = '850px'; win.style.height = '650px'; win.style.left = '50%'; win.style.top = '50%';
   win.style.transform = 'translate(-50%, -50%)';
-  win.setAttribute('data-orig-width', '850px');
-  win.setAttribute('data-orig-height', '650px');
+  win.setAttribute('data-orig-width', '850px'); win.setAttribute('data-orig-height', '650px');
   win.innerHTML = `
     <div class="modal-header">订单输入<div class="window-controls"><button onclick="maximizeWindow('recognizeWin')">🗖</button><button onclick="pinWindow('recognizeWin')">📌</button><button onclick="document.getElementById('recognizeWin').remove()">×</button></div></div>
     <div class="modal-body" style="display:flex; flex-direction:column; gap:10px;">
@@ -932,46 +907,33 @@ async function showRecognizeModal() {
     </div>`;
   document.body.appendChild(win);
   updateSelects();
-  const today = getTodayCST();
-  const dateInput = win.querySelector('#orderDate');
-  if (dateInput) dateInput.value = today;
-  makeWindowDraggable('recognizeWin');
-  highestZ += 1;
-  win.style.zIndex = highestZ;
+  const today = getTodayCST(); const dateInput = win.querySelector('#orderDate'); if (dateInput) dateInput.value = today;
+  makeWindowDraggable('recognizeWin'); highestZ += 1; win.style.zIndex = highestZ;
 }
 
-// 快捷添加分类到输入框
 function quickAddWithAmount(text, button) {
   const input = document.querySelector('.source-order-input');
   if (!input) return;
   const lines = input.value.trim().split('\n').filter(l => l.trim());
   const idx = lines.findIndex(l => l.includes(text) && (l.includes('各数')||l.includes('各号')));
-  if (idx !== -1) {
-    lines.splice(idx, 1);
-    button.classList.remove('active');
-  } else {
-    lines.push(`${text} 各数`);
-    button.classList.add('active');
-  }
+  if (idx !== -1) { lines.splice(idx, 1); button.classList.remove('active'); }
+  else { lines.push(`${text} 各数`); button.classList.add('active'); }
   input.value = lines.join('\n');
   convertOrderText();
 }
 
-// 识别逻辑（调用后端识别？我们本地转换，然后发送）
 function convertOrderText() {
   const inputEl = document.querySelector('.source-order-input');
   const resultEl = document.getElementById('orderResult');
   if (!inputEl || !resultEl) return;
   let text = inputEl.value.trim();
   if (!text) { resultEl.value = ''; updateOrderTotalDisplay(); return; }
-  // 简单分行，假设每行格式：分类名/号码 各数 金额
   const lines = text.split('\n');
   const resultLines = lines.map(line => {
     line = line.trim();
     if (!line) return '';
     const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
     if (m) return `${m[1]} 各数 ${m[2]}`;
-    // 尝试简单解析 号码+金额
     const pair = line.match(/^(\d{1,2})\s+(\d+)$/);
     if (pair) return `${pair[1].padStart(2,'0')} 各数 ${pair[2]}`;
     return line;
@@ -996,7 +958,6 @@ function updateOrderTotalDisplay() {
   box.style.display = 'inline-flex';
 }
 
-// 保存订单（调用后端API）
 async function saveOrder() {
   const resultEl = document.getElementById('orderResult');
   let content = resultEl?.value.trim() || document.querySelector('.source-order-input')?.value.trim();
@@ -1007,18 +968,13 @@ async function saveOrder() {
   const date = document.getElementById('orderDate')?.value || getTodayCST();
   const total = computeCurrentOrderTotal();
   try {
-    await fetchApi('/api/orders', {
-      method: 'POST',
-      body: JSON.stringify({ content, date, totalAmount: total })
-    });
+    await fetchApi('/api/orders', { method:'POST', body: JSON.stringify({ content, date, totalAmount: total }) });
     showToast('下单成功');
-    // 清空
-    const si = document.querySelector('.source-order-input');
-    if (si) si.value = '';
+    const si = document.querySelector('.source-order-input'); if (si) si.value = '';
     if (resultEl) resultEl.value = '';
     updateOrderTotalDisplay();
     document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
-    updateTableFromRecords(); // 刷新数据
+    updateTableFromRecords();
   } catch(e) { showToast('保存失败：'+e.message); }
 }
 
@@ -1032,13 +988,9 @@ async function saveReportOrder() {
   const date = document.getElementById('orderDate')?.value || getTodayCST();
   const total = computeCurrentOrderTotal();
   try {
-    await fetchApi('/api/report-orders', {
-      method: 'POST',
-      body: JSON.stringify({ content, date, totalAmount: total })
-    });
+    await fetchApi('/api/report-orders', { method:'POST', body: JSON.stringify({ content, date, totalAmount: total }) });
     showToast('上报成功');
-    const si = document.querySelector('.source-order-input');
-    if (si) si.value = '';
+    const si = document.querySelector('.source-order-input'); if (si) si.value = '';
     if (resultEl) resultEl.value = '';
     updateOrderTotalDisplay();
     document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
@@ -1058,22 +1010,18 @@ function computeCurrentOrderTotal() {
 }
 
 function clearAllInput() {
-  const si = document.querySelector('.source-order-input');
-  if (si) si.value = '';
-  const re = document.getElementById('orderResult');
-  if (re) re.value = '';
+  const si = document.querySelector('.source-order-input'); if (si) si.value = '';
+  const re = document.getElementById('orderResult'); if (re) re.value = '';
   updateOrderTotalDisplay();
 }
 
 async function pasteOrder() {
   try {
     const text = await navigator.clipboard.readText();
-    const si = document.querySelector('.source-order-input');
-    if (si) { si.value = text; convertOrderText(); }
+    const si = document.querySelector('.source-order-input'); if (si) { si.value = text; convertOrderText(); }
   } catch(e) { showToast('粘贴失败'); }
 }
 
-// 分隔符处理（保留原逻辑）
 function removeSeparators() {
   const ta = document.querySelector('.source-order-input');
   if(!ta) return;
@@ -1096,15 +1044,12 @@ function replaceSeparators() {
 }
 function semanticReplace() { showToast('语义转换待实现'); }
 
-// 订单记录查看
 async function showOrderRecord(filter='all') {
   try {
     const orders = await fetchApi('/api/orders?date=' + (document.getElementById('filterDate')?.value || getTodayCST()));
-    // 简单展示在浮动窗口
     if (document.getElementById('orderWin')) document.getElementById('orderWin').remove();
     const w = document.createElement('div'); w.className = 'floating-window'; w.id = 'orderWin';
-    w.style.width = '700px'; w.style.height = '500px';
-    w.style.left = '50%'; w.style.top = '50%'; w.style.transform = 'translate(-50%,-50%)';
+    w.style.width = '700px'; w.style.height = '500px'; w.style.left = '50%'; w.style.top = '50%'; w.style.transform = 'translate(-50%,-50%)';
     let html = `<div class="modal-header"><h3>下单记录</h3><div class="window-controls"><button onclick="maximizeWindow('orderWin')">🗖</button><button onclick="document.getElementById('orderWin').remove()">×</button></div></div><div class="modal-body"><div id="orderListContainer">`;
     if (orders.length === 0) html += '<div style="padding:20px;text-align:center;">暂无记录</div>';
     else {
@@ -1112,8 +1057,7 @@ async function showOrderRecord(filter='all') {
         html += `<div class="order-item"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span>合计：${o.totalAmount}</span><span>${o.user} ${o.date}</span></div><button class="order-del" onclick="deleteOrder(${o.id})">删除</button></div>`;
       });
     }
-    html += '</div></div>';
-    w.innerHTML = html; document.body.appendChild(w);
+    html += '</div></div>'; w.innerHTML = html; document.body.appendChild(w);
     makeWindowDraggable('orderWin'); highestZ += 1; w.style.zIndex = highestZ;
   } catch(e) { showToast('加载失败'); }
 }
@@ -1130,7 +1074,7 @@ async function showReportOrderRecord() {
     const orders = await fetchApi('/api/report-orders?date=' + (document.getElementById('filterDate')?.value || getTodayCST()));
     if (document.getElementById('reportWin')) document.getElementById('reportWin').remove();
     const w = document.createElement('div'); w.className = 'floating-window'; w.id = 'reportWin';
-    w.style.width = '700px'; w.style.height = '500px';
+    w.style.width = '700px'; w.style.height = '500px'; w.style.left = '50%'; w.style.top = '50%'; w.style.transform = 'translate(-50%,-50%)';
     let html = `<div class="modal-header"><h3>上报数据</h3><div class="window-controls"><button onclick="maximizeWindow('reportWin')">🗖</button><button onclick="document.getElementById('reportWin').remove()">×</button></div></div><div class="modal-body">`;
     if (orders.length === 0) html += '<div style="padding:20px;text-align:center;">暂无记录</div>';
     else {
@@ -1138,8 +1082,7 @@ async function showReportOrderRecord() {
         html += `<div class="order-item"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span>合计：${o.totalAmount}</span><span>${o.user} ${o.date}</span></div><button class="order-del" onclick="deleteReportOrder(${o.id})">删除</button></div>`;
       });
     }
-    html += '</div>';
-    w.innerHTML = html; document.body.appendChild(w);
+    html += '</div>'; w.innerHTML = html; document.body.appendChild(w);
     makeWindowDraggable('reportWin'); highestZ += 1; w.style.zIndex = highestZ;
   } catch(e) { showToast('加载失败'); }
 }
@@ -1151,24 +1094,21 @@ async function deleteReportOrder(id) {
   showReportOrderRecord();
 }
 
-// 卡密管理（管理员）
 async function showCardManager() {
   if (!currentUser || currentUser.role !== 'admin') { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
   try {
     const cards = await fetchApi('/api/cards');
     const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'cardMgrWin';
-    win.style.width = '600px'; win.style.height = '500px';
+    win.style.width = '600px'; win.style.height = '500px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%,-50%)';
     let html = `<div class="modal-header"><h3>卡密管理</h3><div class="window-controls"><button onclick="maximizeWindow('cardMgrWin')">🗖</button><button onclick="document.getElementById('cardMgrWin').remove()">×</button></div></div><div class="modal-body">
       <div style="margin-bottom:10px;display:flex;gap:10px;"><input type="number" id="expireDays" placeholder="天数" value="30" style="width:80px;"><button onclick="generateCard()">生成卡密</button></div>
       <div id="cardList">`;
     cards.forEach(c => {
       html += `<div style="border:1px solid #eee;padding:6px;margin:4px 0;display:flex;justify-content:space-between;"><span>${c.code} (${c.status}) ${c.username? '绑定:'+c.username:''}</span>${c.status==='active'?`<button onclick="disableCard(${c.id})">禁用</button>`:''}</div>`;
     });
-    html += '</div></div>';
-    win.innerHTML = html; document.body.appendChild(win);
+    html += '</div></div>'; win.innerHTML = html; document.body.appendChild(win);
     makeWindowDraggable('cardMgrWin'); highestZ += 1; win.style.zIndex = highestZ;
-
     window.generateCard = async () => {
       const days = document.getElementById('expireDays')?.value || 30;
       try {
@@ -1188,17 +1128,14 @@ async function showCardManager() {
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// 数据库配置弹窗（保留空壳，实际配置在后端）
 function showDatabase() {
   if (document.getElementById('databaseWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'databaseWin';
   win.style.width = '800px'; win.style.height = '600px';
   win.innerHTML = `<div class="modal-header"><h3>数据库配置</h3><div class="window-controls"><button onclick="document.getElementById('databaseWin').remove()">×</button></div></div><div class="modal-body"><p>配置已移至后端，如有需要请联系管理员。</p></div>`;
-  document.body.appendChild(win);
-  makeWindowDraggable('databaseWin');
+  document.body.appendChild(win); makeWindowDraggable('databaseWin');
 }
 
-// 占位函数
 function showReplacePreset() { showToast('功能尚未迁移'); }
 function showCategoryAliases() { showToast('功能尚未迁移'); }
 function showUserManager() { showToast('用户管理请使用注册/卡密'); }
@@ -1208,24 +1145,26 @@ function showAmountSuffixManager() { showToast('金额后缀暂未迁移'); }
 function exportData() { showToast('导出暂不可用'); }
 function importData() { showToast('导入暂不可用'); }
 function resetTable() {
-  if (confirm('确定清空所有数据？此操作不可恢复！')) {
+  if (confirm('确定清空所有数据？')) {
     fetchApi('/api/orders', { method:'DELETE' }).then(() => {
-      fetchApi('/api/report-orders', { method:'DELETE' }).then(() => {
-        updateTableFromRecords();
-        showToast('已清空');
-      });
+      fetchApi('/api/report-orders', { method:'DELETE' }).then(() => { updateTableFromRecords(); showToast('已清空'); });
     });
   }
 }
 
-// 配置读取（用于前端识别时的分类映射，本地保留一份）
 let localConfigCache = null;
 function getAllConfigData() {
   if (localConfigCache) return localConfigCache;
-  // 从后端获取并缓存
   fetchApi('/api/config').then(cfg => { localConfigCache = cfg; });
   return localConfigCache || {};
-}    
+}
+
+window.onload = () => {
+  const savedZodiac = localStorage.getItem('selectedStartZodiac') || '马';
+  document.getElementById('startZodiacSelect').value = savedZodiac;
+  currentZodiacMap = buildZodiacMap(savedZodiac);
+  if (!authToken) { showLoginScreen(); } else { initMainSystem(); }
+};
 </script>
 </body>
 </html>
