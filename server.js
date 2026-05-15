@@ -9,11 +9,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// 数据库初始化
 const db = new Database(path.join(__dirname, 'data.db'));
 db.pragma('journal_mode = WAL');
 
-// 创建表
+// 创建数据表
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +23,6 @@ db.exec(`
     created_at TEXT NOT NULL,
     FOREIGN KEY (card_id) REFERENCES cards(id)
   );
-
   CREATE TABLE IF NOT EXISTS cards (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT UNIQUE NOT NULL,
@@ -34,7 +32,6 @@ db.exec(`
     user_id INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
-
   CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
@@ -43,7 +40,6 @@ db.exec(`
     totalAmount REAL DEFAULT 0,
     timestamp TEXT NOT NULL
   );
-
   CREATE TABLE IF NOT EXISTS report_orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
@@ -54,38 +50,43 @@ db.exec(`
   );
 `);
 
-// 中间件
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
 
-// ========= 内置分类数据 =========
+// ========== 认证中间件 ==========
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: '未登录' });
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: '令牌无效' });
+    req.user = user;
+    next();
+  });
+}
+
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: '需要管理员权限' });
+  }
+  next();
+}
+
+// ========== 内置分类数据（识别需要） ==========
 const DEFAULT_CONFIG = {
   zodiac: {
-    鼠: ["07","19","31","43"],
-    牛: ["06","18","30","42"],
-    虎: ["05","17","29","41"],
-    兔: ["04","16","28","40"],
-    龙: ["03","15","27","39"],
-    蛇: ["02","14","26","38"],
-    马: ["01","13","25","37","49"],
-    羊: ["12","24","36","48"],
-    猴: ["11","23","35","47"],
-    鸡: ["10","22","34","46"],
-    狗: ["09","21","33","45"],
-    猪: ["08","20","32","44"]
+    鼠: ["07","19","31","43"], 牛: ["06","18","30","42"], 虎: ["05","17","29","41"],
+    兔: ["04","16","28","40"], 龙: ["03","15","27","39"], 蛇: ["02","14","26","38"],
+    马: ["01","13","25","37","49"], 羊: ["12","24","36","48"], 猴: ["11","23","35","47"],
+    鸡: ["10","22","34","46"], 狗: ["09","21","33","45"], 猪: ["08","20","32","44"]
   },
   shengxiaoAttr: {
-    家禽: ["牛","马","羊","鸡","狗","猪"],
-    野兽: ["鼠","虎","兔","龙","蛇","猴"],
-    吉美: ["兔","龙","蛇","马","羊","鸡"],
-    凶丑: ["鼠","牛","虎","猴","狗","猪"],
-    阴性: ["鼠","龙","蛇","马","狗","猪"],
-    阳性: ["牛","虎","兔","羊","猴","鸡"],
-    天肖: ["兔","马","猴","猪","牛","龙"],
-    地肖: ["蛇","羊","鸡","狗","鼠","虎"],
-    单笔: ["鼠","龙","马","蛇","鸡","猪"],
-    双笔: ["虎","猴","狗","兔","羊","牛"],
+    家禽: ["牛","马","羊","鸡","狗","猪"], 野兽: ["鼠","虎","兔","龙","蛇","猴"],
+    吉美: ["兔","龙","蛇","马","羊","鸡"], 凶丑: ["鼠","牛","虎","猴","狗","猪"],
+    阴性: ["鼠","龙","蛇","马","狗","猪"], 阳性: ["牛","虎","兔","羊","猴","鸡"],
+    天肖: ["兔","马","猴","猪","牛","龙"], 地肖: ["蛇","羊","鸡","狗","鼠","虎"],
+    单笔: ["鼠","龙","马","蛇","鸡","猪"], 双笔: ["虎","猴","狗","兔","羊","牛"],
     白边: ["鼠","牛","虎","鸡","狗","猪"]
   },
   wuxing: {
@@ -101,12 +102,9 @@ const DEFAULT_CONFIG = {
     绿波: ["05","06","11","16","17","21","22","27","28","32","33","38","39","43","44","49"]
   },
   banbo: {
-    红双: ["02","08","12","18","24","30","34","40","46"],
-    红单: ["01","07","13","19","23","29","35","45"],
-    蓝双: ["04","10","14","20","26","36","42","48"],
-    蓝单: ["03","09","15","25","31","37","41","47"],
-    绿双: ["06","16","22","28","32","38","44"],
-    绿单: ["05","11","17","21","27","33","39","43","49"]
+    红双: ["02","08","12","18","24","30","34","40","46"], 红单: ["01","07","13","19","23","29","35","45"],
+    蓝双: ["04","10","14","20","26","36","42","48"], 蓝单: ["03","09","15","25","31","37","41","47"],
+    绿双: ["06","16","22","28","32","38","44"], 绿单: ["05","11","17","21","27","33","39","43","49"]
   },
   danshuang: {
     单数: ["01","03","05","07","09","11","13","15","17","19","21","23","25","27","29","31","33","35","37","39","41","43","45","47","49"],
@@ -124,19 +122,11 @@ const DEFAULT_CONFIG = {
     大: ["25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49"]
   },
   heshu: {
-    "01合": ["01","10"],
-    "02合": ["02","11","20"],
-    "03合": ["03","12","21","30"],
-    "04合": ["04","13","22","31","40"],
-    "05合": ["05","14","23","32","41"],
-    "06合": ["06","15","24","33","42"],
-    "07合": ["07","16","25","34","43"],
-    "08合": ["08","17","26","35","44"],
-    "09合": ["09","18","27","36","45"],
-    "10合": ["19","28","37","46"],
-    "11合": ["29","38","47"],
-    "12合": ["39","48"],
-    "13合": ["49"]
+    "01合": ["01","10"],"02合": ["02","11","20"],"03合": ["03","12","21","30"],
+    "04合": ["04","13","22","31","40"],"05合": ["05","14","23","32","41"],
+    "06合": ["06","15","24","33","42"],"07合": ["07","16","25","34","43"],
+    "08合": ["08","17","26","35","44"],"09合": ["09","18","27","36","45"],
+    "10合": ["19","28","37","46"],"11合": ["29","38","47"],"12合": ["39","48"],"13合": ["49"]
   },
   toushu: {
     "0头": ["01","02","03","04","05","06","07","08","09"],
@@ -153,12 +143,9 @@ const DEFAULT_CONFIG = {
     "5门": ["38","39","40","41","42","43","44","45","46","47","48","49"]
   },
   duanwei: {
-    "1段": ["01","02","03","04","05","06","07"],
-    "2段": ["08","09","10","11","12","13","14"],
-    "3段": ["15","16","17","18","19","20","21"],
-    "4段": ["22","23","24","25","26","27","28"],
-    "5段": ["29","30","31","32","33","34","35"],
-    "6段": ["36","37","38","39","40","41","42"],
+    "1段": ["01","02","03","04","05","06","07"],"2段": ["08","09","10","11","12","13","14"],
+    "3段": ["15","16","17","18","19","20","21"],"4段": ["22","23","24","25","26","27","28"],
+    "5段": ["29","30","31","32","33","34","35"],"6段": ["36","37","38","39","40","41","42"],
     "7段": ["43","44","45","46","47","48","49"]
   },
   hedahexiao: {
@@ -170,32 +157,22 @@ const DEFAULT_CONFIG = {
     尾大: ["05","06","07","08","09","15","16","17","18","19","25","26","27","28","29","35","36","37","38","39","45","46","47","48","49"]
   },
   hewei: {
-    "0合尾": ["19","28","37","46"],
-    "1合尾": ["01","10","29","38","47"],
-    "2合尾": ["02","11","20","39","48"],
-    "3合尾": ["03","12","21","30","49"],
-    "4合尾": ["04","13","22","31","40"],
-    "5合尾": ["05","14","23","32","41"],
-    "6合尾": ["06","15","24","33","42"],
-    "7合尾": ["07","16","25","34","43"],
-    "8合尾": ["08","17","26","35","44"],
-    "9合尾": ["09","18","27","36","45"]
+    "0合尾": ["19","28","37","46"],"1合尾": ["01","10","29","38","47"],
+    "2合尾": ["02","11","20","39","48"],"3合尾": ["03","12","21","30","49"],
+    "4合尾": ["04","13","22","31","40"],"5合尾": ["05","14","23","32","41"],
+    "6合尾": ["06","15","24","33","42"],"7合尾": ["07","16","25","34","43"],
+    "8合尾": ["08","17","26","35","44"],"9合尾": ["09","18","27","36","45"]
   },
   heshudanshuang: {
     合数单: ["01","03","05","07","09","10","12","14","16","18","21","23","25","27","29","30","32","34","36","38","41","43","45","47","49"],
     合数双: ["02","04","06","08","11","13","15","17","19","20","22","24","26","28","31","33","35","37","39","40","42","44","46","48"]
   },
   toushuDanshuang: {
-    "0头单": ["01","03","05","07","09"],
-    "0头双": ["02","04","06","08"],
-    "1头单": ["11","13","15","17","19"],
-    "1头双": ["10","12","14","16","18"],
-    "2头单": ["21","23","25","27","29"],
-    "2头双": ["20","22","24","26","28"],
-    "3头单": ["31","33","35","37","39"],
-    "3头双": ["30","32","34","36","38"],
-    "4头单": ["41","43","45","47","49"],
-    "4头双": ["40","42","44","46","48"]
+    "0头单": ["01","03","05","07","09"],"0头双": ["02","04","06","08"],
+    "1头单": ["11","13","15","17","19"],"1头双": ["10","12","14","16","18"],
+    "2头单": ["21","23","25","27","29"],"2头双": ["20","22","24","26","28"],
+    "3头单": ["31","33","35","37","39"],"3头双": ["30","32","34","36","38"],
+    "4头单": ["41","43","45","47","49"],"4头双": ["40","42","44","46","48"]
   }
 };
 
@@ -209,13 +186,14 @@ for (let i = 0; i <= 9; i++) {
   }
 }
 
-let currentConfig = { ...DEFAULT_CONFIG };
+let currentConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 function mergeConfig(custom) {
-  if (!custom) return DEFAULT_CONFIG;
-  const merged = { ...DEFAULT_CONFIG };
-  if (custom.weishu) merged.weishu = { ...DEFAULT_CONFIG.weishu, ...custom.weishu };
-  // 可添加更多自定义分类合并（如生肖属性等），当前简单处理
+  if (!custom) return currentConfig;
+  const merged = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  if (custom.weishu) {
+    merged.weishu = { ...DEFAULT_CONFIG.weishu, ...custom.weishu };
+  }
   return merged;
 }
 
@@ -243,7 +221,6 @@ function getAllValidCategories(config) {
   return s;
 }
 
-// 根据分类名获取号码列表
 function getNumberListForCategory(cat, config) {
   const nums = [];
   if (config.shengxiaoAttr[cat]) {
@@ -264,7 +241,6 @@ function getNumberListForCategory(cat, config) {
   return [...new Set(nums)];
 }
 
-// 解析一行订单
 function parseLine(line, config) {
   const m = line.match(/([\u4e00-\u9fa5\d\-]+)\s+各数\s+(\d+)/);
   if (!m) return { numbers: [], zodiacs: [], amount: 0 };
@@ -287,26 +263,8 @@ function parseLine(line, config) {
   });
   return { numbers: [...nums], zodiacs: [...zods], amount: amt };
 }
-// ========= 认证中间件 =========
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: '未登录' });
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: '令牌无效' });
-    req.user = user;
-    next();
-  });
-}
 
-function requireAdmin(req, res, next) {
-  if (!req.user || req.user.role !== 'admin') {
-    return res.status(403).json({ error: '需要管理员权限' });
-  }
-  next();
-}
-
-// ========= 用户认证 API =========
+// ========== 用户认证 API ==========
 app.post('/api/auth/admin', (req, res) => {
   const { password } = req.body;
   if (password === "150408") {
@@ -324,15 +282,28 @@ app.post('/api/auth/register', (req, res) => {
   if (existingUser) return res.status(400).json({ error: '用户名已存在' });
 
   const card = db.prepare('SELECT * FROM cards WHERE code = ? AND status = ?').get(cardCode, 'active');
-  if (!card) return res.status(400).json({ error: '卡密无效或已使用' });
+  if (!card) {
+    const anyCard = db.prepare('SELECT * FROM cards WHERE code = ?').get(cardCode);
+    if (anyCard) return res.status(400).json({ error: `卡密状态为 ${anyCard.status}，无法使用` });
+    return res.status(400).json({ error: '卡密无效（不存在）' });
+  }
 
-  // 卡密自验证
   const now = Date.now();
   const parts = cardCode.split('-');
-  if (parts.length !== 3) return res.status(400).json({ error: '卡密格式错误' });
+  if (parts.length !== 3) return res.status(400).json({ error: '卡密格式错误（需要3段）' });
   const createTime = parseInt(parts[0], 36);
   const expireMs = parseInt(parts[1], 36);
-  if (isNaN(createTime) || isNaN(expireMs)) return res.status(400).json({ error: '卡密无效' });
+  if (isNaN(createTime) || isNaN(expireMs)) return res.status(400).json({ error: '卡密解析失败' });
+
+  const raw = `${createTime}-${expireMs}-XK9mP2wQ7vL5`;
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+    hash |= 0;
+  }
+  const computedHash = Math.abs(hash).toString(16).toUpperCase().padStart(4, '0');
+  if (computedHash !== parts[2].toUpperCase()) return res.status(400).json({ error: '卡密校验失败（哈希不匹配）' });
+
   if (now > createTime + expireMs) {
     db.prepare('UPDATE cards SET status = ? WHERE id = ?').run('expired', card.id);
     return res.status(400).json({ error: '卡密已过期' });
@@ -364,7 +335,7 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ token, username: user.username, role: user.role });
 });
 
-// ========= 卡密管理（管理员） =========
+// ========== 卡密管理（管理员） ==========
 app.post('/api/cards/generate', authenticateToken, requireAdmin, (req, res) => {
   const { expireDays } = req.body;
   if (!expireDays || expireDays < 1) return res.status(400).json({ error: '有效期至少1天' });
@@ -379,9 +350,7 @@ app.post('/api/cards/generate', authenticateToken, requireAdmin, (req, res) => {
   }
   const code = `${now.toString(36).toUpperCase()}-${expireMs.toString(36).toUpperCase()}-${Math.abs(hash).toString(16).toUpperCase().padStart(4, '0')}`;
 
-  const stmt = db.prepare('INSERT INTO cards (code, status, expire_days, created_at) VALUES (?, ?, ?, ?)');
-  stmt.run(code, 'active', expireDays, new Date().toISOString());
-
+  db.prepare('INSERT INTO cards (code, status, expire_days, created_at) VALUES (?, ?, ?, ?)').run(code, 'active', expireDays, new Date().toISOString());
   res.json({ success: true, code });
 });
 
@@ -400,7 +369,7 @@ app.post('/api/cards/:id/disable', authenticateToken, requireAdmin, (req, res) =
   res.json({ success: true });
 });
 
-// ========= 订单 API =========
+// ========== 订单 API（需登录） ==========
 app.get('/api/orders', authenticateToken, (req, res) => {
   const { date } = req.query;
   let rows;
@@ -449,7 +418,7 @@ app.post('/api/orders/batch-delete', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
-// 上报订单 API
+// 上报订单（同 orders）
 app.get('/api/report-orders', authenticateToken, (req, res) => {
   const { date } = req.query;
   let rows;
@@ -498,11 +467,136 @@ app.post('/api/report-orders/batch-delete', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
-// ========= 风险计算 =========
+// ========== 识别接口（后端完全负责识别） ==========
+app.post('/api/recognize', authenticateToken, (req, res) => {
+  try {
+    const { text, config: customConfig } = req.body;
+    if (!text) return res.json({ result: '' });
+
+    const config = mergeConfig(customConfig || {});
+    const lines = text.split('\n');
+    const resultLines = [];
+    const HARD_AMP_LIST = ['各','各号','号','个','=','各数','每数','每号','个号','每个号','各码','各号码'];
+    const AMP_ORIGINAL = '(?:' + HARD_AMP_LIST.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
+    const allPre = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼'];
+    const ZODIAC_SET = new Set(Object.keys(config.zodiac));
+    const vc = getAllValidCategories(config);
+
+    function cn2n(s) {
+      const m={'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000};
+      let sum=0,tmp=0;
+      for(let c of s) {
+        const v=m[c];
+        if(v===10||v===100||v===1000) {
+          if(tmp===0)tmp=1;
+          tmp*=v; sum+=tmp; tmp=0;
+        } else if(v!==undefined) {
+          if(tmp>0){sum+=tmp;tmp=0;}
+          tmp=v;
+        }
+      }
+      sum+=tmp; return sum;
+    }
+
+    function tokenizeAndJoin(content) {
+      const tokens = content.split(/[^\u4e00-\u9fa5\d]+/).filter(t => t.trim()).map(t => t.trim());
+      const res = [];
+      tokens.forEach(t => {
+        const tm = t.match(/^(\d{2,})尾$/);
+        const hm = t.match(/^(\d{2,})头$/);
+        if (tm) {
+          const ds = tm[1].split('').map(d => d + '尾');
+          res.push(...ds);
+        } else if (hm) {
+          const ds = hm[1].split('').map(d => d + '头');
+          res.push(...ds);
+        } else if (/^\d{1,2}$/.test(t)) {
+          const n = parseInt(t);
+          if (n >= 1 && n <= 49) res.push(t.length === 1 ? '0' + t : t);
+        } else if (vc.has(t)) {
+          res.push(t);
+        } else if (/^[\u4e00-\u9fa5]+$/.test(t)) {
+          const cs = t.match(/[\u4e00-\u9fa5]/g) || [];
+          if (cs.every(c => vc.has(c))) res.push(...cs);
+        }
+      });
+      return res.join('-');
+    }
+
+    lines.forEach(line => {
+      line = line.trim();
+      if (!line) return;
+      const pairMatch = line.match(/^(\d{1,2})[^\d\s]+(\d+)$/);
+      if (pairMatch) {
+        let num = pairMatch[1]; const amount = pairMatch[2];
+        if (num.length === 1) num = '0' + num;
+        resultLines.push(`${num} 各数 ${amount}`);
+        return;
+      }
+      let cl = line;
+      allPre.forEach(p => { if (cl.startsWith(p)) cl = cl.substring(p.length).trim(); });
+      cl = cl.replace(/[^\u4e00-\u9fa5\d]+$/, '');
+      cl = cl.replace(/([一二三四五六七八九十百千]+)/g, (m) => cn2n(m));
+      while (cl && !/^[\d\u4e00-\u9fa5]/.test(cl)) {
+        cl = cl.substring(1).trim();
+      }
+      const leadingChineseMatch = cl.match(/^([\u4e00-\u9fa5]+)/);
+      if (leadingChineseMatch) {
+        const leadingChinese = leadingChineseMatch[1];
+        let isValidPrefix = false;
+        for (let i = 1; i <= leadingChinese.length; i++) {
+          if (vc.has(leadingChinese.substring(0, i))) { isValidPrefix = true; break; }
+        }
+        if (!isValidPrefix) cl = cl.substring(leadingChinese.length).trim();
+      }
+      const op = new RegExp(`(${AMP_ORIGINAL}\\d+)`, 'g');
+      const om = cl.match(op);
+      if (om && om.length > 0) {
+        let rl = cl;
+        om.forEach(om => {
+          const oi = rl.indexOf(om);
+          if (oi !== -1) {
+            const cont = rl.substring(0, oi).trim();
+            const am = om.match(/(\d+)/);
+            if (am) {
+              const amt = am[1];
+              if (cont) { const jo = tokenizeAndJoin(cont); if (jo) resultLines.push(`${jo} 各数 ${amt}`); }
+              rl = rl.substring(oi + om.length);
+            }
+          }
+        });
+        if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) resultLines.push(`${jo} 各数 0`); }
+      } else {
+        const pat = new RegExp(`^(.+?)${AMP_ORIGINAL}(\\d+)$`);
+        const m = cl.match(pat);
+        if (m) { const jo = tokenizeAndJoin(m[1].trim()); if (jo) resultLines.push(`${jo} 各数 ${m[2]}`); }
+        else {
+          const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})(\\d+)$`);
+          const sm = cl.match(sp);
+          if (sm) {
+            let num = sm[1].trim();
+            if (parseInt(num) >= 1 && parseInt(num) <= 49) {
+              num = num.length === 1 ? `0${num}` : num;
+              resultLines.push(`${num} 各数 ${sm[2]}`);
+            }
+          } else {
+            const jo = tokenizeAndJoin(cl); if (jo) resultLines.push(`${jo} 各数 0`);
+          }
+        }
+      }
+    });
+    res.json({ result: resultLines.join('\n') });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ========== 风险计算 ==========
 app.post('/api/calculate', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, rebateRate = 4, multiple = 47 } = req.body;
-    const config = mergeConfig(customConfig);
+    const config = mergeConfig(customConfig || {});
 
     let orders, reportOrders;
     if (req.user.role === 'admin') {
@@ -563,7 +657,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
   }
 });
 
-// 更新配置（前端可传自定义分类）
+// 配置接口（用于前端传递自定义分类到后端）
 app.post('/api/config', authenticateToken, (req, res) => {
   currentConfig = mergeConfig(req.body);
   res.json({ success: true });
@@ -573,7 +667,7 @@ app.get('/api/config', authenticateToken, (req, res) => {
   res.json(currentConfig);
 });
 
-// 前端页面
+// 所有其他请求返回 index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
