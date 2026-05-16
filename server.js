@@ -13,7 +13,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 const db = new Database(path.join(__dirname, 'data.db'));
 db.pragma('journal_mode = WAL');
 
-// 创建表
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -93,7 +92,7 @@ function generateActivationCode() {
   return 'HKMC-' + segments.join('-');
 }
 
-// ========== 内置分类数据（识别用） ==========
+// ========== 内置分类数据 ==========
 const DEFAULT_CONFIG = {
   zodiac: {
     鼠: ["07","19","31","43"], 牛: ["06","18","30","42"], 虎: ["05","17","29","41"],
@@ -281,18 +280,15 @@ function parseLine(line, config) {
 }
 
 // ========== 用户认证 API ==========
-
-// 管理员登录
 app.post('/api/auth/admin', (req, res) => {
   const { password } = req.body;
-  if (password === "150408") {
+  if (password === (process.env.ADMIN_PASSWORD || '150408')) {
     const token = jwt.sign({ username: 'admin', role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
     return res.json({ token, role: 'admin' });
   }
   res.status(401).json({ error: '管理员密码错误' });
 });
 
-// 用户注册（仅用户名密码，不激活）
 app.post('/api/auth/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '请填写完整信息' });
@@ -307,7 +303,6 @@ app.post('/api/auth/register', (req, res) => {
   res.json({ success: true, message: '注册成功，请使用激活码激活' });
 });
 
-// 激活账号
 app.post('/api/auth/activate', (req, res) => {
   const { username, cardCode } = req.body;
   if (!username || !cardCode) return res.status(400).json({ error: '请填写完整信息' });
@@ -315,7 +310,6 @@ app.post('/api/auth/activate', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user) return res.status(400).json({ error: '用户不存在' });
   if (user.activated === 1) {
-    // 检查是否过期
     const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(user.card_id);
     if (card) {
       const activatedAt = new Date(user.activated_at).getTime();
@@ -333,7 +327,6 @@ app.post('/api/auth/activate', (req, res) => {
     return res.status(400).json({ error: '激活码无效（不存在）' });
   }
 
-  // 检查激活码是否过期（从创建时间算）
   const cardCreated = new Date(card.created_at).getTime();
   const cardExpireMs = card.expire_days * 86400000;
   if (Date.now() > cardCreated + cardExpireMs) {
@@ -342,15 +335,12 @@ app.post('/api/auth/activate', (req, res) => {
   }
 
   const nowISO = new Date().toISOString();
-  // 激活用户
   db.prepare('UPDATE users SET activated = 1, activated_at = ?, card_id = ? WHERE id = ?').run(nowISO, card.id, user.id);
-  // 更新卡密
   db.prepare('UPDATE cards SET status = ?, user_id = ? WHERE id = ?').run('used', user.id, card.id);
 
   res.json({ success: true, message: '激活成功，请登录' });
 });
 
-// 用户登录
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
@@ -372,14 +362,12 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(403).json({ error: '激活已过期，请重新激活', needActivation: true });
   }
 
-  // 检查激活有效期
   if (user.activated === 1 && user.card_id) {
     const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(user.card_id);
     if (card) {
       const activatedAt = new Date(user.activated_at).getTime();
       const expireMs = card.expire_days * 86400000;
       if (Date.now() > activatedAt + expireMs) {
-        // 过期，设为2
         db.prepare('UPDATE users SET activated = 2 WHERE id = ?').run(user.id);
         return res.status(403).json({ error: '激活已过期，请重新激活', needActivation: true });
       }
@@ -701,6 +689,53 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
     }));
 
     res.json({ list: result, totalBet, totalRebate: rebate });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ========== 对奖高亮接口 ==========
+app.post('/api/highlight', authenticateToken, (req, res) => {
+  try {
+    const { content, targetNum, config: customConfig } = req.body;
+    if (!content || !targetNum) return res.json({ highlighted: content });
+
+    const config = mergeConfig(customConfig || {});
+    const t = targetNum.toString().padStart(2, '0');
+    const lines = content.split('\n');
+    const highlightedLines = lines.map(line => {
+      const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
+      if (!m) return line;
+      const cont = m[1];
+      const amt = m[2];
+      const parts = [];
+      let tmp = '';
+      for (const ch of cont) {
+        if (ch === '-' || ch === ' ') {
+          if (tmp) parts.push(tmp);
+          parts.push(ch);
+          tmp = '';
+        } else {
+          tmp += ch;
+        }
+      }
+      if (tmp) parts.push(tmp);
+
+      const highlightedParts = parts.map(p => {
+        if (p === '-' || p === ' ') return p;
+        let isMatch = false;
+        if (/^\d{1,2}$/.test(p)) {
+          isMatch = p.padStart(2, '0') === t;
+        } else {
+          const nums = getNumberListForCategory(p, config);
+          isMatch = nums.includes(t);
+        }
+        return isMatch ? `<span class="highlight-number">${p}</span>` : p;
+      });
+      return highlightedParts.join('') + ` 各数 ${amt}`;
+    });
+    res.json({ highlighted: highlightedLines.join('\n') });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
