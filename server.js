@@ -4,7 +4,6 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,7 +28,6 @@ db.exec(`
     created_at TEXT NOT NULL,
     FOREIGN KEY (card_id) REFERENCES cards(id)
   );
-
   CREATE TABLE IF NOT EXISTS cards (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT UNIQUE NOT NULL,
@@ -39,7 +37,6 @@ db.exec(`
     user_id INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
-
   CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
@@ -49,7 +46,6 @@ db.exec(`
     totalAmount REAL DEFAULT 0,
     timestamp TEXT NOT NULL
   );
-
   CREATE TABLE IF NOT EXISTS report_orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
@@ -59,7 +55,6 @@ db.exec(`
     totalAmount REAL DEFAULT 0,
     timestamp TEXT NOT NULL
   );
-
   CREATE TABLE IF NOT EXISTS tags (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -67,7 +62,6 @@ db.exec(`
     created_at TEXT NOT NULL,
     UNIQUE(owner, name)
   );
-
   CREATE TABLE IF NOT EXISTS settings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     owner TEXT NOT NULL,
@@ -77,21 +71,19 @@ db.exec(`
   );
 `);
 
-// ========== 工具函数 ==========
 function generateActivationCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const segments = [];
-  for (let i = 0; i < 4; i++) {
+  let code = 'HKMC-';
+  for (let i = 0; i < 3; i++) {
     let seg = '';
-    for (let j = 0; j < 4; j++) {
-      seg += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    segments.push(seg);
+    for (let j = 0; j < 4; j++) seg += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += seg + '-';
   }
-  return 'HKMC-' + segments.join('-');
+  let last = '';
+  for (let j = 0; j < 4; j++) last += chars.charAt(Math.floor(Math.random() * chars.length));
+  return code + last;
 }
 
-// 默认配置
 const DEFAULT_CONFIG = {
   zodiac: {
     鼠: ["07","19","31","43"], 牛: ["06","18","30","42"], 虎: ["05","17","29","41"],
@@ -240,13 +232,11 @@ function getNumberListForCategory(cat, config) {
       if (config.zodiac[z]) nums.push(...config.zodiac[z].map(n => n.padStart(2, '0')));
     });
   }
-  const sources = [
-    config.wuxing, config.bose, config.banbo, config.danshuang,
+  const sources = [config.wuxing, config.bose, config.banbo, config.danshuang,
     config.weishu, config.daxiaodanshuang, config.daxiao, config.heshu,
     config.toushu, config.menshu, config.duanwei, config.hedahexiao,
     config.weidaweixiao, config.hewei, config.heshudanshuang,
-    config.toushuDanshuang, config.zodiac
-  ];
+    config.toushuDanshuang, config.zodiac];
   for (const src of sources) {
     if (src && src[cat]) nums.push(...src[cat].map(n => n.padStart(2, '0')));
   }
@@ -276,7 +266,6 @@ function parseLine(line, config) {
   return { numbers: [...nums], zodiacs: [...zods], amount: amt };
 }
 
-// ========== 认证中间件 ==========
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -294,6 +283,10 @@ function requireAdmin(req, res, next) {
   }
   next();
 }
+
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ========== 用户认证 ==========
 app.post('/api/auth/admin', (req, res) => {
@@ -362,19 +355,17 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ token, username: user.username, role: user.role });
 });
 
-// ========== 卡密管理（管理员） ==========
+// ========== 卡密管理 ==========
 app.get('/api/cards', authenticateToken, requireAdmin, (req, res) => {
   const cards = db.prepare(`SELECT cards.*, users.username FROM cards LEFT JOIN users ON cards.user_id = users.id ORDER BY cards.created_at DESC`).all();
   res.json(cards);
 });
-
 app.post('/api/cards/generate', authenticateToken, requireAdmin, (req, res) => {
   const { expireDays } = req.body;
   const code = generateActivationCode();
   db.prepare('INSERT INTO cards (code, status, expire_days, created_at) VALUES (?, ?, ?, ?)').run(code, 'active', expireDays, new Date().toISOString());
   res.json({ success: true, code });
 });
-
 app.post('/api/cards/:id/disable', authenticateToken, requireAdmin, (req, res) => {
   db.prepare('UPDATE cards SET status = ? WHERE id = ?').run('disabled', req.params.id);
   res.json({ success: true });
@@ -385,7 +376,6 @@ app.get('/api/tags', authenticateToken, (req, res) => {
   const tags = db.prepare('SELECT name FROM tags WHERE owner = ? ORDER BY name').all(req.user.username).map(r => r.name);
   res.json(tags);
 });
-
 app.post('/api/tags', authenticateToken, (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: '标签名不能为空' });
@@ -397,48 +387,47 @@ app.post('/api/tags', authenticateToken, (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-
 app.delete('/api/tags', authenticateToken, (req, res) => {
   const { name } = req.body;
   db.prepare('DELETE FROM tags WHERE name = ? AND owner = ?').run(name, req.user.username);
   res.json({ success: true });
 });
 
-// ========== 订单 API（使用标签） ==========
+// ========== 订单/上报 API ==========
 app.get('/api/orders', authenticateToken, (req, res) => {
   const { date, tag } = req.query;
-  let query = 'SELECT * FROM orders WHERE created_by = ?';
-  const params = [req.user.username];
-  if (date) { query += ' AND date = ?'; params.push(date); }
-  if (tag) { query += ' AND tag = ?'; params.push(tag); }
-  if (req.user.role === 'admin' && !tag) {
+  let query, params;
+  if (req.user.role === 'admin') {
     query = 'SELECT * FROM orders';
-    params.length = 0;
-    if (date) { query += ' WHERE date = ?'; params.push(date); }
+    params = [];
+    if (date || tag) {
+      const conds = [];
+      if (date) { conds.push('date = ?'); params.push(date); }
+      if (tag) { conds.push('tag = ?'); params.push(tag); }
+      query += ' WHERE ' + conds.join(' AND ');
+    }
+  } else {
+    query = 'SELECT * FROM orders WHERE created_by = ?';
+    params = [req.user.username];
+    if (date) { query += ' AND date = ?'; params.push(date); }
+    if (tag) { query += ' AND tag = ?'; params.push(tag); }
   }
-  const rows = db.prepare(query).all(...params);
-  res.json(rows);
+  res.json(db.prepare(query).all(...params));
 });
-
 app.post('/api/orders', authenticateToken, (req, res) => {
   const { content, tag, date, totalAmount } = req.body;
   if (!content || !tag) return res.status(400).json({ error: '缺少必要字段' });
-  const timestamp = new Date().toISOString();
   const stmt = db.prepare('INSERT INTO orders (content, tag, created_by, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)');
-  const result = stmt.run(content, tag, req.user.username, date, totalAmount || 0, timestamp);
+  const result = stmt.run(content, tag, req.user.username, date, totalAmount || 0, new Date().toISOString());
   res.json({ success: true, id: result.lastInsertRowid });
 });
-
 app.delete('/api/orders/:id', authenticateToken, (req, res) => {
   const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
   if (!order) return res.status(404).json({ error: '订单不存在' });
-  if (req.user.role !== 'admin' && order.created_by !== req.user.username) {
-    return res.status(403).json({ error: '无权删除' });
-  }
+  if (req.user.role !== 'admin' && order.created_by !== req.user.username) return res.status(403).json({ error: '无权删除' });
   db.prepare('DELETE FROM orders WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
-
 app.post('/api/orders/batch-delete', authenticateToken, (req, res) => {
   const { ids } = req.body;
   const transaction = db.transaction(() => {
@@ -449,41 +438,40 @@ app.post('/api/orders/batch-delete', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
-// ========== 上报订单 API ==========
 app.get('/api/report-orders', authenticateToken, (req, res) => {
   const { date, tag } = req.query;
-  let query = 'SELECT * FROM report_orders WHERE created_by = ?';
-  const params = [req.user.username];
-  if (date) { query += ' AND date = ?'; params.push(date); }
-  if (tag) { query += ' AND tag = ?'; params.push(tag); }
-  if (req.user.role === 'admin' && !tag) {
+  let query, params;
+  if (req.user.role === 'admin') {
     query = 'SELECT * FROM report_orders';
-    params.length = 0;
-    if (date) { query += ' WHERE date = ?'; params.push(date); }
+    params = [];
+    if (date || tag) {
+      const conds = [];
+      if (date) { conds.push('date = ?'); params.push(date); }
+      if (tag) { conds.push('tag = ?'); params.push(tag); }
+      query += ' WHERE ' + conds.join(' AND ');
+    }
+  } else {
+    query = 'SELECT * FROM report_orders WHERE created_by = ?';
+    params = [req.user.username];
+    if (date) { query += ' AND date = ?'; params.push(date); }
+    if (tag) { query += ' AND tag = ?'; params.push(tag); }
   }
-  const rows = db.prepare(query).all(...params);
-  res.json(rows);
+  res.json(db.prepare(query).all(...params));
 });
-
 app.post('/api/report-orders', authenticateToken, (req, res) => {
   const { content, tag, date, totalAmount } = req.body;
   if (!content || !tag) return res.status(400).json({ error: '缺少必要字段' });
-  const timestamp = new Date().toISOString();
   const stmt = db.prepare('INSERT INTO report_orders (content, tag, created_by, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)');
-  const result = stmt.run(content, tag, req.user.username, date, totalAmount || 0, timestamp);
+  const result = stmt.run(content, tag, req.user.username, date, totalAmount || 0, new Date().toISOString());
   res.json({ success: true, id: result.lastInsertRowid });
 });
-
 app.delete('/api/report-orders/:id', authenticateToken, (req, res) => {
   const order = db.prepare('SELECT * FROM report_orders WHERE id = ?').get(req.params.id);
   if (!order) return res.status(404).json({ error: '记录不存在' });
-  if (req.user.role !== 'admin' && order.created_by !== req.user.username) {
-    return res.status(403).json({ error: '无权删除' });
-  }
+  if (req.user.role !== 'admin' && order.created_by !== req.user.username) return res.status(403).json({ error: '无权删除' });
   db.prepare('DELETE FROM report_orders WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
-
 app.post('/api/report-orders/batch-delete', authenticateToken, (req, res) => {
   const { ids } = req.body;
   const transaction = db.transaction(() => {
@@ -530,10 +518,7 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
       else if (hm) { const ds = hm[1].split('').map(d => d + '头'); res.push(...ds); }
       else if (/^\d{1,2}$/.test(t)) { const n = parseInt(t); if (n >= 1 && n <= 49) res.push(t.length === 1 ? '0' + t : t); }
       else if (vc.has(t)) { res.push(t); }
-      else if (/^[\u4e00-\u9fa5]+$/.test(t)) {
-        const cs = t.match(/[\u4e00-\u9fa5]/g) || [];
-        if (cs.every(c => vc.has(c))) res.push(...cs);
-      }
+      else if (/^[\u4e00-\u9fa5]+$/.test(t)) { const cs = t.match(/[\u4e00-\u9fa5]/g) || []; if (cs.every(c => vc.has(c))) res.push(...cs); }
     });
     return res.join('-');
   }
@@ -632,7 +617,7 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
   res.json({ highlighted: highlightedLines.join('\n') });
 });
 
-// ========== 统计+风险计算接口 ==========
+// ========== 统计与风险计算接口 ==========
 app.get('/api/calculate', authenticateToken, (req, res) => {
   const { date, rebateRate = 4, multiple = 47, numAmountMin = 1, numAmountMax = 50000, zodiacAmountMin = 1, zodiacAmountMax = 50000, startZodiac = '马', config: customConfig } = req.query;
   const config = mergeConfig(customConfig ? JSON.parse(customConfig) : {});
@@ -727,29 +712,21 @@ app.get('/api/calculate', authenticateToken, (req, res) => {
     amountCount: zodiacAmountCount[z] || 0
   }));
 
-  res.json({
-    list: result,
-    totalBet,
-    totalRebate: rebate,
-    numberOrderTotal,
-    zodiacWeightedTotal,
-    zodiacList,
-    reportAmountData
-  });
+  res.json({ list: result, totalBet, totalRebate: rebate, numberOrderTotal, zodiacWeightedTotal, zodiacList, reportAmountData });
 });
 
-// ========== 密码验证接口 ==========
+// ========== 密码验证 ==========
 app.post('/api/verify-password', authenticateToken, (req, res) => {
   const { type, password } = req.body;
   let valid = false;
-  if (type === 'clear') valid = (password === CLEAR_PASSWORD);
-  else if (type === 'editConfig') valid = (password === EDIT_CONFIG_PASSWORD);
-  else if (type === 'yearZodiac') valid = (password === YEAR_ZODIAC_PASSWORD);
-  else if (type === 'database') valid = (password === CLEAR_PASSWORD); // 数据库查看也用清空密码
+  if (type === 'clear') valid = password === CLEAR_PASSWORD;
+  else if (type === 'editConfig') valid = password === EDIT_CONFIG_PASSWORD;
+  else if (type === 'yearZodiac') valid = password === YEAR_ZODIAC_PASSWORD;
+  else if (type === 'database') valid = password === CLEAR_PASSWORD;
   res.json({ valid });
 });
 
-// ========== 清空数据接口 ==========
+// ========== 清空数据 ==========
 app.post('/api/clear-data', authenticateToken, (req, res) => {
   const { password } = req.body;
   if (password !== CLEAR_PASSWORD) return res.status(403).json({ error: '密码错误' });
@@ -763,14 +740,13 @@ app.post('/api/clear-data', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
-// ========== 用户配置同步接口 ==========
+// ========== 用户配置同步 ==========
 app.get('/api/settings', authenticateToken, (req, res) => {
   const rows = db.prepare('SELECT key, value FROM settings WHERE owner = ?').all(req.user.username);
   const settings = {};
   rows.forEach(r => { settings[r.key] = JSON.parse(r.value); });
   res.json(settings);
 });
-
 app.post('/api/settings', authenticateToken, (req, res) => {
   const { key, value } = req.body;
   if (!key) return res.status(400).json({ error: '缺少key' });
@@ -779,12 +755,8 @@ app.post('/api/settings', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
-// ========== 静态文件 ==========
-app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
