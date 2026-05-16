@@ -725,25 +725,6 @@ async function fetchApi(url, options = {}) {
     authToken = null;
     localStorage.removeItem('authToken');
     showLoginScreen();
-      const existing = document.getElementById('loginBtn').onclick = async () => {
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
-    if (!username || !password) return showToast('请输入用户名和密码');
-    try {
-      const data = await fetchApi('/api/auth/login', { method:'POST', body: JSON.stringify({ username, password }) });
-      authToken = data.token;
-      localStorage.setItem('authToken', authToken);
-      currentUser = { username: data.username, role: data.role };
-      overlay.remove();
-      initMainSystem();
-    } catch(e) {
-      if (e.message === 'NEED_ACTIVATION') {
-        showToast('账号未激活或已过期，请先激活');
-      } else {
-        showToast(e.message);
-      }
-    }
-  };
     throw new Error('未登录');
   }
   if (!res.ok) {
