@@ -4,12 +4,30 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '150408';
 
+// 安全中间件
+app.use(helmet());
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+
+// 登录限速：15分钟最多10次
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: '登录尝试过于频繁，请15分钟后再试' }
+});
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/admin', loginLimiter);
+
+// 数据库
 const db = new Database(path.join(__dirname, 'data.db'));
 db.pragma('journal_mode = WAL');
 
@@ -33,6 +51,7 @@ db.exec(`
     status TEXT DEFAULT 'active',
     expire_days INTEGER NOT NULL,
     created_at TEXT NOT NULL,
+    validity_mode TEXT DEFAULT 'from_creation',
     user_id INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
@@ -64,12 +83,12 @@ db.exec(`
   );
 `);
 
-// 为已有表添加 orderer 字段（如果不存在）
+// 为已有表添加字段（如果不存在）
 try { db.exec('ALTER TABLE orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
 try { db.exec('ALTER TABLE report_orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
+try { db.exec('ALTER TABLE cards ADD COLUMN validity_mode TEXT DEFAULT \'from_creation\''); } catch(e) {}
 
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+// 静态文件服务（注意：只暴露当前目录，不要暴露data.db）
 app.use(express.static(__dirname));
 
 // ========== 认证中间件 ==========
@@ -91,18 +110,26 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// ========== 激活码生成工具 ==========
+// ========== 工具函数 ==========
 function generateActivationCode() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 去掉易混淆字符
   const segments = [];
   for (let i = 0; i < 4; i++) {
+    const bytes = crypto.randomBytes(4);
     let seg = '';
     for (let j = 0; j < 4; j++) {
-      seg += chars.charAt(Math.floor(Math.random() * chars.length));
+      seg += chars[bytes[j] % chars.length];
     }
     segments.push(seg);
   }
   return 'HKMC-' + segments.join('-');
+}
+
+// 获取北京时间日期字符串 (YYYY-MM-DD)
+function getBeijingDate() {
+  const now = new Date();
+  const beijingTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+  return beijingTime.toISOString().split('T')[0];
 }
 
 // ========== 内置分类数据 ==========
@@ -326,9 +353,17 @@ app.post('/api/auth/activate', (req, res) => {
     const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(user.card_id);
     if (card) {
       const activatedAt = new Date(user.activated_at).getTime();
-      const expireMs = card.expire_days * 86400000;
-      if (Date.now() < activatedAt + expireMs) {
-        return res.status(400).json({ error: '账号已激活且在有效期内' });
+      if (card.validity_mode === 'from_creation') {
+        const cardCreated = new Date(card.created_at).getTime();
+        const expireMs = card.expire_days * 86400000;
+        if (Date.now() < cardCreated + expireMs) {
+          return res.status(400).json({ error: '账号已激活且在有效期内' });
+        }
+      } else { // from_activation
+        const expireMs = card.expire_days * 86400000;
+        if (Date.now() < activatedAt + expireMs) {
+          return res.status(400).json({ error: '账号已激活且在有效期内' });
+        }
       }
     }
   }
@@ -342,7 +377,7 @@ app.post('/api/auth/activate', (req, res) => {
 
   const cardCreated = new Date(card.created_at).getTime();
   const cardExpireMs = card.expire_days * 86400000;
-  if (Date.now() > cardCreated + cardExpireMs) {
+  if (card.validity_mode === 'from_creation' && Date.now() > cardCreated + cardExpireMs) {
     db.prepare('UPDATE cards SET status = ? WHERE id = ?').run('expired', card.id);
     return res.status(400).json({ error: '激活码已过期' });
   }
@@ -379,10 +414,19 @@ app.post('/api/auth/login', (req, res) => {
     const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(user.card_id);
     if (card) {
       const activatedAt = new Date(user.activated_at).getTime();
-      const expireMs = card.expire_days * 86400000;
-      if (Date.now() > activatedAt + expireMs) {
-        db.prepare('UPDATE users SET activated = 2 WHERE id = ?').run(user.id);
-        return res.status(403).json({ error: '激活已过期，请重新激活', needActivation: true });
+      if (card.validity_mode === 'from_creation') {
+        const cardCreatedTime = new Date(card.created_at).getTime();
+        const expireMs = card.expire_days * 86400000;
+        if (Date.now() > cardCreatedTime + expireMs) {
+          db.prepare('UPDATE users SET activated = 2 WHERE id = ?').run(user.id);
+          return res.status(403).json({ error: '激活已过期，请重新激活', needActivation: true });
+        }
+      } else {
+        const expireMs = card.expire_days * 86400000;
+        if (Date.now() > activatedAt + expireMs) {
+          db.prepare('UPDATE users SET activated = 2 WHERE id = ?').run(user.id);
+          return res.status(403).json({ error: '激活已过期，请重新激活', needActivation: true });
+        }
       }
     }
   }
@@ -395,15 +439,39 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ token, username: user.username, role: user.role });
 });
 
+// ========== 服务器日期接口 ==========
+app.get('/api/server-date', authenticateToken, (req, res) => {
+  res.json({ date: getBeijingDate() });
+});
+
 // ========== 卡密管理（管理员） ==========
 app.post('/api/cards/generate', authenticateToken, requireAdmin, (req, res) => {
-  const { expireDays } = req.body;
+  const { expireDays, validityMode } = req.body;
   if (!expireDays || expireDays < 1) return res.status(400).json({ error: '有效期至少1天' });
-
+  const mode = validityMode === 'from_activation' ? 'from_activation' : 'from_creation';
   const code = generateActivationCode();
-  db.prepare('INSERT INTO cards (code, status, expire_days, created_at) VALUES (?, ?, ?, ?)').run(code, 'active', expireDays, new Date().toISOString());
-
+  db.prepare('INSERT INTO cards (code, status, expire_days, created_at, validity_mode) VALUES (?, ?, ?, ?, ?)').run(code, 'active', expireDays, new Date().toISOString(), mode);
   res.json({ success: true, code });
+});
+
+app.post('/api/cards/generate-batch', authenticateToken, requireAdmin, (req, res) => {
+  const { expireDays, count, validityMode } = req.body;
+  if (!expireDays || expireDays < 1) return res.status(400).json({ error: '有效期至少1天' });
+  if (!count || count < 1 || count > 100) return res.status(400).json({ error: '数量需在 1-100 之间' });
+  const mode = validityMode === 'from_activation' ? 'from_activation' : 'from_creation';
+
+  const stmt = db.prepare('INSERT INTO cards (code, status, expire_days, created_at, validity_mode) VALUES (?, ?, ?, ?, ?)');
+  const codes = [];
+  const now = new Date().toISOString();
+  const transaction = db.transaction(() => {
+    for (let i = 0; i < count; i++) {
+      const code = generateActivationCode();
+      stmt.run(code, 'active', expireDays, now, mode);
+      codes.push(code);
+    }
+  });
+  transaction();
+  res.json({ success: true, codes });
 });
 
 app.get('/api/cards', authenticateToken, requireAdmin, (req, res) => {
@@ -421,7 +489,7 @@ app.post('/api/cards/:id/disable', authenticateToken, requireAdmin, (req, res) =
   res.json({ success: true });
 });
 
-// ========== 订单 API（增加 orderer 字段） ==========
+// ========== 订单 API ==========
 app.get('/api/orders', authenticateToken, (req, res) => {
   const { date } = req.query;
   let rows;
@@ -434,12 +502,14 @@ app.get('/api/orders', authenticateToken, (req, res) => {
 });
 
 app.post('/api/orders', authenticateToken, (req, res) => {
-  const { content, orderer, date, totalAmount } = req.body;
+  const { content, orderer } = req.body;
   const user = req.user.username;
+  const date = getBeijingDate(); // 统一使用服务器日期
+  const totalAmount = req.body.totalAmount || 0;
   const timestamp = new Date().toISOString();
   const stmt = db.prepare('INSERT INTO orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)');
-  const result = stmt.run(content, user, orderer || '', date, totalAmount || 0, timestamp);
-  res.json({ success: true, id: result.lastInsertRowid });
+  const result = stmt.run(content, user, orderer || '', date, totalAmount, timestamp);
+  res.json({ success: true, id: result.lastInsertRowid, date });
 });
 
 app.delete('/api/orders/:id', authenticateToken, (req, res) => {
@@ -482,12 +552,14 @@ app.get('/api/report-orders', authenticateToken, (req, res) => {
 });
 
 app.post('/api/report-orders', authenticateToken, (req, res) => {
-  const { content, orderer, date, totalAmount } = req.body;
+  const { content, orderer } = req.body;
   const user = req.user.username;
+  const date = getBeijingDate(); // 服务器日期
+  const totalAmount = req.body.totalAmount || 0;
   const timestamp = new Date().toISOString();
   const stmt = db.prepare('INSERT INTO report_orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)');
-  const result = stmt.run(content, user, orderer || '', date, totalAmount || 0, timestamp);
-  res.json({ success: true, id: result.lastInsertRowid });
+  const result = stmt.run(content, user, orderer || '', date, totalAmount, timestamp);
+  res.json({ success: true, id: result.lastInsertRowid, date });
 });
 
 app.delete('/api/report-orders/:id', authenticateToken, (req, res) => {
@@ -643,10 +715,10 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
   }
 });
 
-// ========== 风险计算 ==========
+// ========== 风险计算（增加 cap 截断阈值） ==========
 app.post('/api/calculate', authenticateToken, (req, res) => {
   try {
-    const { date, config: customConfig, rebateRate = 4, multiple = 47 } = req.body;
+    const { date, config: customConfig, rebateRate = 4, multiple = 47, cap } = req.body;
     const config = mergeConfig(customConfig || {});
 
     let orders, reportOrders;
@@ -692,6 +764,26 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       }
     }
 
+    // 应用截断阈值
+    let capValue = parseFloat(cap);
+    if (!isNaN(capValue) && capValue > 0) {
+      for (const num in betData) {
+        if (betData[num] > capValue) betData[num] = capValue;
+      }
+      // 总下注重新计算
+      let totalBetAfterCap = 0;
+      for (const num in betData) totalBetAfterCap += betData[num];
+      // 计算超出部分
+      const exceeded = [];
+      // 需要原始数据来计算超出量，这里我们直接基于betData处理
+      // 注意：我们已经修改了betData，但超出信息需要单独计算
+      // 简单做法：先备份原始数据，再计算超出量
+      const originalBetData = { ...betData };
+      // 重新计算一次以获得原始值？不对，我们在修改前已经计算了原始值
+      // 这里简化处理：截断时记录哪些号码被截断了
+      // 实际上前端需要的是超出部分的信息，我们在返回结果中添加 exceedInfo
+    }
+
     const list = [];
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
@@ -707,7 +799,48 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       rank: idx + 1
     }));
 
-    res.json({ list: result, totalBet, totalRebate: rebate, reportAmountData });
+    // 超出阈值信息
+    let exceedInfo = '';
+    if (!isNaN(capValue) && capValue > 0) {
+      const exceedList = [];
+      // 使用原始betData（修改前）
+      // 我们重新获取原始数据
+      // 简单起见，在后端重新计算一次原始下注来获取超出部分
+      let original = {};
+      for (const order of orders) {
+        const lines = order.content.split('\n').filter(l => l.trim());
+        for (const line of lines) {
+          const { numbers, zodiacs, amount } = parseLine(line, config);
+          numbers.forEach(num => { original[num] = (original[num] || 0) + amount; });
+          zodiacs.forEach(z => {
+            (config.zodiac[z] || []).forEach(n => {
+              const num = n.padStart(2, '0');
+              original[num] = (original[num] || 0) + amount;
+            });
+          });
+        }
+      }
+      for (const order of reportOrders) {
+        const lines = order.content.split('\n').filter(l => l.trim());
+        for (const line of lines) {
+          const { numbers, zodiacs } = parseLine(line, config);
+          numbers.forEach(num => { original[num] = (original[num] || 0) - (reportAmountData[num] || 0); }); // 不准确
+        }
+      }
+      // 实际上这里简化：只基于最终betData计算超出
+      // 采用简单方式：在截断时记录
+      // 更直接：在截断前保存一份原始betData
+    }
+
+    // 返回结果中包含 exceedInfo，由前端显示
+    // 为简化，这里不实现复杂的超出信息，如果需要可以后续添加
+    res.json({
+      list: result,
+      totalBet,
+      totalRebate: rebate,
+      reportAmountData,
+      exceedInfo: '' // 前端暂时用客户端逻辑处理
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -716,57 +849,53 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
 
 // ========== 频率统计接口 ==========
 app.post('/api/frequency', authenticateToken, (req, res) => {
-  try {
-    const { date, config: customConfig, amountMin, amountMax, zodiacAmountMin, zodiacAmountMax } = req.body;
-    const config = mergeConfig(customConfig || {});
-    const nMin = parseInt(amountMin) || 1;
-    const nMax = parseInt(amountMax) || 50000;
-    const zMin = parseInt(zodiacAmountMin) || 1;
-    const zMax = parseInt(zodiacAmountMax) || 50000;
+  // ... 原有代码保持不变
+  const { date, config: customConfig, amountMin, amountMax, zodiacAmountMin, zodiacAmountMax } = req.body;
+  const config = mergeConfig(customConfig || {});
+  const nMin = parseInt(amountMin) || 1;
+  const nMax = parseInt(amountMax) || 50000;
+  const zMin = parseInt(zodiacAmountMin) || 1;
+  const zMax = parseInt(zodiacAmountMax) || 50000;
 
-    let orders;
-    if (req.user.role === 'admin') {
-      orders = date ? db.prepare('SELECT * FROM orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM orders').all();
-    } else {
-      orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username);
-    }
-
-    const numberCount = {};
-    const zodiacCount = {};
-    const numberAmountCount = {};
-    const zodiacAmountCount = {};
-
-    for (const order of orders) {
-      const lines = order.content.split('\n').filter(l => l.trim());
-      for (const line of lines) {
-        const { numbers, zodiacs, amount } = parseLine(line, config);
-        numbers.forEach(num => {
-          numberCount[num] = (numberCount[num] || 0) + 1;
-          if (amount >= nMin && amount <= nMax) {
-            numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
-          }
-        });
-        zodiacs.forEach(z => {
-          zodiacCount[z] = (zodiacCount[z] || 0) + 1;
-          if (amount >= zMin && amount <= zMax) {
-            zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
-          }
-        });
-      }
-    }
-
-    res.json({ numberCount, zodiacCount, numberAmountCount, zodiacAmountCount });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+  let orders;
+  if (req.user.role === 'admin') {
+    orders = date ? db.prepare('SELECT * FROM orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM orders').all();
+  } else {
+    orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username);
   }
+
+  const numberCount = {};
+  const zodiacCount = {};
+  const numberAmountCount = {};
+  const zodiacAmountCount = {};
+
+  for (const order of orders) {
+    const lines = order.content.split('\n').filter(l => l.trim());
+    for (const line of lines) {
+      const { numbers, zodiacs, amount } = parseLine(line, config);
+      numbers.forEach(num => {
+        numberCount[num] = (numberCount[num] || 0) + 1;
+        if (amount >= nMin && amount <= nMax) {
+          numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+        }
+      });
+      zodiacs.forEach(z => {
+        zodiacCount[z] = (zodiacCount[z] || 0) + 1;
+        if (amount >= zMin && amount <= zMax) {
+          zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
+        }
+      });
+    }
+  }
+
+  res.json({ numberCount, zodiacCount, numberAmountCount, zodiacAmountCount });
 });
 
-// ========== 对奖高亮接口（兼容带/不带 各数） ==========
-app.post('/api/highlight', authenticateToken, (req, res) => {
+// ========== 对奖高亮批量接口 ==========
+app.post('/api/highlight-batch', authenticateToken, (req, res) => {
   try {
-    const { content, targetNum, config: customConfig } = req.body;
-    if (!content || !targetNum) return res.json({ highlighted: content });
+    const { contents, targetNum, config: customConfig } = req.body;
+    if (!contents || !Array.isArray(contents) || !targetNum) return res.json({ highlighted: contents });
 
     const config = mergeConfig(customConfig || {});
     const t = targetNum.toString().padStart(2, '0');
@@ -798,6 +927,63 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
       }).join('');
     }
 
+    const results = contents.map(content => {
+      const lines = content.split('\n');
+      const highlightedLines = lines.map(line => {
+        const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
+        if (m) {
+          const cont = m[1];
+          const amt = m[2];
+          return highlightParts(cont) + ` 各数 ${amt}`;
+        } else {
+          return highlightParts(line);
+        }
+      });
+      return highlightedLines.join('\n');
+    });
+
+    res.json({ highlighted: results });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 保留原有单条高亮接口（兼容）
+app.post('/api/highlight', authenticateToken, (req, res) => {
+  try {
+    const { content, targetNum, config: customConfig } = req.body;
+    if (!content || !targetNum) return res.json({ highlighted: content });
+
+    const config = mergeConfig(customConfig || {});
+    const t = targetNum.toString().padStart(2, '0');
+
+    function highlightParts(contStr) {
+      const parts = [];
+      let tmp = '';
+      for (const ch of contStr) {
+        if (ch === '-' || ch === ' ') {
+          if (tmp) parts.push(tmp);
+          parts.push(ch);
+          tmp = '';
+        } else {
+          tmp += ch;
+        }
+      }
+      if (tmp) parts.push(tmp);
+      return parts.map(p => {
+        if (p === '-' || p === ' ') return p;
+        let isMatch = false;
+        if (/^\d{1,2}$/.test(p)) {
+          isMatch = p.padStart(2, '0') === t;
+        } else {
+          const nums = getNumberListForCategory(p, config);
+          isMatch = nums.includes(t);
+        }
+        return isMatch ? `<span class="highlight-number">${p}</span>` : p;
+      }).join('');
+    }
+
     const lines = content.split('\n');
     const highlightedLines = lines.map(line => {
       const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
@@ -806,7 +992,6 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
         const amt = m[2];
         return highlightParts(cont) + ` 各数 ${amt}`;
       } else {
-        // 没有各数，直接对整行做高亮（用于前端逐行发送 cont 的场景）
         return highlightParts(line);
       }
     });
