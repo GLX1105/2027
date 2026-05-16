@@ -265,20 +265,54 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 }
 .toast-message.show { opacity: 1; }
 
+/* 登录遮罩 */
 .login-overlay {
   position: fixed; top:0; left:0; width:100%; height:100%;
-  backdrop-filter: blur(15px); background: rgba(0,0,0,0.6); z-index: 99999;
+  background: linear-gradient(135deg, #a8e6cf 0%, #dcedc1 50%, #ffd3b6 100%);
   display: flex; align-items: center; justify-content: center;
+  z-index: 99999;
 }
-.login-box {
-  background: rgba(255,255,255,0.85); backdrop-filter: blur(20px);
-  border-radius: 20px; padding: 30px 20px; width: 90%; max-width: 380px;
-  text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+.login-card {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(15px);
+  border-radius: 24px;
+  padding: 40px 30px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  width: 90%; max-width: 400px;
 }
-.login-box h3 { margin-bottom: 20px; color:#1a1a2e; }
-.login-box input { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-size:16px; margin-bottom:12px; }
-.login-box .btn { width:100%; margin-bottom:8px; }
-.login-box .link { font-size:13px; color:#3498db; cursor:pointer; margin-top:5px; }
+.login-card h1 {
+  font-size: 28px; color: #2c3e50; margin-bottom: 8px;
+  letter-spacing: 2px;
+}
+.login-card .login-subtitle {
+  font-size: 14px; color: #7f8c8d; margin-bottom: 25px;
+}
+.login-card input {
+  width: 100%; padding: 12px; margin-bottom: 12px;
+  border: 1px solid #ddd; border-radius: 10px;
+  font-size: 15px; outline: none; background: #fff;
+}
+.login-card .login-btn {
+  width: 100%; padding: 14px; margin-top: 5px;
+  border: none; border-radius: 30px; font-size: 18px; font-weight: bold;
+  cursor: pointer; color: #fff; background: #2ecc71;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: all 0.3s;
+}
+.login-card .login-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.15); }
+.login-card .login-links {
+  margin-top: 18px; display: flex; flex-direction: column; gap: 8px;
+}
+.login-card .login-link {
+  font-size: 14px; color: #3498db; cursor: pointer;
+  text-decoration: none; transition: color 0.2s;
+}
+.login-card .login-link:hover { color: #2980b9; }
+.login-card .login-error {
+  color: #e74c3c; font-size: 13px; margin-bottom: 8px;
+  min-height: 18px;
+}
 
 /* 订单输入容器 */
 .order-input-container {
@@ -392,52 +426,64 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 .database-modal-body {padding:20px;overflow-y:auto;max-height:70vh; flex:1;}
 .close-database-btn {background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background 0.2s;}
 .close-database-btn:hover {background:rgba(255,255,255,0.1);}
-
-/* 欢迎页 */
-.welcome-container {
-  position: fixed; top:0; left:0; width:100%; height:100%;
-  background: linear-gradient(135deg, #a8e6cf 0%, #dcedc1 50%, #ffd3b6 100%);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 9998;
-}
-.welcome-card {
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(15px);
-  border-radius: 24px;
-  padding: 40px 30px;
-  text-align: center;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-  width: 90%; max-width: 400px;
-}
-.welcome-card h1 { font-size: 28px; color: #2c3e50; margin-bottom: 10px; letter-spacing: 2px; }
-.welcome-card .subtitle { font-size: 14px; color: #7f8c8d; margin-bottom: 30px; }
-.welcome-card .welcome-btn {
-  display: block; width: 100%; padding: 14px; margin: 10px 0;
-  border: none; border-radius: 30px; font-size: 18px; font-weight: bold;
-  cursor: pointer; transition: all 0.3s; color: #fff;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-.welcome-btn-register { background: #3498db; }
-.welcome-btn-login { background: #2ecc71; }
-.welcome-btn-admin { background: #e67e22; }
-.welcome-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
 </style>
 </head>
 <body>
 
-<!-- 欢迎页面 -->
-<div id="welcomePage" class="welcome-container">
-  <div class="welcome-card">
+<!-- 登录遮罩 -->
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-card">
     <h1>🎰 港澳识别系统</h1>
-    <div class="subtitle">智能订单识别 · 风险实时计算</div>
-    <button class="welcome-btn welcome-btn-register" onclick="showRegisterModal()">📝 注册新用户</button>
-    <button class="welcome-btn welcome-btn-login" onclick="showLoginModal()">🔐 用户登录</button>
-    <button class="welcome-btn welcome-btn-admin" onclick="showAdminLoginModal()">👑 管理员登录</button>
+    <div class="login-subtitle">智能订单识别 · 风险实时计算</div>
+
+    <!-- 登录表单 -->
+    <div id="loginFormView">
+      <input type="text" id="loginUsername" placeholder="用户名">
+      <input type="password" id="loginPassword" placeholder="密码">
+      <div style="display:flex;align-items:center;margin-bottom:12px;text-align:left;">
+        <input type="checkbox" id="rememberPwd" style="width:18px;height:18px;margin-right:8px;">
+        <label for="rememberPwd" style="font-size:14px;color:#555;">记住账号密码</label>
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button class="login-btn" id="loginBtn">登录</button>
+      <div class="login-links">
+        <span class="login-link" id="showRegisterLink">注册新用户</span>
+        <span class="login-link" id="showAdminLoginLink">管理员登录</span>
+      </div>
+      <!-- 管理员登录展开区 -->
+      <div id="adminLoginArea" style="display:none; margin-top:10px;">
+        <input type="password" id="adminPassword" placeholder="管理员密码">
+        <button class="login-btn" id="adminLoginConfirmBtn" style="background:#e67e22;">确认登录</button>
+      </div>
+    </div>
+
+    <!-- 注册表单 -->
+    <div id="registerFormView" style="display:none;">
+      <input type="text" id="regUsername" placeholder="用户名">
+      <input type="password" id="regPassword" placeholder="密码">
+      <div class="login-error" id="registerError"></div>
+      <button class="login-btn" id="registerBtn" style="background:#3498db;">注册</button>
+      <div class="login-links">
+        <span class="login-link" id="backToLoginFromReg">返回登录</span>
+      </div>
+    </div>
+
+    <!-- 激活表单 -->
+    <div id="activateFormView" style="display:none;">
+      <input type="text" id="actUsername" placeholder="用户名" readonly>
+      <input type="text" id="actCode" placeholder="激活码">
+      <div class="login-error" id="activateError"></div>
+      <button class="login-btn" id="activateBtn" style="background:#f39c12;">激活</button>
+      <div class="login-links">
+        <span class="login-link" id="backToLoginFromAct">返回登录</span>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- 主工作台 -->
+<!-- 主工作台（原所有内容，默认隐藏） -->
 <div id="mainContent" style="display:none;">
+  <!-- 导航栏 -->
   <div class="navbar" id="mainNavbar">
     <div class="navbar-title">港澳识别系统</div>
     <div class="navbar-actions" id="navbarActions">
@@ -456,6 +502,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
     </div>
   </div>
 
+  <!-- 原统计卡片、风险表格等所有内容 -->
   <div class="container">
     <div class="recognize-wrap">
         <div class="card" style="margin-top:0;">
@@ -748,7 +795,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 </div>
 
 <script>
-// ========== API 通信 ==========
+    // ========== API 通信 ==========
 const API_BASE = '';
 let authToken = localStorage.getItem('authToken') || null;
 let currentUser = null;
@@ -769,7 +816,11 @@ async function fetchApi(url, options = {}) {
     authToken = null;
     localStorage.removeItem('authToken');
     currentUser = null;
-    showToast('登录已过期，请刷新页面重新登录');
+    // 如果登录遮罩不存在，重新显示
+    const overlay = document.getElementById('loginOverlay');
+    if (!overlay || overlay.style.display === 'none') {
+      showLoginScreen();
+    }
     throw new Error(data.error || '未登录');
   }
 
@@ -786,7 +837,7 @@ function showToast(msg) {
   toast.textContent = msg;
   document.body.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add('show'));
-  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 1000);
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2000);
 }
 
 // ========== 自定义对话框（保留） ==========
@@ -806,182 +857,149 @@ window.alert = async (msg) => { await showCustomDialog({ title: '提示', messag
 window.confirm = async (msg) => { return await showCustomDialog({ title: '请确认', message: msg, type: 'confirm' }); };
 window.prompt = async (msg, def) => { return await showCustomDialog({ title: '请输入', message: msg, type: 'prompt', defaultValue: def }); };
 
-// ========== 注册弹窗 ==========
-function showRegisterModal() {
-  if (document.getElementById('registerWin')) return;
-  const win = document.createElement('div');
-  win.className = 'floating-window';
-  win.id = 'registerWin';
-  win.style.width = '380px';
-  win.style.left = '50%'; win.style.top = '50%';
-  win.style.transform = 'translate(-50%, -50%)';
-  win.innerHTML = `
-    <div class="modal-header">
-      <span>📝 注册新用户</span>
-      <button onclick="document.getElementById('registerWin').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
-    </div>
-    <div class="modal-body">
-      <input type="text" id="regUsernameInput" placeholder="用户名" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
-      <input type="password" id="regPasswordInput" placeholder="密码" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
-      <button id="confirmRegister" class="btn" style="width:100%;background:#28a745;color:#fff;">注册</button>
-    </div>`;
-  document.body.appendChild(win);
-  makeWindowDraggable('registerWin');
+// ========== 登录遮罩逻辑 ==========
+function showLoginScreen() {
+  const overlay = document.getElementById('loginOverlay');
+  if (overlay) overlay.style.display = '';
 
-  document.getElementById('confirmRegister').onclick = async () => {
-    const username = document.getElementById('regUsernameInput').value.trim();
-    const password = document.getElementById('regPasswordInput').value.trim();
-    if (!username || !password) return showToast('请填写完整信息');
-    try {
-      await fetchApi('/api/auth/register', { method:'POST', body: JSON.stringify({ username, password }) });
-      showToast('注册成功，请使用激活码激活');
-      win.remove();
-      showActivateModal(username);
-    } catch(e) { showToast(e.message); }
-  };
-}
-
-// ========== 激活弹窗 ==========
-function showActivateModal(username = '') {
-  if (document.getElementById('activateWin')) return;
-  const win = document.createElement('div');
-  win.className = 'floating-window';
-  win.id = 'activateWin';
-  win.style.width = '380px';
-  win.style.left = '50%'; win.style.top = '50%';
-  win.style.transform = 'translate(-50%, -50%)';
-  win.innerHTML = `
-    <div class="modal-header">
-      <span>🔑 激活账号</span>
-      <button onclick="document.getElementById('activateWin').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
-    </div>
-    <div class="modal-body">
-      <input type="text" id="actUsernameInput" placeholder="用户名" value="${username}" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
-      <input type="text" id="actCodeInput" placeholder="激活码" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
-      <button id="confirmActivate" class="btn" style="width:100%;background:#f39c12;color:#fff;">激活</button>
-    </div>`;
-  document.body.appendChild(win);
-  makeWindowDraggable('activateWin');
-
-  document.getElementById('confirmActivate').onclick = async () => {
-    const username = document.getElementById('actUsernameInput').value.trim();
-    const cardCode = document.getElementById('actCodeInput').value.trim();
-    if (!username || !cardCode) return showToast('请填写完整信息');
-    try {
-      await fetchApi('/api/auth/activate', { method:'POST', body: JSON.stringify({ username, cardCode }) });
-      showToast('激活成功，请登录');
-      win.remove();
-    } catch(e) { showToast(e.message); }
-  };
-}
-
-// ========== 登录弹窗（含记住密码） ==========
-function showLoginModal() {
-  if (document.getElementById('loginWin')) return;
-
-  let savedUsername = '', savedPassword = '', savedRemember = false;
+  // 加载记住的密码
   try {
     const saved = localStorage.getItem('savedCredentials');
     if (saved) {
       const cred = JSON.parse(saved);
-      savedUsername = cred.username || '';
-      savedPassword = cred.password || '';
-      savedRemember = true;
+      document.getElementById('loginUsername').value = cred.username || '';
+      document.getElementById('loginPassword').value = cred.password || '';
+      document.getElementById('rememberPwd').checked = true;
     }
   } catch(e) {}
 
-  const win = document.createElement('div');
-  win.className = 'floating-window';
-  win.id = 'loginWin';
-  win.style.width = '380px';
-  win.style.left = '50%'; win.style.top = '50%';
-  win.style.transform = 'translate(-50%, -50%)';
-  win.innerHTML = `
-    <div class="modal-header">
-      <span>🔐 用户登录</span>
-      <button onclick="document.getElementById('loginWin').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
-    </div>
-    <div class="modal-body">
-      <input type="text" id="loginUsernameInput" placeholder="用户名" value="${savedUsername}" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
-      <input type="password" id="loginPasswordInput" placeholder="密码" value="${savedPassword}" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
-      <div style="display:flex;align-items:center;margin-bottom:15px;">
-        <input type="checkbox" id="rememberPwd" ${savedRemember ? 'checked' : ''} style="width:18px;height:18px;margin-right:8px;">
-        <label for="rememberPwd" style="font-size:14px;color:#555;">记住账号密码</label>
-      </div>
-      <button id="confirmLogin" class="btn" style="width:100%;background:#2ecc71;color:#fff;">登录</button>
-    </div>`;
-  document.body.appendChild(win);
-  makeWindowDraggable('loginWin');
+  // 显示登录表单，隐藏其他
+  document.getElementById('loginFormView').style.display = '';
+  document.getElementById('registerFormView').style.display = 'none';
+  document.getElementById('activateFormView').style.display = 'none';
+  document.getElementById('adminLoginArea').style.display = 'none';
+  document.getElementById('loginError').textContent = '';
+}
 
-  document.getElementById('confirmLogin').onclick = async () => {
-    const username = document.getElementById('loginUsernameInput').value.trim();
-    const password = document.getElementById('loginPasswordInput').value.trim();
-    const remember = document.getElementById('rememberPwd').checked;
-    if (!username || !password) return showToast('请输入用户名和密码');
-    try {
-      const data = await fetchApi('/api/auth/login', { method:'POST', body: JSON.stringify({ username, password }) });
-      authToken = data.token;
-      localStorage.setItem('authToken', authToken);
-      currentUser = { username: data.username, role: data.role };
-      if (remember) {
-        localStorage.setItem('savedCredentials', JSON.stringify({ username, password }));
-      } else {
-        localStorage.removeItem('savedCredentials');
-      }
-      win.remove();
-      document.getElementById('welcomePage').style.display = 'none';
-      document.getElementById('mainContent').style.display = '';
-      initMainSystem();
-    } catch(e) {
-      if (e.message === 'NEED_ACTIVATION') {
-        showToast('账号未激活或已过期，请先激活');
-        win.remove();
-        showActivateModal(username);
-      } else {
-        showToast(e.message);
-      }
+// ========== 登录 ==========
+document.getElementById('loginBtn').onclick = async () => {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  const remember = document.getElementById('rememberPwd').checked;
+  if (!username || !password) {
+    document.getElementById('loginError').textContent = '请输入用户名和密码';
+    return;
+  }
+  try {
+    const data = await fetchApi('/api/auth/login', { method:'POST', body: JSON.stringify({ username, password }) });
+    authToken = data.token;
+    localStorage.setItem('authToken', authToken);
+    currentUser = { username: data.username, role: data.role };
+    if (remember) {
+      localStorage.setItem('savedCredentials', JSON.stringify({ username, password }));
+    } else {
+      localStorage.removeItem('savedCredentials');
     }
-  };
-}
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('mainContent').style.display = '';
+    initMainSystem();
+  } catch(e) {
+    if (e.message === 'NEED_ACTIVATION') {
+      document.getElementById('loginError').textContent = '账号未激活或已过期，请先激活';
+      // 切换到激活表单
+      document.getElementById('actUsername').value = username;
+      document.getElementById('loginFormView').style.display = 'none';
+      document.getElementById('activateFormView').style.display = '';
+      document.getElementById('activateError').textContent = '';
+    } else {
+      document.getElementById('loginError').textContent = e.message;
+    }
+  }
+};
 
-// ========== 管理员登录弹窗 ==========
-function showAdminLoginModal() {
-  if (document.getElementById('adminLoginWin')) return;
-  const win = document.createElement('div');
-  win.className = 'floating-window';
-  win.id = 'adminLoginWin';
-  win.style.width = '380px';
-  win.style.left = '50%'; win.style.top = '50%';
-  win.style.transform = 'translate(-50%, -50%)';
-  win.innerHTML = `
-    <div class="modal-header">
-      <span>👑 管理员登录</span>
-      <button onclick="document.getElementById('adminLoginWin').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
-    </div>
-    <div class="modal-body">
-      <input type="password" id="adminPwdInput" placeholder="管理员密码" style="width:100%;padding:10px;margin-bottom:15px;border:1px solid #ccc;border-radius:8px;">
-      <button id="confirmAdminLogin" class="btn" style="width:100%;background:#e67e22;color:#fff;">确认登录</button>
-    </div>`;
-  document.body.appendChild(win);
-  makeWindowDraggable('adminLoginWin');
+// ========== 注册 ==========
+document.getElementById('showRegisterLink').onclick = () => {
+  document.getElementById('loginFormView').style.display = 'none';
+  document.getElementById('registerFormView').style.display = '';
+  document.getElementById('activateFormView').style.display = 'none';
+  document.getElementById('registerError').textContent = '';
+};
 
-  document.getElementById('confirmAdminLogin').onclick = async () => {
-    const password = document.getElementById('adminPwdInput').value.trim();
-    if (!password) return showToast('请输入管理员密码');
-    try {
-      const data = await fetchApi('/api/auth/admin', { method:'POST', body: JSON.stringify({ password }) });
-      authToken = data.token;
-      localStorage.setItem('authToken', authToken);
-      currentUser = { username: 'admin', role: 'admin' };
-      win.remove();
-      document.getElementById('welcomePage').style.display = 'none';
-      document.getElementById('mainContent').style.display = '';
-      initMainSystem();
-    } catch(e) { showToast(e.message); }
-  };
-}
+document.getElementById('registerBtn').onclick = async () => {
+  const username = document.getElementById('regUsername').value.trim();
+  const password = document.getElementById('regPassword').value.trim();
+  if (!username || !password) {
+    document.getElementById('registerError').textContent = '请输入用户名和密码';
+    return;
+  }
+  try {
+    await fetchApi('/api/auth/register', { method:'POST', body: JSON.stringify({ username, password }) });
+    // 注册成功，切换到激活表单
+    document.getElementById('actUsername').value = username;
+    document.getElementById('registerFormView').style.display = 'none';
+    document.getElementById('activateFormView').style.display = '';
+    document.getElementById('activateError').textContent = '注册成功，请输入激活码激活';
+  } catch(e) {
+    document.getElementById('registerError').textContent = e.message;
+  }
+};
 
-// ========== 系统初始化 ==========
+// ========== 激活 ==========
+document.getElementById('activateBtn').onclick = async () => {
+  const username = document.getElementById('actUsername').value.trim();
+  const cardCode = document.getElementById('actCode').value.trim();
+  if (!username || !cardCode) {
+    document.getElementById('activateError').textContent = '请输入激活码';
+    return;
+  }
+  try {
+    await fetchApi('/api/auth/activate', { method:'POST', body: JSON.stringify({ username, cardCode }) });
+    document.getElementById('activateError').textContent = '';
+    // 激活成功，切回登录表单
+    document.getElementById('activateFormView').style.display = 'none';
+    document.getElementById('loginFormView').style.display = '';
+    document.getElementById('loginUsername').value = username;
+    document.getElementById('loginError').textContent = '激活成功，请登录';
+  } catch(e) {
+    document.getElementById('activateError').textContent = e.message;
+  }
+};
+
+// ========== 管理员登录 ==========
+document.getElementById('showAdminLoginLink').onclick = () => {
+  const area = document.getElementById('adminLoginArea');
+  if (area.style.display === 'none') {
+    area.style.display = '';
+    document.getElementById('adminPassword').focus();
+  } else {
+    area.style.display = 'none';
+  }
+};
+
+document.getElementById('adminLoginConfirmBtn').onclick = async () => {
+  const password = document.getElementById('adminPassword').value.trim();
+  if (!password) {
+    document.getElementById('loginError').textContent = '请输入管理员密码';
+    return;
+  }
+  try {
+    const data = await fetchApi('/api/auth/admin', { method:'POST', body: JSON.stringify({ password }) });
+    authToken = data.token;
+    localStorage.setItem('authToken', authToken);
+    currentUser = { username: 'admin', role: 'admin' };
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('mainContent').style.display = '';
+    initMainSystem();
+  } catch(e) {
+    document.getElementById('loginError').textContent = e.message;
+  }
+};
+
+// ========== 返回登录 ==========
+document.getElementById('backToLoginFromReg').onclick = showLoginScreen;
+document.getElementById('backToLoginFromAct').onclick = showLoginScreen;
+
+// ========== 退出登录 ==========
 function logout() {
   authToken = null;
   localStorage.removeItem('authToken');
@@ -989,13 +1007,13 @@ function logout() {
   location.reload();
 }
 
+// ========== 系统初始化 ==========
 function initMainSystem() {
   if (currentUser.role === 'admin') document.getElementById('cardMgrBtn').style.display = '';
   document.getElementById('storageInfo').style.display = '';
-
   fetchApi('/api/config')
     .then(() => { if (window._originalInit) window._originalInit(); })
-    .catch(e => { showToast('加载配置失败，部分功能可能不可用'); if (window._originalInit) window._originalInit(); });
+    .catch(() => { if (window._originalInit) window._originalInit(); });
 }
 
 // ========== 卡密管理 ==========
@@ -1073,7 +1091,7 @@ async function convertOrderText() {
 }
 
 // ========== 原版全部代码 ==========
-const ADMIN_PASSWORD = "150408"; const CARD_KEYS_STORE = 'cardKeys'; const SESSION_KEY = 'authSession'; const CARD_SECRET = "XK9mP2wQ7vL5";
+const CARD_KEYS_STORE = 'cardKeys'; const SESSION_KEY = 'authSession'; const CARD_SECRET = "XK9mP2wQ7vL5";
 function getCardKeys() { try { return JSON.parse(localStorage.getItem(CARD_KEYS_STORE) || '[]'); } catch (e) { return []; } }
 function saveCardKeys(keys) { localStorage.setItem(CARD_KEYS_STORE, JSON.stringify(keys)); }
 function getAuthSession() { try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null'); } catch (e) { return null; } }
@@ -1276,14 +1294,41 @@ function renderReportAmountTable(){ const tbl=document.getElementById('reportAmo
 function renderFrequencyCards(){ const nt=document.getElementById('numberFreqTable'); if(!nt)return; nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const cnt=numberCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; nt.innerHTML=th+tb; const zt=document.getElementById('zodiacFreqTable'); if(!zt)return; zt.innerHTML=''; const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪']; const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>'; for(let r=0;r<6;r++){ const l=lz[r],r2=rz[r]; const lc=zodiacCount[l]||0,rc=zodiacCount[r2]||0; ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`; } ztb+='</tbody>'; zt.innerHTML=zth+ztb; }
 function renderAmountFrequencyCards(){ const nt=document.getElementById('numberAmountFreqTable'); if(!nt)return; nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; nt.innerHTML=th+tb; const zt=document.getElementById('zodiacAmountFreqTable'); if(!zt)return; zt.innerHTML=''; const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪']; const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>'; for(let r=0;r<6;r++){ const l=lz[r],r2=rz[r]; const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0; ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`; } ztb+='</tbody>'; zt.innerHTML=zth+ztb; }
 
+// ========== 对奖高亮（改为调用后端） ==========
+async function highlightContent(content, targetNum, cfg) {
+  if (!targetNum) return content;
+  try {
+    const data = await fetchApi('/api/highlight', {
+      method: 'POST',
+      body: JSON.stringify({ content, targetNum, config: cfg })
+    });
+    return data.highlighted;
+  } catch(e) {
+    return content; // 失败时返回原内容
+  }
+}
+
 function getNumberListForCategory(cat,cfg){ const nums=[]; if(cfg.shengxiaoAttr[cat]){ cfg.shengxiaoAttr[cat].forEach(z=>{if(cfg.zodiac[z])nums.push(...cfg.zodiac[z].map(n=>n.toString().padStart(2,'0')));}); } const dir=cfg.wuxing[cat]||cfg.bose[cat]||cfg.banbo[cat]||cfg.danshuang[cat]||cfg.weishu[cat]||cfg.daxiaodanshuang[cat]||cfg.daxiao[cat]||cfg.heshu[cat]||cfg.toushu[cat]||cfg.menshu[cat]||cfg.duanwei[cat]||cfg.hedahexiao[cat]||cfg.weidaweixiao[cat]||cfg.hewei[cat]||cfg.heshudanshuang[cat]||cfg.toushuDanshuang[cat]; if(dir)nums.push(...dir.map(n=>n.toString().padStart(2,'0'))); if(cfg.zodiac[cat])nums.push(...cfg.zodiac[cat].map(n=>n.toString().padStart(2,'0'))); return [...new Set(nums)]; }
 function isTokenMatching(token,targetNum,cfg){ const t=targetNum.padStart(2,'0'); if(/^\d{1,2}$/.test(token))return token.padStart(2,'0')===t; const vc=getAllValidCategories(cfg); if(vc.has(token)){const nums=getNumberListForCategory(token,cfg);return nums.includes(t);} return false; }
-function highlightContent(content,targetNum,cfg){ if(!targetNum)return content; const t=targetNum.padStart(2,'0'); const parts=[];let tmp=''; for(const ch of content){if(ch==='-'||ch===' '){if(tmp)parts.push(tmp);parts.push(ch);tmp='';}else{tmp+=ch;}} if(tmp)parts.push(tmp); return parts.map(p=>{if(p==='-'||p===' ')return p;if(isTokenMatching(p,targetNum,cfg))return`<span class="highlight-number">${p}</span>`;return p;}).join(''); }
 function orderContainsTarget(content,targetNum,cfg){ if(!targetNum)return true; const t=targetNum.padStart(2,'0'); const lines=content.split('\n'); for(const line of lines){ const m=line.match(/^(.+?)\s+各数\s+(\d+)$/); if(!m)continue; const cont=m[1]; const parts=[];let tmp=''; for(const ch of cont){if(ch==='-'||ch===' '){if(tmp)parts.push(tmp);tmp='';}else{tmp+=ch;}} if(tmp)parts.push(tmp); for(const p of parts){if(p!=='-'&&p!==' '&&isTokenMatching(p,targetNum,cfg))return true;} } return false; }
 function formatTimestampToCST(iso){ const d=new Date(iso); return new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Asia/Shanghai'}).format(d); }
 function getUserColor(u){ let h=0; for(let i=0;i<u.length;i++)h=u.charCodeAt(i)+((h<<5)-h); const hue=(h%360+360)%360; return`hsl(${hue},70%,45%)`; }
 
-async function applyPrizeFilter(){ const di=document.getElementById('recordDateFilter'),pi=document.getElementById('prizeNumberInput'),uf=document.getElementById('recordUserFilter'); if(!di||!pi||!uf)return; const sd=di.value,pn=pi.value.trim(),uv=uf.value; const recs=await getOrderRecords(); let filtered=uv==='all'?recs:recs.filter(r=>r.user===uv); if(sd)filtered=filtered.filter(r=>r.date===sd); const cfg=getAllConfigData(); let final=[]; if(pn){for(const it of filtered){if(orderContainsTarget(it.content,pn,cfg))final.push(it);}}else{final=filtered;} const cont=document.getElementById('orderListContainer'); if(!cont)return; if(final.length===0){cont.innerHTML='<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';return;} cont.innerHTML=final.map(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; const lines=it.content.split('\n'); const hl=lines.map(l=>{const m=l.match(/^(.+?)\s+各数\s+(\d+)$/);if(!m)return l;const cont=m[1],amt=m[2];const hc=highlightContent(cont,pn,cfg);return`${hc} 各数 ${amt}`;}).join('<br>'); return`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${hl}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord(${it.id})">删除</button></div>`; }).join(''); }
+async function applyPrizeFilter(){ const di=document.getElementById('recordDateFilter'),pi=document.getElementById('prizeNumberInput'),uf=document.getElementById('recordUserFilter'); if(!di||!pi||!uf)return; const sd=di.value,pn=pi.value.trim(),uv=uf.value; const recs=await getOrderRecords(); let filtered=uv==='all'?recs:recs.filter(r=>r.user===uv); if(sd)filtered=filtered.filter(r=>r.date===sd); const cfg=getAllConfigData(); let final=[]; if(pn){for(const it of filtered){if(orderContainsTarget(it.content,pn,cfg))final.push(it);}}else{final=filtered;} const cont=document.getElementById('orderListContainer'); if(!cont)return; if(final.length===0){cont.innerHTML='<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';return;}
+  const itemsHtml = await Promise.all(final.map(async it => {
+    const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0;
+    const lines=it.content.split('\n');
+    const hl=await Promise.all(lines.map(async l=>{
+      const m=l.match(/^(.+?)\s+各数\s+(\d+)$/);
+      if(!m)return l;
+      const cont=m[1],amt=m[2];
+      const hc=await highlightContent(cont,pn,cfg);
+      return`${hc} 各数 ${amt}`;
+    }));
+    return`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${hl.join('<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord(${it.id})">删除</button></div>`;
+  }));
+  cont.innerHTML=itemsHtml.join('');
+}
 
 async function showOrderRecord(filter='all'){
   try{
@@ -1664,21 +1709,32 @@ window._originalInit = async () => {
 };
 
 window.onload = async () => {
+  // 尝试读取记住的密码
+  try {
+    const saved = localStorage.getItem('savedCredentials');
+    if (saved) {
+      const cred = JSON.parse(saved);
+      document.getElementById('loginUsername').value = cred.username || '';
+      document.getElementById('loginPassword').value = cred.password || '';
+      document.getElementById('rememberPwd').checked = true;
+    }
+  } catch(e) {}
+
   if (authToken) {
     try {
       await fetchApi('/api/config');
-      document.getElementById('welcomePage').style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('mainContent').style.display = '';
       initMainSystem();
     } catch(e) {
-      document.getElementById('welcomePage').style.display = '';
+      document.getElementById('loginOverlay').style.display = '';
       document.getElementById('mainContent').style.display = 'none';
     }
   } else {
-    document.getElementById('welcomePage').style.display = '';
+    document.getElementById('loginOverlay').style.display = '';
     document.getElementById('mainContent').style.display = 'none';
   }
 };
 </script>
 </body>
-</html>    
+</html>
