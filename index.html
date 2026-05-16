@@ -392,312 +392,362 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 .database-modal-body {padding:20px;overflow-y:auto;max-height:70vh; flex:1;}
 .close-database-btn {background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background 0.2s;}
 .close-database-btn:hover {background:rgba(255,255,255,0.1);}
+
+/* 欢迎页样式 */
+.welcome-container {
+  position: fixed; top:0; left:0; width:100%; height:100%;
+  background: linear-gradient(135deg, #a8e6cf 0%, #dcedc1 50%, #ffd3b6 100%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9998;
+}
+.welcome-card {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(15px);
+  border-radius: 24px;
+  padding: 40px 30px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  width: 90%; max-width: 400px;
+}
+.welcome-card h1 {
+  font-size: 28px; color: #2c3e50; margin-bottom: 10px;
+  letter-spacing: 2px;
+}
+.welcome-card .subtitle {
+  font-size: 14px; color: #7f8c8d; margin-bottom: 30px;
+}
+.welcome-card .welcome-btn {
+  display: block; width: 100%; padding: 14px; margin: 10px 0;
+  border: none; border-radius: 30px; font-size: 18px; font-weight: bold;
+  cursor: pointer; transition: all 0.3s; color: #fff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.welcome-btn-register { background: #3498db; }
+.welcome-btn-login { background: #2ecc71; }
+.welcome-btn-admin { background: #e67e22; }
+.welcome-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
 </style>
 </head>
 <body>
 
-<div class="navbar" id="mainNavbar">
-  <div class="navbar-title">港澳识别系统</div>
-  <div class="navbar-actions" id="navbarActions">
-    <button class="btn" onclick="showRecognizeModal()">识别</button>
-    <button class="btn btn-reset" onclick="resetTable()">清空</button>
-    <button class="btn btn-save-order" onclick="showOrderRecord()">订单记录</button>
-    <button class="btn btn-primary" onclick="showReportOrderRecord()">上报数据</button>
-    <button class="btn btn-primary" onclick="showUserManager()">添加用户</button>
-    <button class="btn btn-primary" onclick="showDatabase()">数据库</button>
-    <button class="btn btn-primary" onclick="showReplacePreset()">替换预设</button>
-    <button class="btn btn-primary" onclick="showCategoryAliases()">分类缩写</button>
-    <button class="btn btn-export" onclick="exportData()">导出</button>
-    <button class="btn btn-import" onclick="importData()">导入</button>
-    <button class="btn btn-primary" id="cardMgrBtn" style="display:none;" onclick="showCardManager()">卡密管理</button>
-    <button class="btn btn-clear" onclick="logout()">退出登录</button>
+<!-- 欢迎页面 -->
+<div id="welcomePage" class="welcome-container">
+  <div class="welcome-card">
+    <h1>🎰 港澳识别系统</h1>
+    <div class="subtitle">智能订单识别 · 风险实时计算</div>
+    <button class="welcome-btn welcome-btn-register" onclick="showRegisterModal()">📝 注册新用户</button>
+    <button class="welcome-btn welcome-btn-login" onclick="showLoginModal()">🔐 用户登录</button>
+    <button class="welcome-btn welcome-btn-admin" onclick="showAdminLoginModal()">👑 管理员登录</button>
   </div>
 </div>
 
-<div class="container" id="mainContent" style="display:none;">
-  <div class="recognize-wrap">
-      <div class="card" style="margin-top:0;">
-        <div class="card-title">下注统计</div>
-        <div class="freq-container">
-          <div class="freq-card">
-            <div class="freq-title">号码次数<div class="amount-stat-box" id="numberTotalBox" style="display:none; margin-left:8px;"><span id="numberTotalAmount">0</span></div></div>
-            <table class="freq-table" id="numberFreqTable"></table>
-          </div>
-          <div class="freq-card">
-            <div class="freq-title">生肖次数<div class="amount-stat-box" id="zodiacTotalBox" style="display:none; margin-left:8px;"><span id="zodiacTotalAmount">0</span></div></div>
-            <table class="freq-table" id="zodiacFreqTable"></table>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:0;">
-        <div class="card-title">金额次数统计</div>
-        <div class="freq-container">
-          <div class="freq-card">
-            <div class="freq-title">号码金额次数 <span style="font-size:11px;font-weight:normal;margin-left:8px;">范围：<input type="number" id="numAmountMin" class="range-input" value="1" min="1"> - <input type="number" id="numAmountMax" class="range-input" value="50000" min="1"></span></div>
-            <table class="freq-table" id="numberAmountFreqTable"></table>
-          </div>
-          <div class="freq-card">
-            <div class="freq-title">生肖金额次数 <span style="font-size:11px;font-weight:normal;margin-left:8px;">范围：<input type="number" id="zodiacAmountMin" class="range-input" value="1" min="1"> - <input type="number" id="zodiacAmountMax" class="range-input" value="50000" min="1"></span></div>
-            <table class="freq-table" id="zodiacAmountFreqTable"></table>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:0;">
-        <div class="card-title">上报控制</div>
-        <div class="freq-container">
-          <div class="freq-card">
-            <div class="freq-title">截断阈值：<input type="number" id="reportCapInput" class="range-input" value="" placeholder="" oninput="applyReportCap()"><button class="btn-copy" onclick="copyReportCapText()" style="padding:4px 10px;font-size:12px;margin-left:4px;">复制</button></div>
-            <div id="reportCapInfo" style="font-size:12px;margin-top:5px;color:#333;line-height:1.6;"></div>
-          </div>
-          <div class="freq-card">
-            <div class="freq-title">上报号码金额<div class="amount-stat-box" id="reportAmountTotalBox" style="display:none; margin-left:8px;"><span id="reportAmountTotalValue">0</span></div></div>
-            <table class="freq-table" id="reportAmountTable"></table>
-          </div>
-        </div>
-      </div>
+<!-- 主工作台（原所有内容，默认隐藏） -->
+<div id="mainContent" style="display:none;">
+  <!-- 导航栏 -->
+  <div class="navbar" id="mainNavbar">
+    <div class="navbar-title">港澳识别系统</div>
+    <div class="navbar-actions" id="navbarActions">
+      <button class="btn" onclick="showRecognizeModal()">识别</button>
+      <button class="btn btn-reset" onclick="resetTable()">清空</button>
+      <button class="btn btn-save-order" onclick="showOrderRecord()">订单记录</button>
+      <button class="btn btn-primary" onclick="showReportOrderRecord()">上报数据</button>
+      <button class="btn btn-primary" onclick="showUserManager()">添加用户</button>
+      <button class="btn btn-primary" onclick="showDatabase()">数据库</button>
+      <button class="btn btn-primary" onclick="showReplacePreset()">替换预设</button>
+      <button class="btn btn-primary" onclick="showCategoryAliases()">分类缩写</button>
+      <button class="btn btn-export" onclick="exportData()">导出</button>
+      <button class="btn btn-import" onclick="importData()">导入</button>
+      <button class="btn btn-primary" id="cardMgrBtn" style="display:none;" onclick="showCardManager()">卡密管理</button>
+      <button class="btn btn-clear" onclick="logout()">退出登录</button>
+    </div>
   </div>
 
-  <div class="risk-report-area">
-      <div class="card">
-        <div class="card-title">
-          <div class="title-left">
-            <input type="date" id="filterDate" style="padding:4px;border-radius:4px;border:1px solid #ccc;" onchange="updateTableFromRecords()">
-            <select id="riskReportSwitcher" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:14px;" onchange="switchRiskReport()">
-              <option value="total" selected>总风险</option>
-              <option value="user">用户</option>
-              <option value="report">上报</option>
-            </select>
-            <select id="viewUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:14px;display:none;" onchange="generateRiskTable()"></select>
-          </div>
-          <div class="year-zodiac-area">
-            <span>本年生肖：</span>
-            <select id="startZodiacSelect">
-              <option value="马">马</option><option value="蛇">蛇</option><option value="龙">龙</option><option value="兔">兔</option><option value="虎">虎</option><option value="牛">牛</option><option value="鼠">鼠</option><option value="猪">猪</option><option value="狗">狗</option><option value="鸡">鸡</option><option value="猴">猴</option><option value="羊">羊</option>
-            </select>
+  <!-- 原统计卡片、风险表格等所有内容 -->
+  <div class="container">
+    <div class="recognize-wrap">
+        <div class="card" style="margin-top:0;">
+          <div class="card-title">下注统计</div>
+          <div class="freq-container">
+            <div class="freq-card">
+              <div class="freq-title">号码次数<div class="amount-stat-box" id="numberTotalBox" style="display:none; margin-left:8px;"><span id="numberTotalAmount">0</span></div></div>
+              <table class="freq-table" id="numberFreqTable"></table>
+            </div>
+            <div class="freq-card">
+              <div class="freq-title">生肖次数<div class="amount-stat-box" id="zodiacTotalBox" style="display:none; margin-left:8px;"><span id="zodiacTotalAmount">0</span></div></div>
+              <table class="freq-table" id="zodiacFreqTable"></table>
+            </div>
           </div>
         </div>
-        <div id="riskSection">
-          <div class="summary-row">
-            <div class="summary-item">总下注：<span id="totalBet">0</span></div>
-            <div class="summary-item">返水%：<input type="number" id="rebateRate" class="small-input" value="4" min="0" max="100" step="0.1"></div>
-            <div class="summary-item">返水：<span id="totalRebate">0</span></div>
-            <div class="summary-item">倍数：<input type="number" id="multipleVal" class="small-input" value="47" min="0.1" step="0.1"><button class="btn btn-screenshot" onclick="screenshotTable('riskTable')" style="margin-left:4px;padding:2px 8px;font-size:12px;min-height:auto;">截图</button></div>
-          </div>
-          <div class="table-container">
-            <table id="riskTable"><thead><tr><th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th></tr></thead><tbody id="tableBody" onclick="handleTableRowClick(event)"></tbody></table>
-          </div>
-        </div>
-        <div id="reportSection" style="display:none;">
-          <div class="summary-row">
-            <div class="summary-item">总下注：<span id="reportTotalBet">0</span></div>
-            <div class="summary-item">返水%：<input type="number" id="reportRebateRate" class="small-input" value="4" min="0" max="100" step="0.1"></div>
-            <div class="summary-item">返水：<span id="reportTotalRebate">0</span></div>
-            <div class="summary-item">倍数：<input type="number" id="reportMultipleVal" class="small-input" value="47" min="0.1" step="0.1"><button class="btn btn-screenshot" onclick="screenshotTable('reportTable')" style="margin-left:4px;padding:2px 8px;font-size:12px;min-height:auto;">截图</button></div>
-          </div>
-          <div class="table-container">
-            <table id="reportTable"><thead><tr><th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th></tr></thead><tbody id="reportTableBody" onclick="handleTableRowClick(event)"></tbody></table>
+
+        <div class="card" style="margin-top:0;">
+          <div class="card-title">金额次数统计</div>
+          <div class="freq-container">
+            <div class="freq-card">
+              <div class="freq-title">号码金额次数 <span style="font-size:11px;font-weight:normal;margin-left:8px;">范围：<input type="number" id="numAmountMin" class="range-input" value="1" min="1"> - <input type="number" id="numAmountMax" class="range-input" value="50000" min="1"></span></div>
+              <table class="freq-table" id="numberAmountFreqTable"></table>
+            </div>
+            <div class="freq-card">
+              <div class="freq-title">生肖金额次数 <span style="font-size:11px;font-weight:normal;margin-left:8px;">范围：<input type="number" id="zodiacAmountMin" class="range-input" value="1" min="1"> - <input type="number" id="zodiacAmountMax" class="range-input" value="50000" min="1"></span></div>
+              <table class="freq-table" id="zodiacAmountFreqTable"></table>
+            </div>
           </div>
         </div>
-      </div>
+
+        <div class="card" style="margin-top:0;">
+          <div class="card-title">上报控制</div>
+          <div class="freq-container">
+            <div class="freq-card">
+              <div class="freq-title">截断阈值：<input type="number" id="reportCapInput" class="range-input" value="" placeholder="" oninput="applyReportCap()"><button class="btn-copy" onclick="copyReportCapText()" style="padding:4px 10px;font-size:12px;margin-left:4px;">复制</button></div>
+              <div id="reportCapInfo" style="font-size:12px;margin-top:5px;color:#333;line-height:1.6;"></div>
+            </div>
+            <div class="freq-card">
+              <div class="freq-title">上报号码金额<div class="amount-stat-box" id="reportAmountTotalBox" style="display:none; margin-left:8px;"><span id="reportAmountTotalValue">0</span></div></div>
+              <table class="freq-table" id="reportAmountTable"></table>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <div class="risk-report-area">
+        <div class="card">
+          <div class="card-title">
+            <div class="title-left">
+              <input type="date" id="filterDate" style="padding:4px;border-radius:4px;border:1px solid #ccc;" onchange="updateTableFromRecords()">
+              <select id="riskReportSwitcher" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:14px;" onchange="switchRiskReport()">
+                <option value="total" selected>总风险</option>
+                <option value="user">用户</option>
+                <option value="report">上报</option>
+              </select>
+              <select id="viewUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:14px;display:none;" onchange="generateRiskTable()"></select>
+            </div>
+            <div class="year-zodiac-area">
+              <span>本年生肖：</span>
+              <select id="startZodiacSelect">
+                <option value="马">马</option><option value="蛇">蛇</option><option value="龙">龙</option><option value="兔">兔</option><option value="虎">虎</option><option value="牛">牛</option><option value="鼠">鼠</option><option value="猪">猪</option><option value="狗">狗</option><option value="鸡">鸡</option><option value="猴">猴</option><option value="羊">羊</option>
+              </select>
+            </div>
+          </div>
+          <div id="riskSection">
+            <div class="summary-row">
+              <div class="summary-item">总下注：<span id="totalBet">0</span></div>
+              <div class="summary-item">返水%：<input type="number" id="rebateRate" class="small-input" value="4" min="0" max="100" step="0.1"></div>
+              <div class="summary-item">返水：<span id="totalRebate">0</span></div>
+              <div class="summary-item">倍数：<input type="number" id="multipleVal" class="small-input" value="47" min="0.1" step="0.1"><button class="btn btn-screenshot" onclick="screenshotTable('riskTable')" style="margin-left:4px;padding:2px 8px;font-size:12px;min-height:auto;">截图</button></div>
+            </div>
+            <div class="table-container">
+              <table id="riskTable"><thead><tr><th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th></tr></thead><tbody id="tableBody" onclick="handleTableRowClick(event)"></tbody></table>
+            </div>
+          </div>
+          <div id="reportSection" style="display:none;">
+            <div class="summary-row">
+              <div class="summary-item">总下注：<span id="reportTotalBet">0</span></div>
+              <div class="summary-item">返水%：<input type="number" id="reportRebateRate" class="small-input" value="4" min="0" max="100" step="0.1"></div>
+              <div class="summary-item">返水：<span id="reportTotalRebate">0</span></div>
+              <div class="summary-item">倍数：<input type="number" id="reportMultipleVal" class="small-input" value="47" min="0.1" step="0.1"><button class="btn btn-screenshot" onclick="screenshotTable('reportTable')" style="margin-left:4px;padding:2px 8px;font-size:12px;min-height:auto;">截图</button></div>
+            </div>
+            <div class="table-container">
+              <table id="reportTable"><thead><tr><th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th></tr></thead><tbody id="reportTableBody" onclick="handleTableRowClick(event)"></tbody></table>
+            </div>
+          </div>
+        </div>
+    </div>
   </div>
-</div>
 
-<div class="storage-info" id="storageInfo" style="display:none;">
-  <p><span class="label">订单数量：</span><span class="value" id="orderCount">0</span></p>
-  <p><span class="label">已用空间：</span><span class="value" id="usedSpace">0 MB</span></p>
-  <p><span class="label">剩余空间：</span><span class="value" id="freeSpace">50 MB</span></p>
-</div>
+  <div class="storage-info" id="storageInfo" style="display:none;">
+    <p><span class="label">订单数量：</span><span class="value" id="orderCount">0</span></p>
+    <p><span class="label">已用空间：</span><span class="value" id="usedSpace">0 MB</span></p>
+    <p><span class="label">剩余空间：</span><span class="value" id="freeSpace">50 MB</span></p>
+  </div>
 
-<!-- 数据库弹窗（完整静态分类号码） -->
-<div class="database-modal" id="databaseModal" style="display:none;">
-  <div class="database-modal-box" id="databaseModalBox">
-    <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
-    <div class="database-modal-body">
-      <div class="card data-config-card">
-        <div class="card-title">分类数据配置<span style="font-size:12px;font-weight:normal;color:#666;">（可自定义）</span></div>
+  <!-- 数据库弹窗（完整静态分类号码） -->
+  <div class="database-modal" id="databaseModal" style="display:none;">
+    <div class="database-modal-box" id="databaseModalBox">
+      <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
+      <div class="database-modal-body">
+        <div class="card data-config-card">
+          <div class="card-title">分类数据配置<span style="font-size:12px;font-weight:normal;color:#666;">（可自定义）</span></div>
 
-        <div class="config-section"><div class="config-section-title">十二生肖</div>
-          <div class="config-item"><div class="config-label">鼠</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_shu" value="07 19 31 43"></div>
-          <div class="config-item"><div class="config-label">牛</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_niu" value="06 18 30 42"></div>
-          <div class="config-item"><div class="config-label">虎</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hu" value="05 17 29 41"></div>
-          <div class="config-item"><div class="config-label">兔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tu2" value="04 16 28 40"></div>
-          <div class="config-item"><div class="config-label">龙</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_long" value="03 15 27 39"></div>
-          <div class="config-item"><div class="config-label">蛇</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_she" value="02 14 26 38"></div>
-          <div class="config-item"><div class="config-label">马</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ma" value="01 13 25 37 49"></div>
-          <div class="config-item"><div class="config-label">羊</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_yang" value="12 24 36 48"></div>
-          <div class="config-item"><div class="config-label">猴</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hou" value="11 23 35 47"></div>
-          <div class="config-item"><div class="config-label">鸡</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ji" value="10 22 34 46"></div>
-          <div class="config-item"><div class="config-label">狗</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_gou" value="09 21 33 45"></div>
-          <div class="config-item"><div class="config-label">猪</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_zhu" value="08 20 32 44"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">十二生肖</div>
+            <div class="config-item"><div class="config-label">鼠</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_shu" value="07 19 31 43"></div>
+            <div class="config-item"><div class="config-label">牛</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_niu" value="06 18 30 42"></div>
+            <div class="config-item"><div class="config-label">虎</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hu" value="05 17 29 41"></div>
+            <div class="config-item"><div class="config-label">兔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tu2" value="04 16 28 40"></div>
+            <div class="config-item"><div class="config-label">龙</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_long" value="03 15 27 39"></div>
+            <div class="config-item"><div class="config-label">蛇</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_she" value="02 14 26 38"></div>
+            <div class="config-item"><div class="config-label">马</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ma" value="01 13 25 37 49"></div>
+            <div class="config-item"><div class="config-label">羊</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_yang" value="12 24 36 48"></div>
+            <div class="config-item"><div class="config-label">猴</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hou" value="11 23 35 47"></div>
+            <div class="config-item"><div class="config-label">鸡</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ji" value="10 22 34 46"></div>
+            <div class="config-item"><div class="config-label">狗</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_gou" value="09 21 33 45"></div>
+            <div class="config-item"><div class="config-label">猪</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_zhu" value="08 20 32 44"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">生肖属性</div>
-          <div class="config-item"><div class="config-label">家禽</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_jiaqin" value="牛 马 羊 鸡 狗 猪"></div>
-          <div class="config-item"><div class="config-label">野兽</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yeshou" value="鼠 虎 兔 龙 蛇 猴"></div>
-          <div class="config-item"><div class="config-label">吉美</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_jimei" value="兔 龙 蛇 马 羊 鸡"></div>
-          <div class="config-item"><div class="config-label">凶丑</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_xiongchou" value="鼠 牛 虎 猴 狗 猪"></div>
-          <div class="config-item"><div class="config-label">阴性</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yinxing" value="鼠 龙 蛇 马 狗 猪"></div>
-          <div class="config-item"><div class="config-label">阳性</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yangxing" value="牛 虎 兔 羊 猴 鸡"></div>
-          <div class="config-item"><div class="config-label">天肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_tianxiao" value="兔 马 猴 猪 牛 龙"></div>
-          <div class="config-item"><div class="config-label">地肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_dixiao" value="蛇 羊 鸡 狗 鼠 虎"></div>
-          <div class="config-item"><div class="config-label">单笔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_danbi" value="鼠 龙 马 蛇 鸡 猪"></div>
-          <div class="config-item"><div class="config-label">双笔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_shuangbi" value="虎 猴 狗 兔 羊 牛"></div>
-          <div class="config-item"><div class="config-label">白边</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_baibian" value="鼠 牛 虎 鸡 狗 猪"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">生肖属性</div>
+            <div class="config-item"><div class="config-label">家禽</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_jiaqin" value="牛 马 羊 鸡 狗 猪"></div>
+            <div class="config-item"><div class="config-label">野兽</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yeshou" value="鼠 虎 兔 龙 蛇 猴"></div>
+            <div class="config-item"><div class="config-label">吉美</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_jimei" value="兔 龙 蛇 马 羊 鸡"></div>
+            <div class="config-item"><div class="config-label">凶丑</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_xiongchou" value="鼠 牛 虎 猴 狗 猪"></div>
+            <div class="config-item"><div class="config-label">阴性</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yinxing" value="鼠 龙 蛇 马 狗 猪"></div>
+            <div class="config-item"><div class="config-label">阳性</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yangxing" value="牛 虎 兔 羊 猴 鸡"></div>
+            <div class="config-item"><div class="config-label">天肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_tianxiao" value="兔 马 猴 猪 牛 龙"></div>
+            <div class="config-item"><div class="config-label">地肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_dixiao" value="蛇 羊 鸡 狗 鼠 虎"></div>
+            <div class="config-item"><div class="config-label">单笔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_danbi" value="鼠 龙 马 蛇 鸡 猪"></div>
+            <div class="config-item"><div class="config-label">双笔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_shuangbi" value="虎 猴 狗 兔 羊 牛"></div>
+            <div class="config-item"><div class="config-label">白边</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_baibian" value="鼠 牛 虎 鸡 狗 猪"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">五行配置</div>
-          <div class="config-item"><div class="config-label">金</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_jin" value="04 05 12 13 26 27 34 35 42 43"></div>
-          <div class="config-item"><div class="config-label">木</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_mu" value="08 09 16 17 24 25 38 39 46 47"></div>
-          <div class="config-item"><div class="config-label">水</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_shui" value="01 14 15 22 23 30 31 44 45"></div>
-          <div class="config-item"><div class="config-label">火</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_huo" value="02 03 10 11 18 19 32 33 40 41 48 49"></div>
-          <div class="config-item"><div class="config-label">土</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tu" value="06 07 20 21 28 29 36 37"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">五行配置</div>
+            <div class="config-item"><div class="config-label">金</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_jin" value="04 05 12 13 26 27 34 35 42 43"></div>
+            <div class="config-item"><div class="config-label">木</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_mu" value="08 09 16 17 24 25 38 39 46 47"></div>
+            <div class="config-item"><div class="config-label">水</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_shui" value="01 14 15 22 23 30 31 44 45"></div>
+            <div class="config-item"><div class="config-label">火</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_huo" value="02 03 10 11 18 19 32 33 40 41 48 49"></div>
+            <div class="config-item"><div class="config-label">土</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tu" value="06 07 20 21 28 29 36 37"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">波色配置</div>
-          <div class="config-item"><div class="config-label">红波</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hongbo" value="01 02 07 08 12 13 18 19 23 24 29 30 34 35 40 45 46"></div>
-          <div class="config-item"><div class="config-label">蓝波</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lanbo" value="03 04 09 10 14 15 20 25 26 31 36 37 41 42 47 48"></div>
-          <div class="config-item"><div class="config-label">绿波</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lvbo" value="05 06 11 16 17 21 22 27 28 32 33 38 39 43 44 49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">波色配置</div>
+            <div class="config-item"><div class="config-label">红波</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hongbo" value="01 02 07 08 12 13 18 19 23 24 29 30 34 35 40 45 46"></div>
+            <div class="config-item"><div class="config-label">蓝波</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lanbo" value="03 04 09 10 14 15 20 25 26 31 36 37 41 42 47 48"></div>
+            <div class="config-item"><div class="config-label">绿波</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lvbo" value="05 06 11 16 17 21 22 27 28 32 33 38 39 43 44 49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">半波配置</div>
-          <div class="config-item"><div class="config-label">红双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hongshuang" value="02 08 12 18 24 30 34 40 46"></div>
-          <div class="config-item"><div class="config-label">红单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hongdan" value="01 07 13 19 23 29 35 45"></div>
-          <div class="config-item"><div class="config-label">蓝双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lanshuang" value="04 10 14 20 26 36 42 48"></div>
-          <div class="config-item"><div class="config-label">蓝单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_landan" value="03 09 15 25 31 37 41 47"></div>
-          <div class="config-item"><div class="config-label">绿双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lvshuang" value="06 16 22 28 32 38 44"></div>
-          <div class="config-item"><div class="config-label">绿单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lvdan" value="05 11 17 21 27 33 39 43 49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">半波配置</div>
+            <div class="config-item"><div class="config-label">红双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hongshuang" value="02 08 12 18 24 30 34 40 46"></div>
+            <div class="config-item"><div class="config-label">红单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hongdan" value="01 07 13 19 23 29 35 45"></div>
+            <div class="config-item"><div class="config-label">蓝双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lanshuang" value="04 10 14 20 26 36 42 48"></div>
+            <div class="config-item"><div class="config-label">蓝单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_landan" value="03 09 15 25 31 37 41 47"></div>
+            <div class="config-item"><div class="config-label">绿双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lvshuang" value="06 16 22 28 32 38 44"></div>
+            <div class="config-item"><div class="config-label">绿单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_lvdan" value="05 11 17 21 27 33 39 43 49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">单双属性</div>
-          <div class="config-item"><div class="config-label">单数</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_danshu" value="01 03 05 07 09 11 13 15 17 19 21 23 25 27 29 31 33 35 37 39 41 43 45 47 49"></div>
-          <div class="config-item"><div class="config-label">双数</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_shuangshu" value="02 04 06 08 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">单双属性</div>
+            <div class="config-item"><div class="config-label">单数</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_danshu" value="01 03 05 07 09 11 13 15 17 19 21 23 25 27 29 31 33 35 37 39 41 43 45 47 49"></div>
+            <div class="config-item"><div class="config-label">双数</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_shuangshu" value="02 04 06 08 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">尾数属性</div>
-          <div class="config-item"><div class="config-label long-label">0尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_0" value="10 20 30 40"></div>
-          <div class="config-item"><div class="config-label long-label">1尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_1" value="01 11 21 31 41"></div>
-          <div class="config-item"><div class="config-label long-label">2尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_2" value="02 12 22 32 42"></div>
-          <div class="config-item"><div class="config-label long-label">3尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_3" value="03 13 23 33 43"></div>
-          <div class="config-item"><div class="config-label long-label">4尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_4" value="04 14 24 34 44"></div>
-          <div class="config-item"><div class="config-label long-label">5尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_5" value="05 15 25 35 45"></div>
-          <div class="config-item"><div class="config-label long-label">6尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_6" value="06 16 26 36 46"></div>
-          <div class="config-item"><div class="config-label long-label">7尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_7" value="07 17 27 37 47"></div>
-          <div class="config-item"><div class="config-label long-label">8尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_8" value="08 18 28 38 48"></div>
-          <div class="config-item"><div class="config-label long-label">9尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_9" value="09 19 29 39 49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">尾数属性</div>
+            <div class="config-item"><div class="config-label long-label">0尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_0" value="10 20 30 40"></div>
+            <div class="config-item"><div class="config-label long-label">1尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_1" value="01 11 21 31 41"></div>
+            <div class="config-item"><div class="config-label long-label">2尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_2" value="02 12 22 32 42"></div>
+            <div class="config-item"><div class="config-label long-label">3尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_3" value="03 13 23 33 43"></div>
+            <div class="config-item"><div class="config-label long-label">4尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_4" value="04 14 24 34 44"></div>
+            <div class="config-item"><div class="config-label long-label">5尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_5" value="05 15 25 35 45"></div>
+            <div class="config-item"><div class="config-label long-label">6尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_6" value="06 16 26 36 46"></div>
+            <div class="config-item"><div class="config-label long-label">7尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_7" value="07 17 27 37 47"></div>
+            <div class="config-item"><div class="config-label long-label">8尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_8" value="08 18 28 38 48"></div>
+            <div class="config-item"><div class="config-label long-label">9尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ws_9" value="09 19 29 39 49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">大小单双</div>
-          <div class="config-item"><div class="config-label">大单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dadan" value="25 27 29 31 33 35 37 39 41 43 45 47 49"></div>
-          <div class="config-item"><div class="config-label">大双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dashuang" value="26 28 30 32 34 36 38 40 42 44 46 48"></div>
-          <div class="config-item"><div class="config-label">小单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_xiaodan" value="01 03 05 07 09 11 13 15 17 19 21 23"></div>
-          <div class="config-item"><div class="config-label">小双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_xiaoshuang" value="02 04 06 08 10 12 14 16 18 20 22 24"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">大小单双</div>
+            <div class="config-item"><div class="config-label">大单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dadan" value="25 27 29 31 33 35 37 39 41 43 45 47 49"></div>
+            <div class="config-item"><div class="config-label">大双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dashuang" value="26 28 30 32 34 36 38 40 42 44 46 48"></div>
+            <div class="config-item"><div class="config-label">小单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_xiaodan" value="01 03 05 07 09 11 13 15 17 19 21 23"></div>
+            <div class="config-item"><div class="config-label">小双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_xiaoshuang" value="02 04 06 08 10 12 14 16 18 20 22 24"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">大小配置</div>
-          <div class="config-item"><div class="config-label">小</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dx_xiao" value="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24"></div>
-          <div class="config-item"><div class="config-label">大</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dx_da" value="25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">大小配置</div>
+            <div class="config-item"><div class="config-label">小</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dx_xiao" value="01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24"></div>
+            <div class="config-item"><div class="config-label">大</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dx_da" value="25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">合数配置</div>
-          <div class="config-item"><div class="config-label long-label">01合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_01" value="01 10"></div>
-          <div class="config-item"><div class="config-label long-label">02合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_02" value="02 11 20"></div>
-          <div class="config-item"><div class="config-label long-label">03合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_03" value="03 12 21 30"></div>
-          <div class="config-item"><div class="config-label long-label">04合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_04" value="04 13 22 31 40"></div>
-          <div class="config-item"><div class="config-label long-label">05合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_05" value="05 14 23 32 41"></div>
-          <div class="config-item"><div class="config-label long-label">06合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_06" value="06 15 24 33 42"></div>
-          <div class="config-item"><div class="config-label long-label">07合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_07" value="07 16 25 34 43"></div>
-          <div class="config-item"><div class="config-label long-label">08合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_08" value="08 17 26 35 44"></div>
-          <div class="config-item"><div class="config-label long-label">09合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_09" value="09 18 27 36 45"></div>
-          <div class="config-item"><div class="config-label long-label">10合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_10" value="19 28 37 46"></div>
-          <div class="config-item"><div class="config-label long-label">11合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_11" value="29 38 47"></div>
-          <div class="config-item"><div class="config-label long-label">12合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_12" value="39 48"></div>
-          <div class="config-item"><div class="config-label long-label">13合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_13" value="49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">合数配置</div>
+            <div class="config-item"><div class="config-label long-label">01合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_01" value="01 10"></div>
+            <div class="config-item"><div class="config-label long-label">02合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_02" value="02 11 20"></div>
+            <div class="config-item"><div class="config-label long-label">03合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_03" value="03 12 21 30"></div>
+            <div class="config-item"><div class="config-label long-label">04合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_04" value="04 13 22 31 40"></div>
+            <div class="config-item"><div class="config-label long-label">05合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_05" value="05 14 23 32 41"></div>
+            <div class="config-item"><div class="config-label long-label">06合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_06" value="06 15 24 33 42"></div>
+            <div class="config-item"><div class="config-label long-label">07合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_07" value="07 16 25 34 43"></div>
+            <div class="config-item"><div class="config-label long-label">08合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_08" value="08 17 26 35 44"></div>
+            <div class="config-item"><div class="config-label long-label">09合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_09" value="09 18 27 36 45"></div>
+            <div class="config-item"><div class="config-label long-label">10合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_10" value="19 28 37 46"></div>
+            <div class="config-item"><div class="config-label long-label">11合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_11" value="29 38 47"></div>
+            <div class="config-item"><div class="config-label long-label">12合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_12" value="39 48"></div>
+            <div class="config-item"><div class="config-label long-label">13合</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hs_13" value="49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">头数配置</div>
-          <div class="config-item"><div class="config-label long-label">0头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_0" value="01 02 03 04 05 06 07 08 09"></div>
-          <div class="config-item"><div class="config-label long-label">1头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_1" value="10 11 12 13 14 15 16 17 18 19"></div>
-          <div class="config-item"><div class="config-label long-label">2头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_2" value="20 21 22 23 24 25 26 27 28 29"></div>
-          <div class="config-item"><div class="config-label long-label">3头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_3" value="30 31 32 33 34 35 36 37 38 39"></div>
-          <div class="config-item"><div class="config-label long-label">4头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_4" value="40 41 42 43 44 45 46 47 48 49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">头数配置</div>
+            <div class="config-item"><div class="config-label long-label">0头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_0" value="01 02 03 04 05 06 07 08 09"></div>
+            <div class="config-item"><div class="config-label long-label">1头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_1" value="10 11 12 13 14 15 16 17 18 19"></div>
+            <div class="config-item"><div class="config-label long-label">2头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_2" value="20 21 22 23 24 25 26 27 28 29"></div>
+            <div class="config-item"><div class="config-label long-label">3头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_3" value="30 31 32 33 34 35 36 37 38 39"></div>
+            <div class="config-item"><div class="config-label long-label">4头</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ts_4" value="40 41 42 43 44 45 46 47 48 49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">门数配置</div>
-          <div class="config-item"><div class="config-label long-label">1门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_1" value="01 02 03 04 05 06 07 08 09"></div>
-          <div class="config-item"><div class="config-label long-label">2门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_2" value="10 11 12 13 14 15 16 17 18"></div>
-          <div class="config-item"><div class="config-label long-label">3门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_3" value="19 20 21 22 23 24 25 26 27"></div>
-          <div class="config-item"><div class="config-label long-label">4门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_4" value="28 29 30 31 32 33 34 35 36 37"></div>
-          <div class="config-item"><div class="config-label long-label">5门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_5" value="38 39 40 41 42 43 44 45 46 47 48 49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">门数配置</div>
+            <div class="config-item"><div class="config-label long-label">1门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_1" value="01 02 03 04 05 06 07 08 09"></div>
+            <div class="config-item"><div class="config-label long-label">2门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_2" value="10 11 12 13 14 15 16 17 18"></div>
+            <div class="config-item"><div class="config-label long-label">3门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_3" value="19 20 21 22 23 24 25 26 27"></div>
+            <div class="config-item"><div class="config-label long-label">4门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_4" value="28 29 30 31 32 33 34 35 36 37"></div>
+            <div class="config-item"><div class="config-label long-label">5门</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_ms_5" value="38 39 40 41 42 43 44 45 46 47 48 49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">段位配置</div>
-          <div class="config-item"><div class="config-label long-label">1段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_1" value="01 02 03 04 05 06 07"></div>
-          <div class="config-item"><div class="config-label long-label">2段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_2" value="08 09 10 11 12 13 14"></div>
-          <div class="config-item"><div class="config-label long-label">3段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_3" value="15 16 17 18 19 20 21"></div>
-          <div class="config-item"><div class="config-label long-label">4段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_4" value="22 23 24 25 26 27 28"></div>
-          <div class="config-item"><div class="config-label long-label">5段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_5" value="29 30 31 32 33 34 35"></div>
-          <div class="config-item"><div class="config-label long-label">6段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_6" value="36 37 38 39 40 41 42"></div>
-          <div class="config-item"><div class="config-label long-label">7段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_7" value="43 44 45 46 47 48 49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">段位配置</div>
+            <div class="config-item"><div class="config-label long-label">1段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_1" value="01 02 03 04 05 06 07"></div>
+            <div class="config-item"><div class="config-label long-label">2段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_2" value="08 09 10 11 12 13 14"></div>
+            <div class="config-item"><div class="config-label long-label">3段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_3" value="15 16 17 18 19 20 21"></div>
+            <div class="config-item"><div class="config-label long-label">4段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_4" value="22 23 24 25 26 27 28"></div>
+            <div class="config-item"><div class="config-label long-label">5段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_5" value="29 30 31 32 33 34 35"></div>
+            <div class="config-item"><div class="config-label long-label">6段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_6" value="36 37 38 39 40 41 42"></div>
+            <div class="config-item"><div class="config-label long-label">7段</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_dw_7" value="43 44 45 46 47 48 49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">合大&合小</div>
-          <div class="config-item"><div class="config-label">合小</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hdx_hexiao" value="01 02 03 04 05 06 10 11 12 13 14 15 20 21 22 23 24 30 31 32 33 40 41 42"></div>
-          <div class="config-item"><div class="config-label">合大</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hdx_heda" value="07 08 09 16 17 18 19 25 26 27 28 29 34 35 36 37 38 39 43 44 45 46 47 48 49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">合大&合小</div>
+            <div class="config-item"><div class="config-label">合小</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hdx_hexiao" value="01 02 03 04 05 06 10 11 12 13 14 15 20 21 22 23 24 30 31 32 33 40 41 42"></div>
+            <div class="config-item"><div class="config-label">合大</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hdx_heda" value="07 08 09 16 17 18 19 25 26 27 28 29 34 35 36 37 38 39 43 44 45 46 47 48 49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">尾大&尾小</div>
-          <div class="config-item"><div class="config-label">尾小</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_wdx_weixiao" value="01 02 03 04 10 11 12 13 14 20 21 22 23 24 30 31 32 33 34 40 41 42 43 44"></div>
-          <div class="config-item"><div class="config-label">尾大</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_wdx_weida" value="05 06 07 08 09 15 16 17 18 19 25 26 27 28 29 35 36 37 38 39 45 46 47 48 49"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">尾大&尾小</div>
+            <div class="config-item"><div class="config-label">尾小</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_wdx_weixiao" value="01 02 03 04 10 11 12 13 14 20 21 22 23 24 30 31 32 33 34 40 41 42 43 44"></div>
+            <div class="config-item"><div class="config-label">尾大</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_wdx_weida" value="05 06 07 08 09 15 16 17 18 19 25 26 27 28 29 35 36 37 38 39 45 46 47 48 49"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">半单双</div>
-          <div class="config-item"><div class="config-label">小单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_xiaodan" value="01 03 05 07 09 11 13 15 17 19 21 23"></div>
-          <div class="config-item"><div class="config-label">小双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_xiaoshuang" value="02 04 06 08 10 12 14 16 18 20 22 24"></div>
-          <div class="config-item"><div class="config-label">大单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_dadan" value="25 27 29 31 33 35 37 39 41 43 45 47 49"></div>
-          <div class="config-item"><div class="config-label">大双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_dashuang" value="26 28 30 32 34 36 38 40 42 44 46 48"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">半单双</div>
+            <div class="config-item"><div class="config-label">小单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_xiaodan" value="01 03 05 07 09 11 13 15 17 19 21 23"></div>
+            <div class="config-item"><div class="config-label">小双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_xiaoshuang" value="02 04 06 08 10 12 14 16 18 20 22 24"></div>
+            <div class="config-item"><div class="config-label">大单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_dadan" value="25 27 29 31 33 35 37 39 41 43 45 47 49"></div>
+            <div class="config-item"><div class="config-label">大双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_bds_dashuang" value="26 28 30 32 34 36 38 40 42 44 46 48"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">合尾配置</div>
-          <div class="config-item"><div class="config-label long-label">0合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_0" value="19 28 37 46"></div>
-          <div class="config-item"><div class="config-label long-label">1合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_1" value="01 10 29 38 47"></div>
-          <div class="config-item"><div class="config-label long-label">2合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_2" value="02 11 20 39 48"></div>
-          <div class="config-item"><div class="config-label long-label">3合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_3" value="03 12 21 30 49"></div>
-          <div class="config-item"><div class="config-label long-label">4合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_4" value="04 13 22 31 40"></div>
-          <div class="config-item"><div class="config-label long-label">5合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_5" value="05 14 23 32 41"></div>
-          <div class="config-item"><div class="config-label long-label">6合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_6" value="06 15 24 33 42"></div>
-          <div class="config-item"><div class="config-label long-label">7合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_7" value="07 16 25 34 43"></div>
-          <div class="config-item"><div class="config-label long-label">8合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_8" value="08 17 26 35 44"></div>
-          <div class="config-item"><div class="config-label long-label">9合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_9" value="09 18 27 36 45"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">合尾配置</div>
+            <div class="config-item"><div class="config-label long-label">0合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_0" value="19 28 37 46"></div>
+            <div class="config-item"><div class="config-label long-label">1合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_1" value="01 10 29 38 47"></div>
+            <div class="config-item"><div class="config-label long-label">2合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_2" value="02 11 20 39 48"></div>
+            <div class="config-item"><div class="config-label long-label">3合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_3" value="03 12 21 30 49"></div>
+            <div class="config-item"><div class="config-label long-label">4合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_4" value="04 13 22 31 40"></div>
+            <div class="config-item"><div class="config-label long-label">5合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_5" value="05 14 23 32 41"></div>
+            <div class="config-item"><div class="config-label long-label">6合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_6" value="06 15 24 33 42"></div>
+            <div class="config-item"><div class="config-label long-label">7合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_7" value="07 16 25 34 43"></div>
+            <div class="config-item"><div class="config-label long-label">8合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_8" value="08 17 26 35 44"></div>
+            <div class="config-item"><div class="config-label long-label">9合尾</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hw_9" value="09 18 27 36 45"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">合数单&双</div>
-          <div class="config-item"><div class="config-label long-label">合数单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hsd_hsd" value="01 03 05 07 09 10 12 14 16 18 21 23 25 27 29 30 32 34 36 38 41 43 45 47 49"></div>
-          <div class="config-item"><div class="config-label long-label">合数双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hsd_hss" value="02 04 06 08 11 13 15 17 19 20 22 24 26 28 31 33 35 37 39 40 42 44 46 48"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">合数单&双</div>
+            <div class="config-item"><div class="config-label long-label">合数单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hsd_hsd" value="01 03 05 07 09 10 12 14 16 18 21 23 25 27 29 30 32 34 36 38 41 43 45 47 49"></div>
+            <div class="config-item"><div class="config-label long-label">合数双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_hsd_hss" value="02 04 06 08 11 13 15 17 19 20 22 24 26 28 31 33 35 37 39 40 42 44 46 48"></div>
+          </div>
 
-        <div class="config-section"><div class="config-section-title">头数单与双配置</div>
-          <div class="config-item"><div class="config-label long-label">0头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_0dan" value="01 03 05 07 09"></div>
-          <div class="config-item"><div class="config-label long-label">0头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_0shuang" value="02 04 06 08"></div>
-          <div class="config-item"><div class="config-label long-label">1头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_1dan" value="11 13 15 17 19"></div>
-          <div class="config-item"><div class="config-label long-label">1头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_1shuang" value="10 12 14 16 18"></div>
-          <div class="config-item"><div class="config-label long-label">2头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_2dan" value="21 23 25 27 29"></div>
-          <div class="config-item"><div class="config-label long-label">2头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_2shuang" value="20 22 24 26 28"></div>
-          <div class="config-item"><div class="config-label long-label">3头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_3dan" value="31 33 35 37 39"></div>
-          <div class="config-item"><div class="config-label long-label">3头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_3shuang" value="30 32 34 36 38"></div>
-          <div class="config-item"><div class="config-label long-label">4头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_4dan" value="41 43 45 47 49"></div>
-          <div class="config-item"><div class="config-label long-label">4头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_4shuang" value="40 42 44 46 48"></div>
-        </div>
+          <div class="config-section"><div class="config-section-title">头数单与双配置</div>
+            <div class="config-item"><div class="config-label long-label">0头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_0dan" value="01 03 05 07 09"></div>
+            <div class="config-item"><div class="config-label long-label">0头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_0shuang" value="02 04 06 08"></div>
+            <div class="config-item"><div class="config-label long-label">1头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_1dan" value="11 13 15 17 19"></div>
+            <div class="config-item"><div class="config-label long-label">1头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_1shuang" value="10 12 14 16 18"></div>
+            <div class="config-item"><div class="config-label long-label">2头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_2dan" value="21 23 25 27 29"></div>
+            <div class="config-item"><div class="config-label long-label">2头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_2shuang" value="20 22 24 26 28"></div>
+            <div class="config-item"><div class="config-label long-label">3头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_3dan" value="31 33 35 37 39"></div>
+            <div class="config-item"><div class="config-label long-label">3头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_3shuang" value="30 32 34 36 38"></div>
+            <div class="config-item"><div class="config-label long-label">4头单</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_4dan" value="41 43 45 47 49"></div>
+            <div class="config-item"><div class="config-label long-label">4头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_4shuang" value="40 42 44 46 48"></div>
+          </div>
 
-        <div id="customConfigContainer"></div>
+          <div id="customConfigContainer"></div>
 
-        <div class="data-config-actions">
-          <button class="config-btn" style="background:#007bff;color:white" onclick="enableEditConfig()">修改</button>
-          <button class="config-btn" style="background:#6c757d;color:white" onclick="resetDataConfig()">默认</button>
-          <button class="config-btn" style="background:#28a745;color:white" onclick="saveDataConfig()">保存</button>
-          <button class="config-btn" style="background:#17a2b8;color:white" onclick="addCustomCategory()">添加分类</button>
-          <button class="config-btn" style="background:#dc3545;color:white" onclick="deleteCustomCategory()">删除分类</button>
+          <div class="data-config-actions">
+            <button class="config-btn" style="background:#007bff;color:white" onclick="enableEditConfig()">修改</button>
+            <button class="config-btn" style="background:#6c757d;color:white" onclick="resetDataConfig()">默认</button>
+            <button class="config-btn" style="background:#28a745;color:white" onclick="saveDataConfig()">保存</button>
+            <button class="config-btn" style="background:#17a2b8;color:white" onclick="addCustomCategory()">添加分类</button>
+            <button class="config-btn" style="background:#dc3545;color:white" onclick="deleteCustomCategory()">删除分类</button>
+          </div>
         </div>
       </div>
     </div>
@@ -705,7 +755,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 </div>
 
 <script>
-    // ========== API 通信 ==========
+// ========== API 通信 ==========
 const API_BASE = '';
 let authToken = localStorage.getItem('authToken') || null;
 let currentUser = null;
@@ -717,6 +767,7 @@ async function fetchApi(url, options = {}) {
   };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   const res = await fetch(API_BASE + url, { ...options, headers });
+
   if (res.status === 401 || res.status === 403) {
     const data = await res.json().catch(() => ({}));
     if (data.needActivation) {
@@ -724,9 +775,11 @@ async function fetchApi(url, options = {}) {
     }
     authToken = null;
     localStorage.removeItem('authToken');
-    showLoginScreen();
-    throw new Error('未登录');
+    currentUser = null;
+    showToast('登录已过期，请刷新页面重新登录');
+    throw new Error(data.error || '未登录');
   }
+
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: '网络错误' }));
     throw new Error(error.error || '网络错误');
@@ -760,126 +813,187 @@ window.alert = async (msg) => { await showCustomDialog({ title: '提示', messag
 window.confirm = async (msg) => { return await showCustomDialog({ title: '请确认', message: msg, type: 'confirm' }); };
 window.prompt = async (msg, def) => { return await showCustomDialog({ title: '请输入', message: msg, type: 'prompt', defaultValue: def }); };
 
-// ========== 登录/注册/激活界面 ==========
-function showLoginScreen() {
-  const overlay = document.createElement('div');
-  overlay.className = 'login-overlay';
-  overlay.id = 'loginOverlay';
-  overlay.innerHTML = `
-    <div class="login-box">
-      <h3>🔐 系统登录</h3>
-      <div id="loginMode">
-        <input type="text" id="loginUsername" placeholder="用户名">
-        <input type="password" id="loginPassword" placeholder="密码">
-        <button class="btn" id="loginBtn">登录</button>
-        <hr>
-        <button class="btn" id="adminLoginBtnSmall">管理员登录</button>
-        <div class="link" id="switchToRegister">注册新用户</div>
-        <div class="link" id="switchToActivate" style="margin-top:5px;">激活账号</div>
-      </div>
-      <div id="registerMode" style="display:none;">
-        <input type="text" id="regUsername" placeholder="用户名">
-        <input type="password" id="regPassword" placeholder="密码">
-        <button class="btn" id="registerBtn">注册</button>
-        <div class="link" id="switchToLogin">返回登录</div>
-      </div>
-      <div id="activateMode" style="display:none;">
-        <input type="text" id="actUsername" placeholder="用户名">
-        <input type="text" id="actCode" placeholder="激活码">
-        <button class="btn" id="activateBtn">激活</button>
-        <div class="link" id="switchToLoginFromActivate">返回登录</div>
-      </div>
+// ========== 注册弹窗 ==========
+function showRegisterModal() {
+  if (document.getElementById('registerWin')) return;
+  const win = document.createElement('div');
+  win.className = 'floating-window';
+  win.id = 'registerWin';
+  win.style.width = '380px';
+  win.style.left = '50%'; win.style.top = '50%';
+  win.style.transform = 'translate(-50%, -50%)';
+  win.innerHTML = `
+    <div class="modal-header">
+      <span>📝 注册新用户</span>
+      <button onclick="document.getElementById('registerWin').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="regUsernameInput" placeholder="用户名" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
+      <input type="password" id="regPasswordInput" placeholder="密码" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
+      <button id="confirmRegister" class="btn" style="width:100%;background:#28a745;color:#fff;">注册</button>
     </div>`;
-  document.body.appendChild(overlay);
+  document.body.appendChild(win);
+  makeWindowDraggable('registerWin');
 
-  document.getElementById('loginBtn').onclick = async () => {
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value.trim();
+  document.getElementById('confirmRegister').onclick = async () => {
+    const username = document.getElementById('regUsernameInput').value.trim();
+    const password = document.getElementById('regPasswordInput').value.trim();
+    if (!username || !password) return showToast('请填写完整信息');
+    try {
+      await fetchApi('/api/auth/register', { method:'POST', body: JSON.stringify({ username, password }) });
+      showToast('注册成功，请使用激活码激活');
+      win.remove();
+      // 注册成功后自动弹出激活窗口
+      showActivateModal(username);
+    } catch(e) { showToast(e.message); }
+  };
+}
+
+// ========== 激活弹窗 ==========
+function showActivateModal(username = '') {
+  if (document.getElementById('activateWin')) return;
+  const win = document.createElement('div');
+  win.className = 'floating-window';
+  win.id = 'activateWin';
+  win.style.width = '380px';
+  win.style.left = '50%'; win.style.top = '50%';
+  win.style.transform = 'translate(-50%, -50%)';
+  win.innerHTML = `
+    <div class="modal-header">
+      <span>🔑 激活账号</span>
+      <button onclick="document.getElementById('activateWin').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="actUsernameInput" placeholder="用户名" value="${username}" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
+      <input type="text" id="actCodeInput" placeholder="激活码" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
+      <button id="confirmActivate" class="btn" style="width:100%;background:#f39c12;color:#fff;">激活</button>
+    </div>`;
+  document.body.appendChild(win);
+  makeWindowDraggable('activateWin');
+
+  document.getElementById('confirmActivate').onclick = async () => {
+    const username = document.getElementById('actUsernameInput').value.trim();
+    const cardCode = document.getElementById('actCodeInput').value.trim();
+    if (!username || !cardCode) return showToast('请填写完整信息');
+    try {
+      await fetchApi('/api/auth/activate', { method:'POST', body: JSON.stringify({ username, cardCode }) });
+      showToast('激活成功，请登录');
+      win.remove();
+    } catch(e) { showToast(e.message); }
+  };
+}
+
+// ========== 登录弹窗（含记住密码） ==========
+function showLoginModal() {
+  if (document.getElementById('loginWin')) return;
+
+  // 尝试读取保存的账号密码
+  const saved = localStorage.getItem('savedCredentials');
+  let savedUsername = '', savedPassword = '', savedRemember = false;
+  if (saved) {
+    try {
+      const cred = JSON.parse(saved);
+      savedUsername = cred.username || '';
+      savedPassword = cred.password || '';
+      savedRemember = true;
+    } catch(e) {}
+  }
+
+  const win = document.createElement('div');
+  win.className = 'floating-window';
+  win.id = 'loginWin';
+  win.style.width = '380px';
+  win.style.left = '50%'; win.style.top = '50%';
+  win.style.transform = 'translate(-50%, -50%)';
+  win.innerHTML = `
+    <div class="modal-header">
+      <span>🔐 用户登录</span>
+      <button onclick="document.getElementById('loginWin').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" id="loginUsernameInput" placeholder="用户名" value="${savedUsername}" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
+      <input type="password" id="loginPasswordInput" placeholder="密码" value="${savedPassword}" style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:8px;">
+      <div style="display:flex;align-items:center;margin-bottom:15px;">
+        <input type="checkbox" id="rememberPwd" ${savedRemember ? 'checked' : ''} style="width:18px;height:18px;margin-right:8px;">
+        <label for="rememberPwd" style="font-size:14px;color:#555;">记住账号密码</label>
+      </div>
+      <button id="confirmLogin" class="btn" style="width:100%;background:#2ecc71;color:#fff;">登录</button>
+    </div>`;
+  document.body.appendChild(win);
+  makeWindowDraggable('loginWin');
+
+  document.getElementById('confirmLogin').onclick = async () => {
+    const username = document.getElementById('loginUsernameInput').value.trim();
+    const password = document.getElementById('loginPasswordInput').value.trim();
+    const remember = document.getElementById('rememberPwd').checked;
     if (!username || !password) return showToast('请输入用户名和密码');
     try {
       const data = await fetchApi('/api/auth/login', { method:'POST', body: JSON.stringify({ username, password }) });
       authToken = data.token;
       localStorage.setItem('authToken', authToken);
       currentUser = { username: data.username, role: data.role };
-      overlay.remove();
+      // 处理记住密码
+      if (remember) {
+        localStorage.setItem('savedCredentials', JSON.stringify({ username, password }));
+      } else {
+        localStorage.removeItem('savedCredentials');
+      }
+      win.remove();
+      // 隐藏欢迎页，显示主工作台
+      document.getElementById('welcomePage').style.display = 'none';
+      document.getElementById('mainContent').style.display = '';
       initMainSystem();
     } catch(e) {
       if (e.message === 'NEED_ACTIVATION') {
         showToast('账号未激活或已过期，请先激活');
+        win.remove();
+        showActivateModal(username);
       } else {
         showToast(e.message);
       }
     }
   };
+}
 
-  document.getElementById('adminLoginBtnSmall').onclick = () => {
-    const exist = document.getElementById('adminPwdArea');
-    if (exist) exist.remove();
-    const pwdDiv = document.createElement('div');
-    pwdDiv.id = 'adminPwdArea';
-    pwdDiv.innerHTML = `
-      <input type="password" id="adminPwdInput" placeholder="管理员密码" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-size:16px; margin-top:10px;">
-      <button id="confirmAdminPwd" class="btn" style="background:#2c3e50;color:#fff;margin-top:8px;">确认登录</button>
-    `;
-    document.getElementById('adminLoginBtnSmall').parentNode.insertBefore(pwdDiv, document.getElementById('adminLoginBtnSmall').nextSibling);
-    document.getElementById('confirmAdminPwd').onclick = async () => {
-      const password = document.getElementById('adminPwdInput').value.trim();
-      if (!password) { showToast('请输入管理员密码'); return; }
-      try {
-        const data = await fetchApi('/api/auth/admin', { method:'POST', body: JSON.stringify({ password }) });
-        authToken = data.token;
-        localStorage.setItem('authToken', authToken);
-        currentUser = { username: 'admin', role: 'admin' };
-        overlay.remove();
-        initMainSystem();
-      } catch(e) { showToast(e.message); }
-    };
-  };
+// ========== 管理员登录弹窗 ==========
+function showAdminLoginModal() {
+  if (document.getElementById('adminLoginWin')) return;
+  const win = document.createElement('div');
+  win.className = 'floating-window';
+  win.id = 'adminLoginWin';
+  win.style.width = '380px';
+  win.style.left = '50%'; win.style.top = '50%';
+  win.style.transform = 'translate(-50%, -50%)';
+  win.innerHTML = `
+    <div class="modal-header">
+      <span>👑 管理员登录</span>
+      <button onclick="document.getElementById('adminLoginWin').remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="password" id="adminPwdInput" placeholder="管理员密码" style="width:100%;padding:10px;margin-bottom:15px;border:1px solid #ccc;border-radius:8px;">
+      <button id="confirmAdminLogin" class="btn" style="width:100%;background:#e67e22;color:#fff;">确认登录</button>
+    </div>`;
+  document.body.appendChild(win);
+  makeWindowDraggable('adminLoginWin');
 
-  document.getElementById('registerBtn').onclick = async () => {
-    const username = document.getElementById('regUsername').value.trim();
-    const password = document.getElementById('regPassword').value.trim();
-    if (!username || !password) return showToast('请输入用户名和密码');
+  document.getElementById('confirmAdminLogin').onclick = async () => {
+    const password = document.getElementById('adminPwdInput').value.trim();
+    if (!password) return showToast('请输入管理员密码');
     try {
-      await fetchApi('/api/auth/register', { method:'POST', body: JSON.stringify({ username, password }) });
-      showToast('注册成功，请使用激活码激活');
-      document.getElementById('switchToActivate').click();
+      const data = await fetchApi('/api/auth/admin', { method:'POST', body: JSON.stringify({ password }) });
+      authToken = data.token;
+      localStorage.setItem('authToken', authToken);
+      currentUser = { username: 'admin', role: 'admin' };
+      win.remove();
+      // 隐藏欢迎页，显示主工作台
+      document.getElementById('welcomePage').style.display = 'none';
+      document.getElementById('mainContent').style.display = '';
+      initMainSystem();
     } catch(e) { showToast(e.message); }
-  };
-
-  document.getElementById('activateBtn').onclick = async () => {
-    const username = document.getElementById('actUsername').value.trim();
-    const cardCode = document.getElementById('actCode').value.trim();
-    if (!username || !cardCode) return showToast('请输入用户名和激活码');
-    try {
-      await fetchApi('/api/auth/activate', { method:'POST', body: JSON.stringify({ username, cardCode }) });
-      showToast('激活成功，请登录');
-      document.getElementById('switchToLoginFromActivate').click();
-    } catch(e) { showToast(e.message); }
-  };
-
-  document.getElementById('switchToRegister').onclick = () => {
-    document.getElementById('loginMode').style.display = 'none';
-    document.getElementById('registerMode').style.display = 'block';
-    document.getElementById('activateMode').style.display = 'none';
-  };
-  document.getElementById('switchToLogin').onclick = () => {
-    document.getElementById('loginMode').style.display = 'block';
-    document.getElementById('registerMode').style.display = 'none';
-    document.getElementById('activateMode').style.display = 'none';
-  };
-  document.getElementById('switchToActivate').onclick = () => {
-    document.getElementById('loginMode').style.display = 'none';
-    document.getElementById('registerMode').style.display = 'none';
-    document.getElementById('activateMode').style.display = 'block';
-  };
-  document.getElementById('switchToLoginFromActivate').onclick = () => {
-    document.getElementById('loginMode').style.display = 'block';
-    document.getElementById('registerMode').style.display = 'none';
-    document.getElementById('activateMode').style.display = 'none';
   };
 }
 
+// ========== 系统初始化 ==========
 function logout() {
   authToken = null;
   localStorage.removeItem('authToken');
@@ -888,13 +1002,15 @@ function logout() {
 }
 
 function initMainSystem() {
-  document.getElementById('mainContent').style.display = '';
   if (currentUser.role === 'admin') document.getElementById('cardMgrBtn').style.display = '';
   document.getElementById('storageInfo').style.display = '';
-  if (window._originalInit) window._originalInit();
+
+  fetchApi('/api/config')
+    .then(() => { if (window._originalInit) window._originalInit(); })
+    .catch(e => { showToast('加载配置失败，部分功能可能不可用'); if (window._originalInit) window._originalInit(); });
 }
 
-// ========== 卡密管理（管理员调用后端生成激活码） ==========
+// ========== 卡密管理 ==========
 async function showCardManager() {
   if (!currentUser || currentUser.role !== 'admin') { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
@@ -948,7 +1064,7 @@ async function showCardManager() {
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 识别函数（完全依赖后端，不再使用本地兜底） ==========
+// ========== 识别函数（完全依赖后端） ==========
 async function convertOrderText() {
   const inputEl = document.querySelector('.source-order-input');
   if (!inputEl) return;
@@ -964,12 +1080,12 @@ async function convertOrderText() {
     resultEl.value = data.result;
     updateOrderTotalDisplay();
   } catch (e) {
-    showToast('识别失败，请检查网络或稍后重试');
+    showToast('识别失败：' + e.message);
   }
 }
 
-// ========== 原版全部代码（保留所有功能） ==========
-// ===== 卡密认证（原版本地验证保留备用，现由后端接管） =====
+// ========== 原版全部代码 ==========
+// 卡密认证（原版本地验证保留备用）
 const ADMIN_PASSWORD = "150408"; const CARD_KEYS_STORE = 'cardKeys'; const SESSION_KEY = 'authSession'; const CARD_SECRET = "XK9mP2wQ7vL5";
 function getCardKeys() { try { return JSON.parse(localStorage.getItem(CARD_KEYS_STORE) || '[]'); } catch (e) { return []; } }
 function saveCardKeys(keys) { localStorage.setItem(CARD_KEYS_STORE, JSON.stringify(keys)); }
@@ -982,7 +1098,7 @@ function checkCardAccess(code) { return verifySelfVerifyingCard(code); }
 function isAdmin() { return currentUser && currentUser.role === 'admin'; }
 function checkCurrentAccess() { return !!authToken; }
 
-// ===== 订单变量与基础函数 =====
+// 订单变量与基础函数
 let tableBetData = {}, userBetData = {}, reportBetData = {}, reportAmountData = {};
 let numberCount = {}, zodiacCount = {}, numberAmountCount = {}, zodiacAmountCount = {};
 let numberOrderTotal = 0, zodiacWeightedTotal = 0;
@@ -1022,7 +1138,7 @@ function rebuildTotal() { tableBetData = {}; for (const u in userBetData) for (c
 function refreshAll() { updateSelects(); updateTableFromRecords(); }
 function updateSelects() { const users = getUsers(); const orderSel = document.getElementById('orderUserSelect'); if (orderSel) { orderSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; orderSel.appendChild(o); }); } const viewSel = document.getElementById('viewUserSelect'); if (viewSel) { viewSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; viewSel.appendChild(o); }); } }
 
-// ===== 快捷添加与分词 =====
+// 快捷添加与分词
 function quickAddWithAmount(text, button) { const input = document.querySelector('.source-order-input'); if (!input) return; const lines = input.value.trim().split('\n').filter(l=>l.trim()); const idx = lines.findIndex(l=> l.includes(text) && (l.includes('各数')||l.includes('各号'))); if (idx !== -1) { lines.splice(idx,1); button.classList.remove('active'); } else { lines.push(`${text} 各数`); button.classList.add('active'); } input.value = lines.join('\n'); convertOrderText(); }
 function getReplacePresets() { try { return JSON.parse(localStorage.getItem('replacePresets') || '[]'); } catch (e) { return []; } }
 function getCategoryAliases() { try { return JSON.parse(localStorage.getItem('categoryAliases') || '[]'); } catch (e) { return []; } }
@@ -1035,7 +1151,7 @@ function saveCustomAmountPrefixes(list) { localStorage.setItem('customAmountPref
 function removeSeparators() { const ta = document.querySelector('.source-order-input'); if(!ta) return; const s=ta.selectionStart,e=ta.selectionEnd; if(s===e){showToast('请先选择文本');return;} const sel=ta.value.substring(s,e); const cleaned=sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g,''); ta.value=ta.value.substring(0,s)+cleaned+ta.value.substring(e); convertOrderText(); }
 function replaceSeparators() { const ta=document.querySelector('.source-order-input'); if(!ta) return; const s=ta.selectionStart,e=ta.selectionEnd; if(s===e){showToast('请先选择文本');return;} const sel=ta.value.substring(s,e); const replaced=sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g,'-'); ta.value=ta.value.substring(0,s)+replaced+ta.value.substring(e); convertOrderText(); }
 
-// ===== 各类管理弹窗（前缀、金额前缀、金额后缀、分类缩写、替换预设） =====
+// 各类管理弹窗
 function showPrefixManager() { if(document.getElementById('prefixWin'))return; const prefixes=getCustomPrefixes(); const w=document.createElement('div'); w.className='floating-window'; w.id='prefixWin'; w.style.width='500px'; w.style.height='400px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>前缀管理</h3><div class="window-controls"><button onclick="maximizeWindow('prefixWin')">🗖</button><button onclick="pinWindow('prefixWin')">📌</button><button onclick="document.getElementById('prefixWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newPrefix" placeholder="新增行首忽略词" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addPrefix()" style="padding:6px 12px;background:#3498db;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="prefixList"></div></div><div class="modal-footer"><button onclick="document.getElementById('prefixWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderPrefixList(); makeWindowDraggable('prefixWin'); highestZ+=1; w.style.zIndex=highestZ; }
 function renderPrefixList(){ const p=getCustomPrefixes(); const c=document.getElementById('prefixList'); if(!c)return; c.innerHTML=p.length===0?'<div style="text-align:center;color:#666;padding:10px;">暂无自定义前缀</div>':p.map((x,i)=>`<div class="replace-preset-item"><span>${x}</span><button onclick="deletePrefix(${i})" style="margin-left:auto;padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;">删除</button></div>`).join(''); }
 async function addPrefix(){ const v=document.getElementById('newPrefix')?.value.trim(); if(!v){showToast('请输入前缀');return;} const p=getCustomPrefixes(); if(p.includes(v)){showToast('已存在');return;} p.push(v); localStorage.setItem('customPrefixes',JSON.stringify(p)); document.getElementById('newPrefix').value=''; renderPrefixList(); }
@@ -1061,11 +1177,11 @@ function renderPresetList(){ const p=getReplacePresets(); const c=document.getEl
 async function addReplacePreset(){ const o=document.getElementById('presetOld')?.value.trim(); const n=document.getElementById('presetNew')?.value.trim(); if(!o||!n){showToast('请输入原文字和替换文字');return;} const p=getReplacePresets(); if(p.some(x=>x.old===o)){showToast('已存在');return;} p.push({old:o,new:n}); localStorage.setItem('replacePresets',JSON.stringify(p)); document.getElementById('presetOld').value=''; document.getElementById('presetNew').value=''; renderPresetList(); }
 async function deleteReplacePreset(i){ if(!(await confirm('确定删除？')))return; const p=getReplacePresets(); p.splice(i,1); localStorage.setItem('replacePresets',JSON.stringify(p)); renderPresetList(); }
 
-// ===== 辅助函数 =====
+// 辅助函数
 function applyCategoryAliases(text) { const a=getCategoryAliases(); if(!a.length)return text; const s=[...a].sort((x,y)=>y.alias.length-x.alias.length); let r=text; s.forEach(x=>{ if(x.alias&&x.target)r=r.split(x.alias).join(x.target); }); return r; }
 function applyReplacePresets(text) { const p=getReplacePresets(); let r=text; p.forEach(x=>{ if(x.old&&x.new)r=r.split(x.old).join(x.new); }); return r; }
 
-// ===== 语义转换 =====
+// 语义转换
 async function semanticReplace() { const ta=document.querySelector('.source-order-input'); if(!ta)return; const s=ta.selectionStart,e=ta.selectionEnd; if(s===e){showToast('请先选择文本');return;} const sel=ta.value.substring(s,e); const cfg=getAllConfigData(); const vc=getAllValidCategories(cfg); const tokens=sel.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t=>t.trim()); const matched=tokens.filter(t=>vc.has(t)); if(!matched.length){showToast('未识别有效分类');return;} let sets=matched.map(cat=>{ let nums=[]; if(cfg.shengxiaoAttr[cat]){ cfg.shengxiaoAttr[cat].forEach(z=>{ if(cfg.zodiac[z])nums.push(...cfg.zodiac[z].map(n=>n.toString().padStart(2,'0'))); }); } const dir=cfg.wuxing[cat]||cfg.bose[cat]||cfg.banbo[cat]||cfg.danshuang[cat]||cfg.weishu[cat]||cfg.daxiaodanshuang[cat]||cfg.daxiao[cat]||cfg.heshu[cat]||cfg.toushu[cat]||cfg.menshu[cat]||cfg.duanwei[cat]||cfg.hedahexiao[cat]||cfg.weidaweixiao[cat]||cfg.hewei[cat]||cfg.heshudanshuang[cat]||cfg.toushuDanshuang[cat]; if(dir)nums.push(...dir.map(n=>n.toString().padStart(2,'0'))); if(cfg.zodiac[cat])nums.push(...cfg.zodiac[cat].map(n=>n.toString().padStart(2,'0'))); return new Set(nums); }); let inter=sets[0]; for(let i=1;i<sets.length;i++)inter=new Set([...inter].filter(x=>sets[i].has(x))); const res=[...inter].sort((a,b)=>parseInt(a)-parseInt(b)); if(!res.length){showToast('无共同号码');return;} const str=res.join('-'); const cf=await confirm(`转换结果：${str}\n是否替换选中文本？`); if(cf){ta.value=ta.value.substring(0,s)+str+ta.value.substring(e);convertOrderText();} }
 
 function tokenizeAndJoin(content) {
@@ -1076,28 +1192,18 @@ function tokenizeAndJoin(content) {
   tokens.forEach(t => {
     const tm = t.match(/^(\d{2,})尾$/);
     const hm = t.match(/^(\d{2,})头$/);
-    if (tm) {
-      const ds = tm[1].split('').map(d => d + '尾');
-      res.push(...ds);
-    } else if (hm) {
-      const ds = hm[1].split('').map(d => d + '头');
-      res.push(...ds);
-    } else if (/^\d{1,2}$/.test(t)) {
-      const n = parseInt(t);
-      if (n >= 1 && n <= 49) res.push(t.length === 1 ? '0' + t : t);
-    } else if (vc.has(t)) {
-      res.push(t);
-    } else if (/^[\u4e00-\u9fa5]+$/.test(t)) {
-      const cs = t.match(/[\u4e00-\u9fa5]/g) || [];
-      if (cs.every(c => vc.has(c))) res.push(...cs);
-    }
+    if (tm) { const ds = tm[1].split('').map(d => d + '尾'); res.push(...ds); }
+    else if (hm) { const ds = hm[1].split('').map(d => d + '头'); res.push(...ds); }
+    else if (/^\d{1,2}$/.test(t)) { const n = parseInt(t); if (n >= 1 && n <= 49) res.push(t.length === 1 ? '0' + t : t); }
+    else if (vc.has(t)) { res.push(t); }
+    else if (/^[\u4e00-\u9fa5]+$/.test(t)) { const cs = t.match(/[\u4e00-\u9fa5]/g) || []; if (cs.every(c => vc.has(c))) res.push(...cs); }
   });
   return res.join('-');
 }
 
 function getAllValidCategories(cfg) { const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); return s; }
 
-// ===== 保存订单（保留本地存储） =====
+// 保存订单（保留本地存储）
 async function saveOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} let input=document.getElementById('orderResult')?.value.trim()||document.querySelector('.source-order-input')?.value.trim(); if(!input)return; const vl=input.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('orderDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,true,date); const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.value=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); }
 async function saveReportOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} let input=document.getElementById('orderResult')?.value.trim()||document.querySelector('.source-order-input')?.value.trim(); if(!input)return; const vl=input.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('orderDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveReportOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,false,date); const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.value=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); }
 function countItemsInLine(line,cfg,keys){ const m=line.match(/([\u4e00-\u9fa5\d\-]+)\s+各数\s+(\d+)/); if(!m)return{numbers:[],zodiacs:[],amount:0}; let cont=m[1]; const amt=parseInt(m[2])||0; const items=cont.split('-').map(i=>i.trim()).filter(i=>i); const nums=[],zods=[]; items.forEach(item=>{ if(/^\d+$/.test(item))nums.push(item.padStart(2,'0')); else if(cfg.shengxiaoAttr[item]){ const zs=cfg.shengxiaoAttr[item]||[]; zs.forEach(z=>zods.push(z)); } else if(cfg.zodiac[item])zods.push(item); else if(cfg.toushuDanshuang&&cfg.toushuDanshuang[item]){ (cfg.toushuDanshuang[item]||[]).forEach(n=>nums.push(n.padStart(2,'0'))); } else { const nl=cfg.wuxing[item]||cfg.bose[item]||cfg.banbo[item]||cfg.danshuang[item]||cfg.weishu[item]||cfg.daxiaodanshuang[item]||cfg.daxiao[item]||cfg.heshu[item]||cfg.toushu[item]||cfg.menshu[item]||cfg.duanwei[item]||cfg.hedahexiao[item]||cfg.weidaweixiao[item]||cfg.hewei[item]||cfg.heshudanshuang[item]||cfg.toushuDanshuang[item]; if(nl)nl.forEach(n=>nums.push(n.padStart(2,'0'))); } }); return{numbers:nums,zodiacs:zods,amount:amt}; }
@@ -1110,7 +1216,7 @@ function computeCurrentOrderTotal(){ const re=document.getElementById('orderResu
 function updateAmountDisplays(){ const nb=document.getElementById('numberTotalBox'); const zb=document.getElementById('zodiacTotalBox'); if(numberOrderTotal>0){document.getElementById('numberTotalAmount').textContent=numberOrderTotal;nb.style.display='inline-flex';}else{nb.style.display='none';} if(zodiacWeightedTotal>0){document.getElementById('zodiacTotalAmount').textContent=zodiacWeightedTotal;zb.style.display='inline-flex';}else{zb.style.display='none';} }
 function updateReportAmountTotal(){ const box=document.getElementById('reportAmountTotalBox'); const span=document.getElementById('reportAmountTotalValue'); let total=0; for(let n in reportAmountData)total+=reportAmountData[n]||0; if(total>0){span.textContent=total;box.style.display='inline-flex';}else{box.style.display='none';} }
 
-// ===== 表格占位渲染 =====
+// 表格占位渲染
 function renderAllTablesPlaceholder() {
   const tbody = document.getElementById('tableBody');
   if (tbody) {
@@ -1190,7 +1296,7 @@ function renderReportAmountTable(){ const tbl=document.getElementById('reportAmo
 function renderFrequencyCards(){ const nt=document.getElementById('numberFreqTable'); if(!nt)return; nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const cnt=numberCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; nt.innerHTML=th+tb; const zt=document.getElementById('zodiacFreqTable'); if(!zt)return; zt.innerHTML=''; const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪']; const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>'; for(let r=0;r<6;r++){ const l=lz[r],r2=rz[r]; const lc=zodiacCount[l]||0,rc=zodiacCount[r2]||0; ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`; } ztb+='</tbody>'; zt.innerHTML=zth+ztb; }
 function renderAmountFrequencyCards(){ const nt=document.getElementById('numberAmountFreqTable'); if(!nt)return; nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; nt.innerHTML=th+tb; const zt=document.getElementById('zodiacAmountFreqTable'); if(!zt)return; zt.innerHTML=''; const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪']; const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>'; for(let r=0;r<6;r++){ const l=lz[r],r2=rz[r]; const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0; ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`; } ztb+='</tbody>'; zt.innerHTML=zth+ztb; }
 
-// ===== 对奖相关 =====
+// 对奖相关
 function getNumberListForCategory(cat,cfg){ const nums=[]; if(cfg.shengxiaoAttr[cat]){ cfg.shengxiaoAttr[cat].forEach(z=>{if(cfg.zodiac[z])nums.push(...cfg.zodiac[z].map(n=>n.toString().padStart(2,'0')));}); } const dir=cfg.wuxing[cat]||cfg.bose[cat]||cfg.banbo[cat]||cfg.danshuang[cat]||cfg.weishu[cat]||cfg.daxiaodanshuang[cat]||cfg.daxiao[cat]||cfg.heshu[cat]||cfg.toushu[cat]||cfg.menshu[cat]||cfg.duanwei[cat]||cfg.hedahexiao[cat]||cfg.weidaweixiao[cat]||cfg.hewei[cat]||cfg.heshudanshuang[cat]||cfg.toushuDanshuang[cat]; if(dir)nums.push(...dir.map(n=>n.toString().padStart(2,'0'))); if(cfg.zodiac[cat])nums.push(...cfg.zodiac[cat].map(n=>n.toString().padStart(2,'0'))); return [...new Set(nums)]; }
 function isTokenMatching(token,targetNum,cfg){ const t=targetNum.padStart(2,'0'); if(/^\d{1,2}$/.test(token))return token.padStart(2,'0')===t; const vc=getAllValidCategories(cfg); if(vc.has(token)){const nums=getNumberListForCategory(token,cfg);return nums.includes(t);} return false; }
 function highlightContent(content,targetNum,cfg){ if(!targetNum)return content; const t=targetNum.padStart(2,'0'); const parts=[];let tmp=''; for(const ch of content){if(ch==='-'||ch===' '){if(tmp)parts.push(tmp);parts.push(ch);tmp='';}else{tmp+=ch;}} if(tmp)parts.push(tmp); return parts.map(p=>{if(p==='-'||p===' ')return p;if(isTokenMatching(p,targetNum,cfg))return`<span class="highlight-number">${p}</span>`;return p;}).join(''); }
@@ -1293,16 +1399,16 @@ async function deleteCheckedReport(){
   await showReportOrderRecord(userFilter);
 }
 
-// ===== 清空、粘贴、切换 =====
+// 清空、粘贴、切换
 async function resetTable(){ if((await prompt("输入清空密码：",""))!==PASSWORD){await alert("密码错误");return;} tableBetData={};userBetData={};reportBetData={};reportAmountData={};numberCount={};zodiacCount={};numberAmountCount={};zodiacAmountCount={};numberOrderTotal=0;zodiacWeightedTotal=0; await clearAllOrderRecordsFromIDB(); await clearAllReportOrderRecordsFromIDB(); localStorage.removeItem('customDataConfigObj'); location.reload(); }
 function clearAllInput(){ const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.value=''; updateOrderTotalDisplay(); }
 async function pasteOrder(){ try{ const text=await navigator.clipboard.readText(); if(text){const si=document.querySelector('.source-order-input');if(si){si.value=text;convertOrderText();}} }catch(err){showToast('无法访问剪贴板');} }
 
-// ===== 导出导入 =====
+// 导出导入
 async function exportData(){ try{ const orders=await getOrderRecords(); const reports=await getReportOrderRecords(); const config=localStorage.getItem('customDataConfigObj'); const presets=localStorage.getItem('replacePresets'); const aliases=localStorage.getItem('categoryAliases'); const prefixes=localStorage.getItem('customPrefixes'); const suffixes=localStorage.getItem('customSuffixes'); const amountSuffixes=localStorage.getItem('customAmountSuffixes'); const amountPrefixes=localStorage.getItem('customAmountPrefixes'); const data={orders,reports,config,presets,aliases,prefixes,suffixes,amountSuffixes,amountPrefixes,exportTime:new Date().toISOString()}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`港澳识别数据_${getTodayCST()}.json`; a.click(); URL.revokeObjectURL(url); }catch(e){showToast('导出失败');} }
 async function importData(){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.json'; inp.style.display='none'; document.body.appendChild(inp); inp.onchange=async(e)=>{ const file=e.target.files[0]; if(!file){document.body.removeChild(inp);return;} const reader=new FileReader(); reader.onload=async(ev)=>{ try{ const data=JSON.parse(ev.target.result); if(!data.orders||!data.reports){showToast('无效格式');document.body.removeChild(inp);return;} const eo=await getOrderRecords(); const er=await getReportOrderRecords(); let so=0,no=0; for(const r of data.orders){if(eo.find(o=>o.timestamp===r.timestamp&&o.content===r.content&&o.user===r.user))so++;else no++;} let sr=0,nr=0; for(const r of data.reports){if(er.find(o=>o.timestamp===r.timestamp&&o.content===r.content&&o.user===r.user))sr++;else nr++;} const tn=no+nr; if(tn===0){showToast(`没有新记录。\n当前已有下单${eo.length}条，上报${er.length}条。`);document.body.removeChild(inp);return;} const msg=`当前已有：\n下单${eo.length}条\n上报${er.length}条\n\n导入文件：\n下单${data.orders.length}条（重复${so}，新增${no}）\n上报${data.reports.length}条（重复${sr}，新增${nr}）\n\n是否导入新增${tn}条？`; const cf=await confirm(msg); if(!cf){document.body.removeChild(inp);return;} for(const r of data.orders){if(!eo.find(o=>o.timestamp===r.timestamp&&o.content===r.content&&o.user===r.user))await saveOrderRecordToIDB(r.content,r.user,r.date,r.totalAmount||0);} for(const r of data.reports){if(!er.find(o=>o.timestamp===r.timestamp&&o.content===r.content&&o.user===r.user))await saveReportOrderRecordToIDB(r.content,r.user,r.date,r.totalAmount||0);} if(data.config)localStorage.setItem('customDataConfigObj',data.config); if(data.presets)localStorage.setItem('replacePresets',data.presets); if(data.aliases)localStorage.setItem('categoryAliases',data.aliases); if(data.prefixes)localStorage.setItem('customPrefixes',data.prefixes); if(data.suffixes)localStorage.setItem('customSuffixes',data.suffixes); if(data.amountSuffixes)localStorage.setItem('customAmountSuffixes',data.amountSuffixes); if(data.amountPrefixes)localStorage.setItem('customAmountPrefixes',data.amountPrefixes); await updateTableFromRecords(); calculateStorageUsage(); showToast(`成功导入${tn}条新记录。`); document.body.removeChild(inp); }catch(err){showToast('导入失败');document.body.removeChild(inp);} }; reader.onerror=()=>{showToast('读取失败');document.body.removeChild(inp);}; reader.readAsText(file); }; inp.addEventListener('cancel',()=>{document.body.removeChild(inp);}); inp.click(); }
 
-// ===== 用户管理 =====
+// 用户管理
 function showUserManager() {
   if (document.getElementById('userManagerWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'userManagerWin';
@@ -1330,7 +1436,7 @@ function renderUserList() {
 async function addUserAction() { const name = document.getElementById('newUserName')?.value.trim(); if (!name) { showToast('请输入用户名'); return; } if (addUser(name)) { document.getElementById('newUserName').value = ''; renderUserList(); updateSelects(); showToast('用户添加成功'); } }
 async function deleteUserAction(name) { if (!(await confirm(`确定删除用户"${name}"及其数据吗？`))) return; deleteUser(name); renderUserList(); updateSelects(); showToast('用户已删除'); }
 
-// ===== 浮动窗口控制 =====
+// 浮动窗口控制
 let highestZ = 2000;
 function makeWindowDraggable(winId) { const win = document.getElementById(winId); if (!win) return; const header = win.querySelector('.modal-header') || win.querySelector('.database-modal-header'); if (!header) return; let isDragging = false, startX, startY, startLeft, startTop; header.addEventListener('mousedown', (e) => { if (e.target.closest('.window-controls')) return; isDragging = true; const rect = win.getBoundingClientRect(); startX = e.clientX; startY = e.clientY; startLeft = rect.left; startTop = rect.top; win.style.cursor = 'grabbing'; e.preventDefault(); }); document.addEventListener('mousemove', (e) => { if (!isDragging) return; const dx = e.clientX - startX; const dy = e.clientY - startY; win.style.left = (startLeft + dx) + 'px'; win.style.top = (startTop + dy) + 'px'; win.style.transform = 'none'; }); document.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; win.style.cursor = ''; } }); win.addEventListener('mousedown', () => { highestZ += 1; win.style.zIndex = highestZ; }); }
 
@@ -1376,11 +1482,11 @@ function maximizeWindow(winId) {
 
 function pinWindow(winId) { const win = document.getElementById(winId); if (!win) return; highestZ += 1; win.style.zIndex = highestZ; showToast('窗口已置顶'); }
 
-// ===== 数据库弹窗显示/隐藏 =====
+// 数据库弹窗显示/隐藏
 async function showDatabase() { const pwd = await prompt("请输入数据库密码：",""); if (pwd === PASSWORD) { const modal = document.getElementById('databaseModal'); if (!modal) return; modal.style.display = 'flex'; highestZ += 1; modal.style.zIndex = highestZ; renderCustomConfigContainer(); makeWindowDraggable('databaseModalBox'); } else { await alert("密码错误"); } }
 function hideDatabase() { const modal = document.getElementById('databaseModal'); if (modal) modal.style.display = 'none'; }
 
-// ===== 识别弹窗 =====
+// 识别弹窗
 function showRecognizeModal() {
   if (document.getElementById('recognizeWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recognizeWin';
@@ -1414,7 +1520,7 @@ function showRecognizeModal() {
   makeWindowDraggable('recognizeWin'); highestZ += 1; win.style.zIndex = highestZ;
 }
 
-// ===== 数据库配置读写 =====
+// 数据库配置读写
 function getAllConfigData() {
   const configData = {
     zodiac:{}, shengxiaoAttr:{}, wuxing:{}, bose:{}, banbo:{}, danshuang:{}, weishu:{},
@@ -1509,7 +1615,7 @@ async function resetDataConfig() {
   location.reload();
 }
 
-// ===== 自定义分类管理 =====
+// 自定义分类管理
 function loadCustomCategories() { try { return JSON.parse(localStorage.getItem('customConfigCategories') || '[]'); } catch(e) { return []; } }
 function saveCustomCategories(cats) { localStorage.setItem('customConfigCategories', JSON.stringify(cats)); }
 
@@ -1559,7 +1665,7 @@ function deleteCustomCategoryByIndex(index) {
   renderCustomConfigContainer();
 }
 
-// ===== 事件绑定 =====
+// 事件绑定
 document.getElementById('rebateRate')?.addEventListener('input', generateRiskTable);
 document.getElementById('multipleVal')?.addEventListener('input', generateRiskTable);
 document.getElementById('reportRebateRate')?.addEventListener('input', generateReportTable);
@@ -1589,15 +1695,21 @@ window._originalInit = async () => {
 };
 
 window.onload = async () => {
-  if (!authToken) {
-    showLoginScreen();
-  } else {
+  if (authToken) {
     try {
       await fetchApi('/api/config');
+      // 验证通过，隐藏欢迎页，显示主工作台
+      document.getElementById('welcomePage').style.display = 'none';
+      document.getElementById('mainContent').style.display = '';
       initMainSystem();
     } catch(e) {
-      showLoginScreen();
+      // token 无效，显示欢迎页
+      document.getElementById('welcomePage').style.display = '';
+      document.getElementById('mainContent').style.display = 'none';
     }
+  } else {
+    document.getElementById('welcomePage').style.display = '';
+    document.getElementById('mainContent').style.display = 'none';
   }
 };
 </script>
