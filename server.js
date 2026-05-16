@@ -64,6 +64,10 @@ db.exec(`
   );
 `);
 
+// 为已有表添加 orderer 字段（如果不存在）
+try { db.exec('ALTER TABLE orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
+try { db.exec('ALTER TABLE report_orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
@@ -417,7 +421,7 @@ app.post('/api/cards/:id/disable', authenticateToken, requireAdmin, (req, res) =
   res.json({ success: true });
 });
 
-// ========== 订单 API ==========
+// ========== 订单 API（增加 orderer 字段） ==========
 app.get('/api/orders', authenticateToken, (req, res) => {
   const { date } = req.query;
   let rows;
@@ -430,11 +434,11 @@ app.get('/api/orders', authenticateToken, (req, res) => {
 });
 
 app.post('/api/orders', authenticateToken, (req, res) => {
-  const { content, date, totalAmount } = req.body;
+  const { content, orderer, date, totalAmount } = req.body;
   const user = req.user.username;
   const timestamp = new Date().toISOString();
-  const stmt = db.prepare('INSERT INTO orders (content, user, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?)');
-  const result = stmt.run(content, user, date, totalAmount || 0, timestamp);
+  const stmt = db.prepare('INSERT INTO orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)');
+  const result = stmt.run(content, user, orderer || '', date, totalAmount || 0, timestamp);
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
@@ -478,11 +482,11 @@ app.get('/api/report-orders', authenticateToken, (req, res) => {
 });
 
 app.post('/api/report-orders', authenticateToken, (req, res) => {
-  const { content, date, totalAmount } = req.body;
+  const { content, orderer, date, totalAmount } = req.body;
   const user = req.user.username;
   const timestamp = new Date().toISOString();
-  const stmt = db.prepare('INSERT INTO report_orders (content, user, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?)');
-  const result = stmt.run(content, user, date, totalAmount || 0, timestamp);
+  const stmt = db.prepare('INSERT INTO report_orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)');
+  const result = stmt.run(content, user, orderer || '', date, totalAmount || 0, timestamp);
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
@@ -758,7 +762,7 @@ app.post('/api/frequency', authenticateToken, (req, res) => {
   }
 });
 
-// ========== 对奖高亮接口 ==========
+// ========== 对奖高亮接口（兼容带/不带 各数） ==========
 app.post('/api/highlight', authenticateToken, (req, res) => {
   try {
     const { content, targetNum, config: customConfig } = req.body;
@@ -766,15 +770,11 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
 
     const config = mergeConfig(customConfig || {});
     const t = targetNum.toString().padStart(2, '0');
-    const lines = content.split('\n');
-    const highlightedLines = lines.map(line => {
-      const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-      if (!m) return line;
-      const cont = m[1];
-      const amt = m[2];
+
+    function highlightParts(contStr) {
       const parts = [];
       let tmp = '';
-      for (const ch of cont) {
+      for (const ch of contStr) {
         if (ch === '-' || ch === ' ') {
           if (tmp) parts.push(tmp);
           parts.push(ch);
@@ -785,7 +785,7 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
       }
       if (tmp) parts.push(tmp);
 
-      const highlightedParts = parts.map(p => {
+      return parts.map(p => {
         if (p === '-' || p === ' ') return p;
         let isMatch = false;
         if (/^\d{1,2}$/.test(p)) {
@@ -795,8 +795,20 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
           isMatch = nums.includes(t);
         }
         return isMatch ? `<span class="highlight-number">${p}</span>` : p;
-      });
-      return highlightedParts.join('') + ` 各数 ${amt}`;
+      }).join('');
+    }
+
+    const lines = content.split('\n');
+    const highlightedLines = lines.map(line => {
+      const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
+      if (m) {
+        const cont = m[1];
+        const amt = m[2];
+        return highlightParts(cont) + ` 各数 ${amt}`;
+      } else {
+        // 没有各数，直接对整行做高亮（用于前端逐行发送 cont 的场景）
+        return highlightParts(line);
+      }
     });
     res.json({ highlighted: highlightedLines.join('\n') });
   } catch (e) {
@@ -855,18 +867,18 @@ app.post('/api/import', authenticateToken, (req, res) => {
   const { orders, reportOrders, config } = req.body;
   if (!orders && !reportOrders) return res.status(400).json({ error: '无有效数据' });
 
-  const insertOrder = db.prepare('INSERT OR IGNORE INTO orders (content, user, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?)');
-  const insertReport = db.prepare('INSERT OR IGNORE INTO report_orders (content, user, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?)');
+  const insertOrder = db.prepare('INSERT OR IGNORE INTO orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)');
+  const insertReport = db.prepare('INSERT OR IGNORE INTO report_orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)');
 
   const transaction = db.transaction(() => {
     if (orders && orders.length) {
       orders.forEach(o => {
-        insertOrder.run(o.content, o.user || req.user.username, o.date, o.totalAmount || 0, o.timestamp);
+        insertOrder.run(o.content, o.user || req.user.username, o.orderer || '', o.date, o.totalAmount || 0, o.timestamp);
       });
     }
     if (reportOrders && reportOrders.length) {
       reportOrders.forEach(o => {
-        insertReport.run(o.content, o.user || req.user.username, o.date, o.totalAmount || 0, o.timestamp);
+        insertReport.run(o.content, o.user || req.user.username, o.orderer || '', o.date, o.totalAmount || 0, o.timestamp);
       });
     }
     if (config) {
