@@ -789,27 +789,18 @@ let authToken = localStorage.getItem('authToken') || null;
 let currentUser = null;
 
 async function fetchApi(url, options = {}) {
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {})
-  };
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   const res = await fetch(API_BASE + url, { ...options, headers });
-
   if (res.status === 401 || res.status === 403) {
     const data = await res.json().catch(() => ({}));
-    if (data.needActivation) {
-      throw new Error('NEED_ACTIVATION');
-    }
-    authToken = null;
-    localStorage.removeItem('authToken');
-    currentUser = null;
+    if (data.needActivation) throw new Error('NEED_ACTIVATION');
+    authToken = null; localStorage.removeItem('authToken'); currentUser = null;
     const overlay = document.getElementById('loginOverlay');
     if (overlay) overlay.style.display = '';
     document.getElementById('mainContent').style.display = 'none';
     throw new Error(data.error || '未登录');
   }
-
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: '网络错误' }));
     throw new Error(error.error || '网络错误');
@@ -818,11 +809,8 @@ async function fetchApi(url, options = {}) {
 }
 
 function showToast(msg) {
-  const toast = document.createElement('div');
-  toast.className = 'toast-message';
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add('show'));
+  const toast = document.createElement('div'); toast.className = 'toast-message'; toast.textContent = msg;
+  document.body.appendChild(toast); requestAnimationFrame(() => toast.classList.add('show'));
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2000);
 }
 
@@ -832,7 +820,7 @@ function showCustomDialog({ title = '提示', message = '', type = 'alert', defa
     const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay';
     overlay.innerHTML = `<div class="custom-dialog-box"><div class="custom-dialog-title">${title}</div><div class="custom-dialog-message">${message}</div>${type==='prompt'?`<input class="custom-dialog-input" type="text" value="${defaultValue}" placeholder="${placeholder}" id="custom-dialog-input">`:''}<div class="custom-dialog-buttons">${type==='confirm'||type==='prompt'?'<button class="custom-dialog-btn cancel" id="custom-dialog-cancel">取消</button>':''}<button class="custom-dialog-btn confirm" id="custom-dialog-confirm">确定</button></div></div>`;
     document.body.appendChild(overlay);
-    const confirmBtn = overlay.querySelector('#custom-dialog-confirm'); const cancelBtn = overlay.querySelector('#custom-dialog-cancel'); const inputEl = overlay.querySelector('#custom-dialog-input');
+    const confirmBtn = overlay.querySelector('#custom-dialog-confirm'), cancelBtn = overlay.querySelector('#custom-dialog-cancel'), inputEl = overlay.querySelector('#custom-dialog-input');
     const close = (result) => { document.body.removeChild(overlay); resolve(result); };
     confirmBtn.onclick = () => { if (type === 'prompt') close(inputEl.value); else if (type === 'confirm') close(true); else close(undefined); };
     if (cancelBtn) cancelBtn.onclick = () => { if (type === 'confirm') close(false); else if (type === 'prompt') close(null); else close(undefined); };
@@ -843,25 +831,18 @@ window.alert = async (msg) => { await showCustomDialog({ title: '提示', messag
 window.confirm = async (msg) => { return await showCustomDialog({ title: '请确认', message: msg, type: 'confirm' }); };
 window.prompt = async (msg, def) => { return await showCustomDialog({ title: '请输入', message: msg, type: 'prompt', defaultValue: def }); };
 
-// ========== 登录遮罩逻辑 ==========
+// ========== 登录/注册/激活 ==========
 document.getElementById('loginBtn').onclick = async () => {
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value.trim();
   const remember = document.getElementById('rememberPwd').checked;
-  if (!username || !password) {
-    document.getElementById('loginError').textContent = '请输入用户名和密码';
-    return;
-  }
+  if (!username || !password) { document.getElementById('loginError').textContent = '请输入用户名和密码'; return; }
   try {
     const data = await fetchApi('/api/auth/login', { method:'POST', body: JSON.stringify({ username, password }) });
-    authToken = data.token;
-    localStorage.setItem('authToken', authToken);
+    authToken = data.token; localStorage.setItem('authToken', authToken);
     currentUser = { username: data.username, role: data.role };
-    if (remember) {
-      localStorage.setItem('savedCredentials', JSON.stringify({ username, password }));
-    } else {
-      localStorage.removeItem('savedCredentials');
-    }
+    if (remember) localStorage.setItem('savedCredentials', JSON.stringify({ username, password }));
+    else localStorage.removeItem('savedCredentials');
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('mainContent').style.display = '';
     initMainSystem();
@@ -872,81 +853,54 @@ document.getElementById('loginBtn').onclick = async () => {
       document.getElementById('loginFormView').style.display = 'none';
       document.getElementById('activateFormView').style.display = '';
       document.getElementById('activateError').textContent = '';
-    } else {
-      document.getElementById('loginError').textContent = e.message;
-    }
+    } else document.getElementById('loginError').textContent = e.message;
   }
 };
-
 document.getElementById('showRegisterLink').onclick = () => {
   document.getElementById('loginFormView').style.display = 'none';
   document.getElementById('registerFormView').style.display = '';
   document.getElementById('activateFormView').style.display = 'none';
   document.getElementById('registerError').textContent = '';
 };
-
 document.getElementById('registerBtn').onclick = async () => {
-  const username = document.getElementById('regUsername').value.trim();
-  const password = document.getElementById('regPassword').value.trim();
-  if (!username || !password) {
-    document.getElementById('registerError').textContent = '请输入用户名和密码';
-    return;
-  }
+  const username = document.getElementById('regUsername').value.trim(), password = document.getElementById('regPassword').value.trim();
+  if (!username || !password) { document.getElementById('registerError').textContent = '请输入用户名和密码'; return; }
   try {
     await fetchApi('/api/auth/register', { method:'POST', body: JSON.stringify({ username, password }) });
     document.getElementById('actUsername').value = username;
     document.getElementById('registerFormView').style.display = 'none';
     document.getElementById('activateFormView').style.display = '';
     document.getElementById('activateError').textContent = '注册成功，请输入激活码激活';
-  } catch(e) {
-    document.getElementById('registerError').textContent = e.message;
-  }
+  } catch(e) { document.getElementById('registerError').textContent = e.message; }
 };
-
 document.getElementById('activateBtn').onclick = async () => {
-  const username = document.getElementById('actUsername').value.trim();
-  const cardCode = document.getElementById('actCode').value.trim();
-  if (!username || !cardCode) {
-    document.getElementById('activateError').textContent = '请输入激活码';
-    return;
-  }
+  const username = document.getElementById('actUsername').value.trim(), cardCode = document.getElementById('actCode').value.trim();
+  if (!username || !cardCode) { document.getElementById('activateError').textContent = '请输入激活码'; return; }
   try {
     await fetchApi('/api/auth/activate', { method:'POST', body: JSON.stringify({ username, cardCode }) });
-    document.getElementById('activateError').textContent = '';
     document.getElementById('activateFormView').style.display = 'none';
     document.getElementById('loginFormView').style.display = '';
     document.getElementById('loginUsername').value = username;
     document.getElementById('loginError').textContent = '激活成功，请登录';
-  } catch(e) {
-    document.getElementById('activateError').textContent = e.message;
-  }
+  } catch(e) { document.getElementById('activateError').textContent = e.message; }
 };
-
 document.getElementById('showAdminLoginLink').onclick = () => {
   const area = document.getElementById('adminLoginArea');
   area.style.display = area.style.display === 'none' ? '' : 'none';
   if (area.style.display !== 'none') document.getElementById('adminPassword').focus();
 };
-
 document.getElementById('adminLoginConfirmBtn').onclick = async () => {
   const password = document.getElementById('adminPassword').value.trim();
-  if (!password) {
-    document.getElementById('loginError').textContent = '请输入管理员密码';
-    return;
-  }
+  if (!password) { document.getElementById('loginError').textContent = '请输入管理员密码'; return; }
   try {
     const data = await fetchApi('/api/auth/admin', { method:'POST', body: JSON.stringify({ password }) });
-    authToken = data.token;
-    localStorage.setItem('authToken', authToken);
+    authToken = data.token; localStorage.setItem('authToken', authToken);
     currentUser = { username: 'admin', role: 'admin' };
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('mainContent').style.display = '';
     initMainSystem();
-  } catch(e) {
-    document.getElementById('loginError').textContent = e.message;
-  }
+  } catch(e) { document.getElementById('loginError').textContent = e.message; }
 };
-
 document.getElementById('backToLoginFromReg').onclick = () => {
   document.getElementById('registerFormView').style.display = 'none';
   document.getElementById('activateFormView').style.display = 'none';
@@ -961,20 +915,15 @@ document.getElementById('backToLoginFromAct').onclick = () => {
 };
 
 function logout() {
-  authToken = null;
-  localStorage.removeItem('authToken');
-  currentUser = null;
-  location.reload();
+  authToken = null; localStorage.removeItem('authToken'); currentUser = null; location.reload();
 }
 
 function initMainSystem() {
   if (currentUser && currentUser.role === 'admin') document.getElementById('cardMgrBtn').style.display = '';
-  updateTableFromRecords();
-  loadAllSettings();
-  updateSelects();
+  updateTableFromRecords(); loadAllSettings(); updateSelects();
 }
 
-// ========== 本地配置读写（同步到后端） ==========
+// ========== 本地配置同步 ==========
 const SETTINGS_KEYS = ['replacePresets','categoryAliases','customPrefixes','customSuffixes','customAmountSuffixes','customAmountPrefixes','customConfigCategories','customDataConfigObj','users','selectedStartZodiac','orderers'];
 
 async function saveSetting(key, value) {
@@ -986,14 +935,7 @@ async function saveSetting(key, value) {
 async function loadAllSettings() {
   try {
     const settings = await fetchApi('/api/settings');
-    if (settings) {
-      for (const key of SETTINGS_KEYS) {
-        if (settings[key] !== undefined) {
-          const val = typeof settings[key] === 'string' ? settings[key] : JSON.stringify(settings[key]);
-          localStorage.setItem(key, val);
-        }
-      }
-    }
+    if (settings) { for (const key of SETTINGS_KEYS) { if (settings[key] !== undefined) { const val = typeof settings[key] === 'string' ? settings[key] : JSON.stringify(settings[key]); localStorage.setItem(key, val); } } }
   } catch(e) {}
 }
 
@@ -1005,40 +947,42 @@ async function showCardManager() {
     const cards = await fetchApi('/api/cards');
     const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'cardMgrWin';
     win.style.width = '650px'; win.style.height = '500px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%,-50%)';
-    let html = `<div class="modal-header"><h3>卡密管理</h3><div class="window-controls"><button onclick="maximizeWindow('cardMgrWin')">🗖</button><button onclick="document.getElementById('cardMgrWin').remove()">×</button></div></div><div class="modal-body">
-      <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;"><input type="number" id="expireDays" placeholder="有效天数" value="30" min="1" style="width:80px;padding:5px;"><button onclick="generateCard()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">生成激活码</button></div>
-      <div style="margin-bottom:5px;font-size:12px;color:#666;">激活码格式：HKMC-XXXX-XXXX-XXXX</div><div id="cardList">`;
-    cards.forEach(c => {
-      html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${c.code}</span><span style="font-size:12px;color:${c.status==='active'?'green':c.status==='used'?'blue':'red'};">[${c.status}]</span>${c.username ? `<span style="font-size:11px;color:#666;">绑定:${c.username}</span>` : ''}<span style="font-size:11px;color:#666;">有效期:${c.expire_days}天</span><div style="margin-left:auto;display:flex;gap:5px;">${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}<button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button></div></div>`;
-    });
-    html += '</div></div>';
-    win.innerHTML = html; document.body.appendChild(win);
+    let html = `<div class="modal-header"><h3>卡密管理</h3><div class="window-controls"><button onclick="maximizeWindow('cardMgrWin')">🗖</button><button onclick="document.getElementById('cardMgrWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;"><input type="number" id="expireDays" placeholder="有效天数" value="30" min="1" style="width:80px;padding:5px;"><button onclick="generateCard()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">生成激活码</button></div><div style="margin-bottom:5px;font-size:12px;color:#666;">激活码格式：HKMC-XXXX-XXXX-XXXX</div><div id="cardList">`;
+    cards.forEach(c => { html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${c.code}</span><span style="font-size:12px;color:${c.status==='active'?'green':c.status==='used'?'blue':'red'};">[${c.status}]</span>${c.username?`<span style="font-size:11px;color:#666;">绑定:${c.username}</span>`:''}<span style="font-size:11px;color:#666;">有效期:${c.expire_days}天</span><div style="margin-left:auto;display:flex;gap:5px;">${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}<button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button></div></div>`; });
+    html += '</div></div>'; win.innerHTML = html; document.body.appendChild(win);
     makeWindowDraggable('cardMgrWin'); highestZ += 1; win.style.zIndex = highestZ;
 
-    window.generateCard = async () => {
-      const days = parseInt(document.getElementById('expireDays')?.value) || 30;
-      try { const res = await fetchApi('/api/cards/generate', { method:'POST', body: JSON.stringify({ expireDays: days }) }); showToast('激活码已生成：' + res.code); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
-    };
-    window.disableCard = async (id) => {
-      if (!(await confirm('确定禁用该激活码？'))) return;
-      try { await fetchApi(`/api/cards/${id}/disable`, { method:'POST' }); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
-    };
-    window.copyCardCode = (code) => { navigator.clipboard.writeText(code).then(() => showToast('已复制')).catch(() => showToast('复制失败')); };
+    window.generateCard = async () => { const days = parseInt(document.getElementById('expireDays')?.value)||30; try { const res = await fetchApi('/api/cards/generate',{method:'POST',body:JSON.stringify({expireDays:days})}); showToast('激活码已生成：'+res.code); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e){showToast(e.message);} };
+    window.disableCard = async (id) => { if(!(await confirm('确定禁用该激活码？'))) return; try { await fetchApi(`/api/cards/${id}/disable`,{method:'POST'}); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e){showToast(e.message);} };
+    window.copyCardCode = (code) => { navigator.clipboard.writeText(code).then(()=>showToast('已复制')).catch(()=>showToast('复制失败')); };
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 识别函数 ==========
+// ========== 识别函数（含内联合计） ==========
 async function convertOrderText() {
   const inputEl = document.querySelector('.source-order-input');
   if (!inputEl) return;
   const text = applyCategoryAliases(applyReplacePresets(inputEl.value.trim()));
   const resultEl = document.getElementById('orderResult');
   if (!resultEl) return;
-  if (!text) { resultEl.value = ''; updateOrderTotalDisplay(); return; }
+  if (!text) { resultEl.value = ''; document.getElementById('orderTotalAmountBox').style.display = 'none'; return; }
   try {
     const data = await fetchApi('/api/recognize', { method:'POST', body: JSON.stringify({ text, config: getAllConfigData() }) });
     resultEl.value = data.result;
-    updateOrderTotalDisplay();
+    // 内联合计
+    const re = document.getElementById('orderResult');
+    const box = document.getElementById('orderTotalAmountBox');
+    const span = document.getElementById('orderTotalAmount');
+    if (re && box && span) {
+      const txt = re.value.trim();
+      if (!txt) { box.style.display = 'none'; }
+      else {
+        let total = 0;
+        txt.split('\n').forEach(line => { const m = line.match(/各数\s+(\d+)/); if (m) total += parseInt(m[1]) || 0; });
+        span.textContent = total;
+        box.style.display = 'inline-flex';
+      }
+    }
   } catch (e) { showToast('识别失败：' + e.message); }
 }
 
@@ -1081,7 +1025,7 @@ async function saveReportOrder(){
 function clearOrderInputs() {
   const si = document.querySelector('.source-order-input'); if(si) si.value = '';
   const re = document.getElementById('orderResult'); if(re) re.value = '';
-  updateOrderTotalDisplay();
+  const box = document.getElementById('orderTotalAmountBox'); if(box) box.style.display = 'none';
   document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active'));
 }
 
@@ -1156,23 +1100,6 @@ async function resetTable(){ const pwd=await prompt("输入清空密码：","");
 
 function getTodayCST(){ const now=new Date(); const offset=8*60; const localTime=now.getTime()+(now.getTimezoneOffset()+offset)*60000; const cstDate=new Date(localTime); return `${cstDate.getFullYear()}-${String(cstDate.getMonth()+1).padStart(2,'0')}-${String(cstDate.getDate()).padStart(2,'0')}`; }
 
-// ========== 合计金额 ==========
-function updateOrderTotalDisplay(){
-  const re = document.getElementById('orderResult');
-  const box = document.getElementById('orderTotalAmountBox');
-  const span = document.getElementById('orderTotalAmount');
-  if (!re || !box || !span) return;
-  const txt = re.value.trim();
-  if (!txt) { box.style.display = 'none'; return; }
-  let total = 0;
-  txt.split('\n').forEach(line => {
-    const m = line.match(/各数\s+(\d+)/);
-    if (m) total += parseInt(m[1]) || 0;
-  });
-  span.textContent = total;
-  box.style.display = 'inline-flex';
-}
-
 function computeCurrentOrderTotal(){
   const re = document.getElementById('orderResult');
   if (!re) return 0;
@@ -1229,7 +1156,7 @@ async function semanticReplace(){ const ta=document.querySelector('.source-order
 function tokenizeAndJoin(content){ const cfg=getAllConfigData(); const vc=getAllValidCategories(cfg); const tokens=content.split(/[^\u4e00-\u9fa5\d]+/).filter(t=>t.trim()).map(t=>t.trim()); const res=[]; tokens.forEach(t=>{ const tm=t.match(/^(\d{2,})尾$/); const hm=t.match(/^(\d{2,})头$/); if(tm){ const ds=tm[1].split('').map(d=>d+'尾'); res.push(...ds); } else if(hm){ const ds=hm[1].split('').map(d=>d+'头'); res.push(...ds); } else if(/^\d{1,2}$/.test(t)){ const n=parseInt(t); if(n>=1&&n<=49)res.push(t.length===1?'0'+t:t); } else if(vc.has(t)){ res.push(t); } else if(/^[\u4e00-\u9fa5]+$/.test(t)){ const cs=t.match(/[\u4e00-\u9fa5]/g)||[]; if(cs.every(c=>vc.has(c)))res.push(...cs); } }); return res.join('-'); }
 function getAllValidCategories(cfg){ const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); return s; }
 
-// ========== 对奖高亮（恢复原版逻辑） ==========
+// ========== 对奖高亮 ==========
 async function highlightContent(content, targetNum, cfg) {
   if (!targetNum) return content;
   try {
@@ -1403,7 +1330,7 @@ function showRecognizeModal(){
   makeWindowDraggable('recognizeWin'); highestZ+=1; win.style.zIndex=highestZ;
 }
 
-function clearAllInput(){ const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.value=''; updateOrderTotalDisplay(); }
+function clearAllInput(){ const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.value=''; const box=document.getElementById('orderTotalAmountBox'); if(box)box.style.display='none'; }
 async function pasteOrder(){ try{ const text=await navigator.clipboard.readText(); if(text){const si=document.querySelector('.source-order-input');if(si){si.value=text;convertOrderText();}} }catch(err){showToast('无法访问剪贴板');} }
 
 async function screenshotTable(tid){ const tbl=document.getElementById(tid); if(!tbl){showToast('表格不存在');return;} try{ const canvas=await html2canvas(tbl,{backgroundColor:'#ffffff',scale:2,logging:false}); canvas.toBlob(async blob=>{ if(!blob){showToast('生成图片失败');return;} try{ const item=new ClipboardItem({'image/png':blob}); await navigator.clipboard.write([item]); showToast('截图已复制'); }catch(e){showToast('复制失败'); } },'image/png'); }catch(e){showToast('截图失败');} }
@@ -1465,3 +1392,6 @@ window.onload = async () => {
     catch(e) { document.getElementById('loginOverlay').style.display = ''; document.getElementById('mainContent').style.display = 'none'; }
   } else { document.getElementById('loginOverlay').style.display = ''; document.getElementById('mainContent').style.display = 'none'; }
 };
+</script>
+</body>
+</html>    
