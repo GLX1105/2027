@@ -878,7 +878,6 @@ document.getElementById('loginBtn').onclick = async () => {
   }
 };
 
-// ========== 注册 ==========
 document.getElementById('showRegisterLink').onclick = () => {
   document.getElementById('loginFormView').style.display = 'none';
   document.getElementById('registerFormView').style.display = '';
@@ -904,7 +903,6 @@ document.getElementById('registerBtn').onclick = async () => {
   }
 };
 
-// ========== 激活 ==========
 document.getElementById('activateBtn').onclick = async () => {
   const username = document.getElementById('actUsername').value.trim();
   const cardCode = document.getElementById('actCode').value.trim();
@@ -924,7 +922,6 @@ document.getElementById('activateBtn').onclick = async () => {
   }
 };
 
-// ========== 管理员登录 ==========
 document.getElementById('showAdminLoginLink').onclick = () => {
   const area = document.getElementById('adminLoginArea');
   area.style.display = area.style.display === 'none' ? '' : 'none';
@@ -950,7 +947,6 @@ document.getElementById('adminLoginConfirmBtn').onclick = async () => {
   }
 };
 
-// ========== 返回登录 ==========
 document.getElementById('backToLoginFromReg').onclick = () => {
   document.getElementById('registerFormView').style.display = 'none';
   document.getElementById('activateFormView').style.display = 'none';
@@ -964,7 +960,6 @@ document.getElementById('backToLoginFromAct').onclick = () => {
   document.getElementById('loginError').textContent = '';
 };
 
-// ========== 退出登录 ==========
 function logout() {
   authToken = null;
   localStorage.removeItem('authToken');
@@ -972,7 +967,6 @@ function logout() {
   location.reload();
 }
 
-// ========== 系统初始化 ==========
 function initMainSystem() {
   if (currentUser && currentUser.role === 'admin') document.getElementById('cardMgrBtn').style.display = '';
   updateTableFromRecords();
@@ -986,21 +980,7 @@ const SETTINGS_KEYS = ['replacePresets','categoryAliases','customPrefixes','cust
 async function saveSetting(key, value) {
   const valStr = typeof value === 'string' ? value : JSON.stringify(value);
   localStorage.setItem(key, valStr);
-  try {
-    await fetchApi('/api/settings', { method:'POST', body: JSON.stringify({ key, value: valStr }) });
-  } catch(e) {}
-}
-
-async function loadSetting(key) {
-  try {
-    const settings = await fetchApi('/api/settings');
-    if (settings && settings[key] !== undefined) {
-      const val = typeof settings[key] === 'string' ? settings[key] : JSON.stringify(settings[key]);
-      localStorage.setItem(key, val);
-      return settings[key];
-    }
-  } catch(e) {}
-  return null;
+  try { await fetchApi('/api/settings', { method:'POST', body: JSON.stringify({ key, value: valStr }) }); } catch(e) {}
 }
 
 async function loadAllSettings() {
@@ -1026,23 +1006,10 @@ async function showCardManager() {
     const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'cardMgrWin';
     win.style.width = '650px'; win.style.height = '500px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%,-50%)';
     let html = `<div class="modal-header"><h3>卡密管理</h3><div class="window-controls"><button onclick="maximizeWindow('cardMgrWin')">🗖</button><button onclick="document.getElementById('cardMgrWin').remove()">×</button></div></div><div class="modal-body">
-      <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;">
-        <input type="number" id="expireDays" placeholder="有效天数" value="30" min="1" style="width:80px;padding:5px;">
-        <button onclick="generateCard()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">生成激活码</button>
-      </div>
-      <div style="margin-bottom:5px;font-size:12px;color:#666;">激活码格式：HKMC-XXXX-XXXX-XXXX</div>
-      <div id="cardList">`;
+      <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;"><input type="number" id="expireDays" placeholder="有效天数" value="30" min="1" style="width:80px;padding:5px;"><button onclick="generateCard()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">生成激活码</button></div>
+      <div style="margin-bottom:5px;font-size:12px;color:#666;">激活码格式：HKMC-XXXX-XXXX-XXXX</div><div id="cardList">`;
     cards.forEach(c => {
-      html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span style="font-weight:bold;font-size:16px;">${c.code}</span>
-        <span style="font-size:12px;color:${c.status==='active'?'green':c.status==='used'?'blue':'red'};">[${c.status}]</span>
-        ${c.username ? `<span style="font-size:11px;color:#666;">绑定:${c.username}</span>` : ''}
-        <span style="font-size:11px;color:#666;">有效期:${c.expire_days}天</span>
-        <div style="margin-left:auto;display:flex;gap:5px;">
-          ${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}
-          <button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button>
-        </div>
-      </div>`;
+      html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${c.code}</span><span style="font-size:12px;color:${c.status==='active'?'green':c.status==='used'?'blue':'red'};">[${c.status}]</span>${c.username ? `<span style="font-size:11px;color:#666;">绑定:${c.username}</span>` : ''}<span style="font-size:11px;color:#666;">有效期:${c.expire_days}天</span><div style="margin-left:auto;display:flex;gap:5px;">${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}<button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button></div></div>`;
     });
     html += '</div></div>';
     win.innerHTML = html; document.body.appendChild(win);
@@ -1050,28 +1017,17 @@ async function showCardManager() {
 
     window.generateCard = async () => {
       const days = parseInt(document.getElementById('expireDays')?.value) || 30;
-      try {
-        const res = await fetchApi('/api/cards/generate', { method:'POST', body: JSON.stringify({ expireDays: days }) });
-        showToast('激活码已生成：' + res.code);
-        document.getElementById('cardMgrWin').remove();
-        showCardManager();
-      } catch(e) { showToast(e.message); }
+      try { const res = await fetchApi('/api/cards/generate', { method:'POST', body: JSON.stringify({ expireDays: days }) }); showToast('激活码已生成：' + res.code); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
     };
     window.disableCard = async (id) => {
       if (!(await confirm('确定禁用该激活码？'))) return;
-      try {
-        await fetchApi(`/api/cards/${id}/disable`, { method:'POST' });
-        document.getElementById('cardMgrWin').remove();
-        showCardManager();
-      } catch(e) { showToast(e.message); }
+      try { await fetchApi(`/api/cards/${id}/disable`, { method:'POST' }); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
     };
-    window.copyCardCode = (code) => {
-      navigator.clipboard.writeText(code).then(() => showToast('已复制')).catch(() => showToast('复制失败'));
-    };
+    window.copyCardCode = (code) => { navigator.clipboard.writeText(code).then(() => showToast('已复制')).catch(() => showToast('复制失败')); };
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 识别函数（完全依赖后端） ==========
+// ========== 识别函数 ==========
 async function convertOrderText() {
   const inputEl = document.querySelector('.source-order-input');
   if (!inputEl) return;
@@ -1080,46 +1036,22 @@ async function convertOrderText() {
   if (!resultEl) return;
   if (!text) { resultEl.value = ''; updateOrderTotalDisplay(); return; }
   try {
-    const data = await fetchApi('/api/recognize', {
-      method: 'POST',
-      body: JSON.stringify({ text, config: getAllConfigData() })
-    });
+    const data = await fetchApi('/api/recognize', { method:'POST', body: JSON.stringify({ text, config: getAllConfigData() }) });
     resultEl.value = data.result;
     updateOrderTotalDisplay();
-  } catch (e) {
-    showToast('识别失败：' + e.message);
-  }
+  } catch (e) { showToast('识别失败：' + e.message); }
 }
 
-// ========== 订单操作（全部调用后端 API） ==========
-async function saveOrderRecord(content, orderer, date, totalAmount) {
-  return fetchApi('/api/orders', { method:'POST', body: JSON.stringify({ content, orderer, date, totalAmount }) });
-}
-async function saveReportOrderRecord(content, orderer, date, totalAmount) {
-  return fetchApi('/api/report-orders', { method:'POST', body: JSON.stringify({ content, orderer, date, totalAmount }) });
-}
-async function getOrders(date) {
-  const query = date ? `?date=${date}` : '';
-  return fetchApi(`/api/orders${query}`);
-}
-async function getReportOrders(date) {
-  const query = date ? `?date=${date}` : '';
-  return fetchApi(`/api/report-orders${query}`);
-}
-async function deleteOrder(id) {
-  return fetchApi(`/api/orders/${id}`, { method:'DELETE' });
-}
-async function deleteReportOrder(id) {
-  return fetchApi(`/api/report-orders/${id}`, { method:'DELETE' });
-}
-async function batchDeleteOrders(ids) {
-  return fetchApi('/api/orders/batch-delete', { method:'POST', body: JSON.stringify({ ids }) });
-}
-async function batchDeleteReportOrders(ids) {
-  return fetchApi('/api/report-orders/batch-delete', { method:'POST', body: JSON.stringify({ ids }) });
-}
+// ========== 订单操作 ==========
+async function saveOrderRecord(content, orderer, date, totalAmount) { return fetchApi('/api/orders', { method:'POST', body: JSON.stringify({ content, orderer, date, totalAmount }) }); }
+async function saveReportOrderRecord(content, orderer, date, totalAmount) { return fetchApi('/api/report-orders', { method:'POST', body: JSON.stringify({ content, orderer, date, totalAmount }) }); }
+async function getOrders(date) { const query = date ? `?date=${date}` : ''; return fetchApi(`/api/orders${query}`); }
+async function getReportOrders(date) { const query = date ? `?date=${date}` : ''; return fetchApi(`/api/report-orders${query}`); }
+async function deleteOrder(id) { return fetchApi(`/api/orders/${id}`, { method:'DELETE' }); }
+async function deleteReportOrder(id) { return fetchApi(`/api/report-orders/${id}`, { method:'DELETE' }); }
+async function batchDeleteOrders(ids) { return fetchApi('/api/orders/batch-delete', { method:'POST', body: JSON.stringify({ ids }) }); }
+async function batchDeleteReportOrders(ids) { return fetchApi('/api/report-orders/batch-delete', { method:'POST', body: JSON.stringify({ ids }) }); }
 
-// ========== 保存订单 ==========
 async function saveOrder(){
   const orderer = document.getElementById('orderUserSelect')?.value;
   if(!orderer){showToast('请选择下单人');return;}
@@ -1130,12 +1062,7 @@ async function saveOrder(){
   const content = vl.join('\n');
   const date = document.getElementById('orderDate')?.value||getTodayCST();
   const total = computeCurrentOrderTotal();
-  try {
-    await saveOrderRecord(content, orderer, date, total);
-    showToast('下单成功');
-    clearOrderInputs();
-    updateTableFromRecords();
-  } catch(e) { showToast('保存失败：'+e.message); }
+  try { await saveOrderRecord(content, orderer, date, total); showToast('下单成功'); clearOrderInputs(); updateTableFromRecords(); } catch(e) { showToast('保存失败：'+e.message); }
 }
 
 async function saveReportOrder(){
@@ -1148,12 +1075,7 @@ async function saveReportOrder(){
   const content = vl.join('\n');
   const date = document.getElementById('orderDate')?.value||getTodayCST();
   const total = computeCurrentOrderTotal();
-  try {
-    await saveReportOrderRecord(content, orderer, date, total);
-    showToast('上报成功');
-    clearOrderInputs();
-    updateTableFromRecords();
-  } catch(e) { showToast('上报失败：'+e.message); }
+  try { await saveReportOrderRecord(content, orderer, date, total); showToast('上报成功'); clearOrderInputs(); updateTableFromRecords(); } catch(e) { showToast('上报失败：'+e.message); }
 }
 
 function clearOrderInputs() {
@@ -1168,244 +1090,73 @@ async function updateTableFromRecords() {
   const fd = document.getElementById('filterDate')?.value;
   const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
   const multiple = parseFloat(document.getElementById('multipleVal')?.value) || 47;
-
   try {
     const config = getAllConfigData();
     const [riskData, freqData] = await Promise.all([
       fetchApi('/api/calculate', { method:'POST', body: JSON.stringify({ date: fd, config, rebateRate, multiple }) }),
-      fetchApi('/api/frequency', {
-        method:'POST',
-        body: JSON.stringify({
-          date: fd,
-          config,
-          amountMin: document.getElementById('numAmountMin')?.value || 1,
-          amountMax: document.getElementById('numAmountMax')?.value || 50000,
-          zodiacAmountMin: document.getElementById('zodiacAmountMin')?.value || 1,
-          zodiacAmountMax: document.getElementById('zodiacAmountMax')?.value || 50000
-        })
-      })
+      fetchApi('/api/frequency', { method:'POST', body: JSON.stringify({ date: fd, config, amountMin: document.getElementById('numAmountMin')?.value||1, amountMax: document.getElementById('numAmountMax')?.value||50000, zodiacAmountMin: document.getElementById('zodiacAmountMin')?.value||1, zodiacAmountMax: document.getElementById('zodiacAmountMax')?.value||50000 }) })
     ]);
-
     renderRiskTable(riskData.list, riskData.totalBet, riskData.totalRebate);
     renderReportTable(riskData.list, riskData.totalBet, riskData.totalRebate);
     renderReportAmountTableFromData(riskData.reportAmountData);
     renderFrequencyCardsFromData(freqData);
     renderAmountFrequencyCardsFromData(freqData);
-  } catch(e) {
-    console.error(e);
-    showToast('加载数据失败：' + e.message);
-  }
+  } catch(e) { console.error(e); showToast('加载数据失败：'+e.message); }
 }
 
-// ========== 风险表格渲染 ==========
 const redNumbers = ['01','02','07','08','12','13','18','19','23','24','29','30','34','35','40','45','46'];
 const blueNumbers = ['03','04','09','10','14','15','20','25','26','31','36','37','41','42','47','48'];
 const zodiacOrder = ['马','蛇','龙','兔','虎','牛','鼠','猪','狗','鸡','猴','羊'];
 let currentZodiacMap = {};
-
-function buildZodiacMap(startZodiac) {
-  const map = {};
-  const startIndex = zodiacOrder.indexOf(startZodiac);
-  const idx = startIndex !== -1 ? startIndex : 0;
-  for (let i=1; i<=49; i++) map[i.toString().padStart(2,'0')] = zodiacOrder[(idx+i-1)%12];
-  return map;
-}
+function buildZodiacMap(s) { const m={}; const idx=zodiacOrder.indexOf(s); const start=idx!==-1?idx:0; for(let i=1;i<=49;i++) m[i.toString().padStart(2,'0')]=zodiacOrder[(start+i-1)%12]; return m; }
 
 function renderRiskTable(list, totalBet, totalRebate) {
-  const tbody = document.getElementById('tableBody');
-  if (!tbody) return;
-  tbody.innerHTML = list.map(item => {
-    const cls = redNumbers.includes(item.num) ? 'red-text' : (blueNumbers.includes(item.num) ? 'blue-text' : 'green-text');
-    const zodiac = currentZodiacMap[item.num] || '';
-    return `<tr class="${cls}"><td>${item.num}${zodiac}</td><td>${item.bet}</td><td>${item.risk}</td><td>${item.num}</td><td>${item.rank}</td></tr>`;
-  }).join('');
+  const tbody = document.getElementById('tableBody'); if (!tbody) return;
+  tbody.innerHTML = list.map(item => `<tr class="${redNumbers.includes(item.num)?'red-text':(blueNumbers.includes(item.num)?'blue-text':'green-text')}"><td>${item.num}${currentZodiacMap[item.num]||''}</td><td>${item.bet}</td><td>${item.risk}</td><td>${item.num}</td><td>${item.rank}</td></tr>`).join('');
   document.getElementById('totalBet').textContent = totalBet;
   document.getElementById('totalRebate').textContent = totalRebate;
 }
 
 function renderReportTable(list, totalBet, totalRebate) {
-  const tbody = document.getElementById('reportTableBody');
-  if (!tbody) return;
-  tbody.innerHTML = list.map(item => {
-    const cls = redNumbers.includes(item.num) ? 'red-text' : (blueNumbers.includes(item.num) ? 'blue-text' : 'green-text');
-    const zodiac = currentZodiacMap[item.num] || '';
-    return `<tr class="${cls}"><td>${item.num}${zodiac}</td><td>${item.bet}</td><td>${item.risk}</td><td>${item.num}</td><td>${item.rank}</td></tr>`;
-  }).join('');
+  const tbody = document.getElementById('reportTableBody'); if (!tbody) return;
+  tbody.innerHTML = list.map(item => `<tr class="${redNumbers.includes(item.num)?'red-text':(blueNumbers.includes(item.num)?'blue-text':'green-text')}"><td>${item.num}${currentZodiacMap[item.num]||''}</td><td>${item.bet}</td><td>${item.risk}</td><td>${item.num}</td><td>${item.rank}</td></tr>`).join('');
   document.getElementById('reportTotalBet').textContent = totalBet;
   document.getElementById('reportTotalRebate').textContent = totalRebate;
 }
 
 function renderReportAmountTableFromData(reportAmountData) {
-  const tbl = document.getElementById('reportAmountTable');
-  if (!tbl) return;
-  tbl.innerHTML = '';
+  const tbl = document.getElementById('reportAmountTable'); if (!tbl) return; tbl.innerHTML = '';
   const cols = [...Array(5)].map((_,c) => Array.from({length:c===4?9:10},(_,r) => (c*10+r+1).toString().padStart(2,'0')));
   let th = '<thead><tr>'; for(let c=0;c<5;c++) th+='<th>号码</th><th>金额</th>'; th+='</tr></thead>';
   let tb = '<tbody>';
-  for(let r=0;r<10;r++){
-    tb+='<tr>';
-    for(let c=0;c<5;c++){
-      const n = cols[c][r]||'';
-      if(n){
-        const a = (reportAmountData && reportAmountData[n]) ? reportAmountData[n] : 0;
-        const cls = redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text');
-        tb+=`<td class="${cls}">${n}</td><td class="black-text">${a||''}</td>`;
-      } else { tb+='<td></td><td></td>'; }
-    }
-    tb+='</tr>';
-  }
-  tb+='</tbody>';
-  tbl.innerHTML = th+tb;
-
-  let total = 0;
-  if (reportAmountData) for (const n in reportAmountData) total += reportAmountData[n] || 0;
-  const box = document.getElementById('reportAmountTotalBox');
-  const span = document.getElementById('reportAmountTotalValue');
-  if (total > 0) {
-    span.textContent = total;
-    box.style.display = 'inline-flex';
-  } else {
-    box.style.display = 'none';
-  }
+  for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const a=reportAmountData?.[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${a||''}</td>`; } else { tb+='<td></td><td></td>'; } } tb+='</tr>'; }
+  tb+='</tbody>'; tbl.innerHTML = th+tb;
+  let total = 0; if (reportAmountData) for (const n in reportAmountData) total += reportAmountData[n]||0;
+  const box=document.getElementById('reportAmountTotalBox'), span=document.getElementById('reportAmountTotalValue');
+  if(total>0){span.textContent=total;box.style.display='inline-flex';}else{box.style.display='none';}
 }
 
 function renderFrequencyCardsFromData(freqData) {
-  const numberCount = freqData.numberCount || {};
-  const zodiacCount = freqData.zodiacCount || {};
-
-  const nt = document.getElementById('numberFreqTable');
-  if (nt) {
-    nt.innerHTML = '';
-    const cols = [...Array(5)].map((_,c) => Array.from({length:c===4?9:10},(_,r) => (c*10+r+1).toString().padStart(2,'0')));
-    let th = '<thead><tr>'; for(let c=0;c<5;c++) th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>';
-    let tb = '<tbody>';
-    for(let r=0;r<10;r++){
-      tb+='<tr>';
-      for(let c=0;c<5;c++){
-        const n = cols[c][r]||'';
-        if(n){
-          const cnt = numberCount[n]||0;
-          const cls = redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text');
-          tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;
-        } else { tb+='<td></td><td></td>'; }
-      }
-      tb+='</tr>';
-    }
-    tb+='</tbody>';
-    nt.innerHTML = th+tb;
-  }
-
-  const zt = document.getElementById('zodiacFreqTable');
-  if (zt) {
-    zt.innerHTML = '';
-    const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];
-    const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};
-    let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';
-    for(let r=0;r<6;r++){
-      const l=lz[r],r2=rz[r];
-      const lc=zodiacCount[l]||0,rc=zodiacCount[r2]||0;
-      ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;
-    }
-    ztb+='</tbody>';
-    zt.innerHTML=zth+ztb;
-  }
+  const numberCount = freqData.numberCount||{}, zodiacCount = freqData.zodiacCount||{};
+  const nt = document.getElementById('numberFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
+  const zt = document.getElementById('zodiacFreqTable'); if(zt){zt.innerHTML='';const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';for(let r=0;r<6;r++){const l=lz[r],r2=rz[r];const lc=zodiacCount[l]||0,rc=zodiacCount[r2]||0;ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;}ztb+='</tbody>';zt.innerHTML=zth+ztb;}
 }
 
 function renderAmountFrequencyCardsFromData(freqData) {
-  const numberAmountCount = freqData.numberAmountCount || {};
-  const zodiacAmountCount = freqData.zodiacAmountCount || {};
-
-  const nt = document.getElementById('numberAmountFreqTable');
-  if (nt) {
-    nt.innerHTML = '';
-    const cols = [...Array(5)].map((_,c) => Array.from({length:c===4?9:10},(_,r) => (c*10+r+1).toString().padStart(2,'0')));
-    let th = '<thead><tr>'; for(let c=0;c<5;c++) th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>';
-    let tb = '<tbody>';
-    for(let r=0;r<10;r++){
-      tb+='<tr>';
-      for(let c=0;c<5;c++){
-        const n = cols[c][r]||'';
-        if(n){
-          const cnt = numberAmountCount[n]||0;
-          const cls = redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text');
-          tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;
-        } else { tb+='<td></td><td></td>'; }
-      }
-      tb+='</tr>';
-    }
-    tb+='</tbody>';
-    nt.innerHTML = th+tb;
-  }
-
-  const zt = document.getElementById('zodiacAmountFreqTable');
-  if (zt) {
-    zt.innerHTML = '';
-    const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];
-    const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};
-    let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';
-    for(let r=0;r<6;r++){
-      const l=lz[r],r2=rz[r];
-      const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0;
-      ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;
-    }
-    ztb+='</tbody>';
-    zt.innerHTML=zth+ztb;
-  }
+  const numberAmountCount = freqData.numberAmountCount||{}, zodiacAmountCount = freqData.zodiacAmountCount||{};
+  const nt = document.getElementById('numberAmountFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
+  const zt = document.getElementById('zodiacAmountFreqTable'); if(zt){zt.innerHTML='';const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';for(let r=0;r<6;r++){const l=lz[r],r2=rz[r];const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0;ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;}ztb+='</tbody>';zt.innerHTML=zth+ztb;}
 }
 
 // ========== 导出导入 ==========
-async function exportData() {
-  try {
-    const data = await fetchApi('/api/export');
-    const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `港澳识别数据_${getTodayCST()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch(e) { showToast('导出失败'); }
-}
+async function exportData(){ try{ const data = await fetchApi('/api/export'); const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`港澳识别数据_${getTodayCST()}.json`; a.click(); URL.revokeObjectURL(url); }catch(e){showToast('导出失败');} }
+async function importData(){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.json'; inp.style.display='none'; document.body.appendChild(inp); inp.onchange=async(e)=>{ const file=e.target.files[0]; if(!file){document.body.removeChild(inp);return;} const reader=new FileReader(); reader.onload=async(ev)=>{ try{ const data=JSON.parse(ev.target.result); await fetchApi('/api/import',{method:'POST',body:JSON.stringify(data)}); showToast('导入成功'); updateTableFromRecords(); loadAllSettings(); document.body.removeChild(inp); }catch(err){showToast('导入失败');document.body.removeChild(inp);} }; reader.onerror=()=>{showToast('读取失败');document.body.removeChild(inp);}; reader.readAsText(file); }; inp.addEventListener('cancel',()=>{document.body.removeChild(inp);}); inp.click(); }
 
-async function importData() {
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.json'; inp.style.display = 'none';
-  document.body.appendChild(inp);
-  inp.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) { document.body.removeChild(inp); return; }
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        await fetchApi('/api/import', { method:'POST', body: JSON.stringify(data) });
-        showToast('导入成功');
-        updateTableFromRecords();
-        loadAllSettings();
-        document.body.removeChild(inp);
-      } catch(err) { showToast('导入失败'); document.body.removeChild(inp); }
-    };
-    reader.onerror = () => { showToast('读取失败'); document.body.removeChild(inp); };
-    reader.readAsText(file);
-  };
-  inp.addEventListener('cancel', () => { document.body.removeChild(inp); });
-  inp.click();
-}
+async function resetTable(){ const pwd=await prompt("输入清空密码：",""); if(pwd!=="891105"){await alert("密码错误");return;} try{ await fetchApi('/api/reset',{method:'POST'}); location.reload(); }catch(e){showToast('清空失败');} }
 
-// ========== 清空 ==========
-async function resetTable() {
-  const pwd = await prompt("输入清空密码：","");
-  if (pwd !== "891105") { await alert("密码错误"); return; }
-  try {
-    await fetchApi('/api/reset', { method:'POST' });
-    location.reload();
-  } catch(e) { showToast('清空失败'); }
-}
+function getTodayCST(){ const now=new Date(); const offset=8*60; const localTime=now.getTime()+(now.getTimezoneOffset()+offset)*60000; const cstDate=new Date(localTime); return `${cstDate.getFullYear()}-${String(cstDate.getMonth()+1).padStart(2,'0')}-${String(cstDate.getDate()).padStart(2,'0')}`; }
 
-// ========== 原版功能函数 ==========
-function getTodayCST() { const now = new Date(); const offset = 8*60; const localTime = now.getTime() + (now.getTimezoneOffset() + offset) * 60000; const cstDate = new Date(localTime); return `${cstDate.getFullYear()}-${String(cstDate.getMonth()+1).padStart(2,'0')}-${String(cstDate.getDate()).padStart(2,'0')}`; }
-
-// ========== 合计金额计算（修复版） ==========
+// ========== 合计金额 ==========
 function updateOrderTotalDisplay(){
   const re = document.getElementById('orderResult');
   const box = document.getElementById('orderTotalAmountBox');
@@ -1422,7 +1173,7 @@ function updateOrderTotalDisplay(){
   box.style.display = 'inline-flex';
 }
 
-function computeCurrentOrderTotal() {
+function computeCurrentOrderTotal(){
   const re = document.getElementById('orderResult');
   if (!re) return 0;
   let total = 0;
@@ -1433,197 +1184,66 @@ function computeCurrentOrderTotal() {
   return total;
 }
 
-function quickAddWithAmount(text, button) {
-  const input = document.querySelector('.source-order-input');
-  if (!input) return;
-  const lines = input.value.trim().split('\n').filter(l=>l.trim());
-  const idx = lines.findIndex(l=> l.includes(text) && (l.includes('各数')||l.includes('各号')));
-  if (idx !== -1) { lines.splice(idx,1); button.classList.remove('active'); }
-  else { lines.push(`${text} 各数`); button.classList.add('active'); }
-  input.value = lines.join('\n');
-  convertOrderText();
-}
+function quickAddWithAmount(text, button){ const input=document.querySelector('.source-order-input'); if(!input)return; const lines=input.value.trim().split('\n').filter(l=>l.trim()); const idx=lines.findIndex(l=>l.includes(text)&&(l.includes('各数')||l.includes('各号'))); if(idx!==-1){lines.splice(idx,1);button.classList.remove('active');}else{lines.push(`${text} 各数`);button.classList.add('active');} input.value=lines.join('\n'); convertOrderText(); }
+function getReplacePresets(){ try{return JSON.parse(localStorage.getItem('replacePresets')||'[]');}catch(e){return[];} }
+function getCategoryAliases(){ try{return JSON.parse(localStorage.getItem('categoryAliases')||'[]');}catch(e){return[];} }
+function getCustomPrefixes(){ try{return JSON.parse(localStorage.getItem('customPrefixes')||'[]');}catch(e){return[];} }
+function getCustomSuffixes(){ try{return JSON.parse(localStorage.getItem('customSuffixes')||'[]');}catch(e){return[];} }
+function getCustomAmountSuffixes(){ try{return JSON.parse(localStorage.getItem('customAmountSuffixes')||'[]');}catch(e){return[];} }
+function getCustomAmountPrefixes(){ try{return JSON.parse(localStorage.getItem('customAmountPrefixes')||'[]');}catch(e){return[];} }
+function saveCustomAmountPrefixes(list){ localStorage.setItem('customAmountPrefixes',JSON.stringify(list)); saveSetting('customAmountPrefixes',JSON.stringify(list)); }
 
-function getReplacePresets() { try { return JSON.parse(localStorage.getItem('replacePresets') || '[]'); } catch(e) { return []; } }
-function getCategoryAliases() { try { return JSON.parse(localStorage.getItem('categoryAliases') || '[]'); } catch(e) { return []; } }
-function getCustomPrefixes() { try { return JSON.parse(localStorage.getItem('customPrefixes') || '[]'); } catch(e) { return []; } }
-function getCustomSuffixes() { try { return JSON.parse(localStorage.getItem('customSuffixes') || '[]'); } catch(e) { return []; } }
-function getCustomAmountSuffixes() { try { return JSON.parse(localStorage.getItem('customAmountSuffixes') || '[]'); } catch(e) { return []; } }
-function getCustomAmountPrefixes() { try { return JSON.parse(localStorage.getItem('customAmountPrefixes') || '[]'); } catch(e) { return []; } }
-function saveCustomAmountPrefixes(list) { localStorage.setItem('customAmountPrefixes', JSON.stringify(list)); saveSetting('customAmountPrefixes', JSON.stringify(list)); }
+function removeSeparators(){ const ta=document.querySelector('.source-order-input'); if(!ta)return; const s=ta.selectionStart,e=ta.selectionEnd; if(s===e){showToast('请先选择文本');return;} const sel=ta.value.substring(s,e); const cleaned=sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g,''); ta.value=ta.value.substring(0,s)+cleaned+ta.value.substring(e); convertOrderText(); }
+function replaceSeparators(){ const ta=document.querySelector('.source-order-input'); if(!ta)return; const s=ta.selectionStart,e=ta.selectionEnd; if(s===e){showToast('请先选择文本');return;} const sel=ta.value.substring(s,e); const replaced=sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g,'-'); ta.value=ta.value.substring(0,s)+replaced+ta.value.substring(e); convertOrderText(); }
 
-function removeSeparators() { const ta = document.querySelector('.source-order-input'); if(!ta) return; const s=ta.selectionStart,e=ta.selectionEnd; if(s===e){showToast('请先选择文本');return;} const sel=ta.value.substring(s,e); const cleaned=sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g,''); ta.value=ta.value.substring(0,s)+cleaned+ta.value.substring(e); convertOrderText(); }
-function replaceSeparators() { const ta=document.querySelector('.source-order-input'); if(!ta) return; const s=ta.selectionStart,e=ta.selectionEnd; if(s===e){showToast('请先选择文本');return;} const sel=ta.value.substring(s,e); const replaced=sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g,'-'); ta.value=ta.value.substring(0,s)+replaced+ta.value.substring(e); convertOrderText(); }
-
-function showPrefixManager() { if(document.getElementById('prefixWin'))return; const prefixes=getCustomPrefixes(); const w=document.createElement('div'); w.className='floating-window'; w.id='prefixWin'; w.style.width='500px'; w.style.height='400px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>前缀管理</h3><div class="window-controls"><button onclick="maximizeWindow('prefixWin')">🗖</button><button onclick="pinWindow('prefixWin')">📌</button><button onclick="document.getElementById('prefixWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newPrefix" placeholder="新增行首忽略词" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addPrefix()" style="padding:6px 12px;background:#3498db;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="prefixList"></div></div><div class="modal-footer"><button onclick="document.getElementById('prefixWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderPrefixList(); makeWindowDraggable('prefixWin'); highestZ+=1; w.style.zIndex=highestZ; }
+function showPrefixManager(){ if(document.getElementById('prefixWin'))return; const prefixes=getCustomPrefixes(); const w=document.createElement('div'); w.className='floating-window'; w.id='prefixWin'; w.style.width='500px'; w.style.height='400px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>前缀管理</h3><div class="window-controls"><button onclick="maximizeWindow('prefixWin')">🗖</button><button onclick="pinWindow('prefixWin')">📌</button><button onclick="document.getElementById('prefixWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newPrefix" placeholder="新增行首忽略词" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addPrefix()" style="padding:6px 12px;background:#3498db;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="prefixList"></div></div><div class="modal-footer"><button onclick="document.getElementById('prefixWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderPrefixList(); makeWindowDraggable('prefixWin'); highestZ+=1; w.style.zIndex=highestZ; }
 function renderPrefixList(){ const p=getCustomPrefixes(); const c=document.getElementById('prefixList'); if(!c)return; c.innerHTML=p.length===0?'<div style="text-align:center;color:#666;padding:10px;">暂无自定义前缀</div>':p.map((x,i)=>`<div class="replace-preset-item"><span>${x}</span><button onclick="deletePrefix(${i})" style="margin-left:auto;padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;">删除</button></div>`).join(''); }
-async function addPrefix(){ const v=document.getElementById('newPrefix')?.value.trim(); if(!v){showToast('请输入前缀');return;} const p=getCustomPrefixes(); if(p.includes(v)){showToast('已存在');return;} p.push(v); saveSetting('customPrefixes', JSON.stringify(p)); document.getElementById('newPrefix').value=''; renderPrefixList(); }
-async function deletePrefix(i){ if(!(await confirm('确定删除？')))return; const p=getCustomPrefixes(); p.splice(i,1); saveSetting('customPrefixes', JSON.stringify(p)); renderPrefixList(); }
+async function addPrefix(){ const v=document.getElementById('newPrefix')?.value.trim(); if(!v){showToast('请输入前缀');return;} const p=getCustomPrefixes(); if(p.includes(v)){showToast('已存在');return;} p.push(v); saveSetting('customPrefixes',JSON.stringify(p)); document.getElementById('newPrefix').value=''; renderPrefixList(); }
+async function deletePrefix(i){ if(!(await confirm('确定删除？')))return; const p=getCustomPrefixes(); p.splice(i,1); saveSetting('customPrefixes',JSON.stringify(p)); renderPrefixList(); }
 
-function showAmountPrefixManager() { if(document.getElementById('amountPrefixWin'))return; const list = getCustomAmountPrefixes(); const w=document.createElement('div'); w.className='floating-window'; w.id='amountPrefixWin'; w.style.width='500px'; w.style.height='450px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>金额前缀管理</h3><div class="window-controls"><button onclick="maximizeWindow('amountPrefixWin')">🗖</button><button onclick="pinWindow('amountPrefixWin')">📌</button><button onclick="document.getElementById('amountPrefixWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newAmountPrefix" placeholder="新增金额前缀（如 投、买）" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addAmountPrefix()" style="padding:6px 12px;background:#e67e22;color:#fff;border:none;border-radius:4px;">添加</button></div><div style="margin-bottom:12px;color:#666;font-size:12px;">当前硬编码前缀：各、各号、号、个、=、各数、每数、每号、个号、每个号、各码、各号码（不可删除）</div><div id="amountPrefixList"></div></div><div class="modal-footer"><button onclick="document.getElementById('amountPrefixWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderAmountPrefixList(); makeWindowDraggable('amountPrefixWin'); highestZ+=1; w.style.zIndex=highestZ; }
-function renderAmountPrefixList() { const list = getCustomAmountPrefixes(); const container = document.getElementById('amountPrefixList'); if(!container)return; container.innerHTML = list.length===0 ? '<div style="text-align:center;color:#666;padding:10px;">暂无自定义金额前缀</div>' : list.map((x,i) => `<div class="replace-preset-item"><span>${x}</span><button onclick="deleteAmountPrefix(${i})" style="margin-left:auto;padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;">删除</button></div>`).join(''); }
-async function addAmountPrefix() { const v = document.getElementById('newAmountPrefix')?.value.trim(); if(!v){ showToast('请输入金额前缀'); return; } const list = getCustomAmountPrefixes(); if(list.includes(v)){ showToast('已存在'); return; } list.push(v); saveSetting('customAmountPrefixes', JSON.stringify(list)); document.getElementById('newAmountPrefix').value = ''; renderAmountPrefixList(); showToast('已添加（即时生效）'); }
-async function deleteAmountPrefix(i) { if(!(await confirm('确定删除？')))return; const list = getCustomAmountPrefixes(); list.splice(i,1); saveSetting('customAmountPrefixes', JSON.stringify(list)); renderAmountPrefixList(); }
+function showAmountPrefixManager(){ if(document.getElementById('amountPrefixWin'))return; const list=getCustomAmountPrefixes(); const w=document.createElement('div'); w.className='floating-window'; w.id='amountPrefixWin'; w.style.width='500px'; w.style.height='450px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>金额前缀管理</h3><div class="window-controls"><button onclick="maximizeWindow('amountPrefixWin')">🗖</button><button onclick="pinWindow('amountPrefixWin')">📌</button><button onclick="document.getElementById('amountPrefixWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newAmountPrefix" placeholder="新增金额前缀（如 投、买）" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addAmountPrefix()" style="padding:6px 12px;background:#e67e22;color:#fff;border:none;border-radius:4px;">添加</button></div><div style="margin-bottom:12px;color:#666;font-size:12px;">当前硬编码前缀：各、各号、号、个、=、各数、每数、每号、个号、每个号、各码、各号码（不可删除）</div><div id="amountPrefixList"></div></div><div class="modal-footer"><button onclick="document.getElementById('amountPrefixWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderAmountPrefixList(); makeWindowDraggable('amountPrefixWin'); highestZ+=1; w.style.zIndex=highestZ; }
+function renderAmountPrefixList(){ const list=getCustomAmountPrefixes(); const container=document.getElementById('amountPrefixList'); if(!container)return; container.innerHTML=list.length===0?'<div style="text-align:center;color:#666;padding:10px;">暂无自定义金额前缀</div>':list.map((x,i)=>`<div class="replace-preset-item"><span>${x}</span><button onclick="deleteAmountPrefix(${i})" style="margin-left:auto;padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;">删除</button></div>`).join(''); }
+async function addAmountPrefix(){ const v=document.getElementById('newAmountPrefix')?.value.trim(); if(!v){showToast('请输入金额前缀');return;} const list=getCustomAmountPrefixes(); if(list.includes(v)){showToast('已存在');return;} list.push(v); saveSetting('customAmountPrefixes',JSON.stringify(list)); document.getElementById('newAmountPrefix').value=''; renderAmountPrefixList(); showToast('已添加（即时生效）'); }
+async function deleteAmountPrefix(i){ if(!(await confirm('确定删除？')))return; const list=getCustomAmountPrefixes(); list.splice(i,1); saveSetting('customAmountPrefixes',JSON.stringify(list)); renderAmountPrefixList(); }
 
-function showAmountSuffixManager() { if(document.getElementById('amountSuffixWin'))return; const s=getCustomAmountSuffixes(); const w=document.createElement('div'); w.className='floating-window'; w.id='amountSuffixWin'; w.style.width='500px'; w.style.height='400px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>金额后缀管理</h3><div class="window-controls"><button onclick="maximizeWindow('amountSuffixWin')">🗖</button><button onclick="pinWindow('amountSuffixWin')">📌</button><button onclick="document.getElementById('amountSuffixWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newAmountSuffix" placeholder="新增后缀(如米、斤)" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addAmountSuffix()" style="padding:6px 12px;background:#e67e22;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="amountSuffixList"></div></div><div class="modal-footer"><button onclick="document.getElementById('amountSuffixWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderAmountSuffixList(); makeWindowDraggable('amountSuffixWin'); highestZ+=1; w.style.zIndex=highestZ; }
+function showAmountSuffixManager(){ if(document.getElementById('amountSuffixWin'))return; const s=getCustomAmountSuffixes(); const w=document.createElement('div'); w.className='floating-window'; w.id='amountSuffixWin'; w.style.width='500px'; w.style.height='400px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>金额后缀管理</h3><div class="window-controls"><button onclick="maximizeWindow('amountSuffixWin')">🗖</button><button onclick="pinWindow('amountSuffixWin')">📌</button><button onclick="document.getElementById('amountSuffixWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newAmountSuffix" placeholder="新增后缀(如米、斤)" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addAmountSuffix()" style="padding:6px 12px;background:#e67e22;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="amountSuffixList"></div></div><div class="modal-footer"><button onclick="document.getElementById('amountSuffixWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderAmountSuffixList(); makeWindowDraggable('amountSuffixWin'); highestZ+=1; w.style.zIndex=highestZ; }
 function renderAmountSuffixList(){ const s=getCustomAmountSuffixes(); const c=document.getElementById('amountSuffixList'); if(!c)return; c.innerHTML=s.length===0?'<div style="text-align:center;color:#666;padding:10px;">暂无自定义金额后缀</div>':s.map((x,i)=>`<div class="replace-preset-item"><span>${x}</span><button onclick="deleteAmountSuffix(${i})" style="margin-left:auto;padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;">删除</button></div>`).join(''); }
-async function addAmountSuffix(){ const v=document.getElementById('newAmountSuffix')?.value.trim(); if(!v){showToast('请输入后缀');return;} const s=getCustomAmountSuffixes(); if(s.includes(v)){showToast('已存在');return;} s.push(v); saveSetting('customAmountSuffixes', JSON.stringify(s)); document.getElementById('newAmountSuffix').value=''; renderAmountSuffixList(); }
-async function deleteAmountSuffix(i){ if(!(await confirm('确定删除？')))return; const s=getCustomAmountSuffixes(); s.splice(i,1); saveSetting('customAmountSuffixes', JSON.stringify(s)); renderAmountSuffixList(); }
+async function addAmountSuffix(){ const v=document.getElementById('newAmountSuffix')?.value.trim(); if(!v){showToast('请输入后缀');return;} const s=getCustomAmountSuffixes(); if(s.includes(v)){showToast('已存在');return;} s.push(v); saveSetting('customAmountSuffixes',JSON.stringify(s)); document.getElementById('newAmountSuffix').value=''; renderAmountSuffixList(); }
+async function deleteAmountSuffix(i){ if(!(await confirm('确定删除？')))return; const s=getCustomAmountSuffixes(); s.splice(i,1); saveSetting('customAmountSuffixes',JSON.stringify(s)); renderAmountSuffixList(); }
 
-function showCategoryAliases() { if(document.getElementById('categoryAliasWin'))return; const a=getCategoryAliases(); const w=document.createElement('div'); w.className='floating-window'; w.id='categoryAliasWin'; w.style.width='500px'; w.style.height='450px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>分类缩写</h3><div class="window-controls"><button onclick="maximizeWindow('categoryAliasWin')">🗖</button><button onclick="pinWindow('categoryAliasWin')">📌</button><button onclick="document.getElementById('categoryAliasWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;"><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" id="aliasOld" placeholder="缩写（如 红蓝波）" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><span style="align-self:center;">→</span><input type="text" id="aliasNew" placeholder="正规分类（如 红波-蓝波）" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"></div><button onclick="addCategoryAlias()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="aliasList"></div></div><div class="modal-footer"><button onclick="document.getElementById('categoryAliasWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderAliasList(); makeWindowDraggable('categoryAliasWin'); highestZ+=1; w.style.zIndex=highestZ; }
+function showCategoryAliases(){ if(document.getElementById('categoryAliasWin'))return; const a=getCategoryAliases(); const w=document.createElement('div'); w.className='floating-window'; w.id='categoryAliasWin'; w.style.width='500px'; w.style.height='450px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>分类缩写</h3><div class="window-controls"><button onclick="maximizeWindow('categoryAliasWin')">🗖</button><button onclick="pinWindow('categoryAliasWin')">📌</button><button onclick="document.getElementById('categoryAliasWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;"><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" id="aliasOld" placeholder="缩写（如 红蓝波）" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><span style="align-self:center;">→</span><input type="text" id="aliasNew" placeholder="正规分类（如 红波-蓝波）" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"></div><button onclick="addCategoryAlias()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="aliasList"></div></div><div class="modal-footer"><button onclick="document.getElementById('categoryAliasWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderAliasList(); makeWindowDraggable('categoryAliasWin'); highestZ+=1; w.style.zIndex=highestZ; }
 function renderAliasList(){ const a=getCategoryAliases(); const c=document.getElementById('aliasList'); if(!c)return; c.innerHTML=a.length===0?'<div style="text-align:center;color:#666;padding:10px;">暂无分类缩写</div>':a.map((x,i)=>`<div class="replace-preset-item"><span>${x.alias} → ${x.target}</span><button onclick="deleteCategoryAlias(${i})" style="margin-left:auto;padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;">删除</button></div>`).join(''); }
-async function addCategoryAlias(){ const alias=document.getElementById('aliasOld')?.value.trim(); const target=document.getElementById('aliasNew')?.value.trim(); if(!alias||!target){showToast('请输入缩写和目标分类');return;} const a=getCategoryAliases(); if(a.some(x=>x.alias===alias)){showToast('该缩写已存在');return;} a.push({alias,target}); a.sort((x,y)=>y.alias.length-x.alias.length); saveSetting('categoryAliases', JSON.stringify(a)); document.getElementById('aliasOld').value=''; document.getElementById('aliasNew').value=''; renderAliasList(); }
-async function deleteCategoryAlias(i){ if(!(await confirm('确定删除？')))return; const a=getCategoryAliases(); a.splice(i,1); saveSetting('categoryAliases', JSON.stringify(a)); renderAliasList(); }
+async function addCategoryAlias(){ const alias=document.getElementById('aliasOld')?.value.trim(); const target=document.getElementById('aliasNew')?.value.trim(); if(!alias||!target){showToast('请输入缩写和目标分类');return;} const a=getCategoryAliases(); if(a.some(x=>x.alias===alias)){showToast('该缩写已存在');return;} a.push({alias,target}); a.sort((x,y)=>y.alias.length-x.alias.length); saveSetting('categoryAliases',JSON.stringify(a)); document.getElementById('aliasOld').value=''; document.getElementById('aliasNew').value=''; renderAliasList(); }
+async function deleteCategoryAlias(i){ if(!(await confirm('确定删除？')))return; const a=getCategoryAliases(); a.splice(i,1); saveSetting('categoryAliases',JSON.stringify(a)); renderAliasList(); }
 
-function showReplacePreset() { if(document.getElementById('replacePresetWin'))return; const p=getReplacePresets(); const w=document.createElement('div'); w.className='floating-window'; w.id='replacePresetWin'; w.style.width='500px'; w.style.height='450px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>替换预设</h3><div class="window-controls"><button onclick="maximizeWindow('replacePresetWin')">🗖</button><button onclick="pinWindow('replacePresetWin')">📌</button><button onclick="document.getElementById('replacePresetWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;"><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" id="presetOld" placeholder="原文字" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><span style="align-self:center;">→</span><input type="text" id="presetNew" placeholder="替换为" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"></div><button onclick="addReplacePreset()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="presetList"></div></div><div class="modal-footer"><button onclick="document.getElementById('replacePresetWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderPresetList(); makeWindowDraggable('replacePresetWin'); highestZ+=1; w.style.zIndex=highestZ; }
+function showReplacePreset(){ if(document.getElementById('replacePresetWin'))return; const p=getReplacePresets(); const w=document.createElement('div'); w.className='floating-window'; w.id='replacePresetWin'; w.style.width='500px'; w.style.height='450px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>替换预设</h3><div class="window-controls"><button onclick="maximizeWindow('replacePresetWin')">🗖</button><button onclick="pinWindow('replacePresetWin')">📌</button><button onclick="document.getElementById('replacePresetWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;"><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" id="presetOld" placeholder="原文字" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><span style="align-self:center;">→</span><input type="text" id="presetNew" placeholder="替换为" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"></div><button onclick="addReplacePreset()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="presetList"></div></div><div class="modal-footer"><button onclick="document.getElementById('replacePresetWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderPresetList(); makeWindowDraggable('replacePresetWin'); highestZ+=1; w.style.zIndex=highestZ; }
 function renderPresetList(){ const p=getReplacePresets(); const c=document.getElementById('presetList'); if(!c)return; c.innerHTML=p.length===0?'<div style="text-align:center;color:#666;padding:10px;">暂无替换预设</div>':p.map((x,i)=>`<div class="replace-preset-item"><span>${x.old} → ${x.new}</span><button onclick="deleteReplacePreset(${i})" style="margin-left:auto;padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;">删除</button></div>`).join(''); }
-async function addReplacePreset(){ const o=document.getElementById('presetOld')?.value.trim(); const n=document.getElementById('presetNew')?.value.trim(); if(!o||!n){showToast('请输入原文字和替换文字');return;} const p=getReplacePresets(); if(p.some(x=>x.old===o)){showToast('已存在');return;} p.push({old:o,new:n}); saveSetting('replacePresets', JSON.stringify(p)); document.getElementById('presetOld').value=''; document.getElementById('presetNew').value=''; renderPresetList(); }
-async function deleteReplacePreset(i){ if(!(await confirm('确定删除？')))return; const p=getReplacePresets(); p.splice(i,1); saveSetting('replacePresets', JSON.stringify(p)); renderPresetList(); }
+async function addReplacePreset(){ const o=document.getElementById('presetOld')?.value.trim(); const n=document.getElementById('presetNew')?.value.trim(); if(!o||!n){showToast('请输入原文字和替换文字');return;} const p=getReplacePresets(); if(p.some(x=>x.old===o)){showToast('已存在');return;} p.push({old:o,new:n}); saveSetting('replacePresets',JSON.stringify(p)); document.getElementById('presetOld').value=''; document.getElementById('presetNew').value=''; renderPresetList(); }
+async function deleteReplacePreset(i){ if(!(await confirm('确定删除？')))return; const p=getReplacePresets(); p.splice(i,1); saveSetting('replacePresets',JSON.stringify(p)); renderPresetList(); }
 
-function applyCategoryAliases(text) { const a=getCategoryAliases(); if(!a.length)return text; const s=[...a].sort((x,y)=>y.alias.length-x.alias.length); let r=text; s.forEach(x=>{ if(x.alias&&x.target)r=r.split(x.alias).join(x.target); }); return r; }
-function applyReplacePresets(text) { const p=getReplacePresets(); let r=text; p.forEach(x=>{ if(x.old&&x.new)r=r.split(x.old).join(x.new); }); return r; }
+function applyCategoryAliases(text){ const a=getCategoryAliases(); if(!a.length)return text; const s=[...a].sort((x,y)=>y.alias.length-x.alias.length); let r=text; s.forEach(x=>{if(x.alias&&x.target)r=r.split(x.alias).join(x.target);}); return r; }
+function applyReplacePresets(text){ const p=getReplacePresets(); let r=text; p.forEach(x=>{if(x.old&&x.new)r=r.split(x.old).join(x.new);}); return r; }
 
-async function semanticReplace() { const ta=document.querySelector('.source-order-input'); if(!ta)return; const s=ta.selectionStart,e=ta.selectionEnd; if(s===e){showToast('请先选择文本');return;} const sel=ta.value.substring(s,e); const cfg=getAllConfigData(); const vc=getAllValidCategories(cfg); const tokens=sel.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t=>t.trim()); const matched=tokens.filter(t=>vc.has(t)); if(!matched.length){showToast('未识别有效分类');return;} let sets=matched.map(cat=>{ let nums=[]; if(cfg.shengxiaoAttr[cat]){ cfg.shengxiaoAttr[cat].forEach(z=>{ if(cfg.zodiac[z])nums.push(...cfg.zodiac[z].map(n=>n.toString().padStart(2,'0'))); }); } const dir=cfg.wuxing[cat]||cfg.bose[cat]||cfg.banbo[cat]||cfg.danshuang[cat]||cfg.weishu[cat]||cfg.daxiaodanshuang[cat]||cfg.daxiao[cat]||cfg.heshu[cat]||cfg.toushu[cat]||cfg.menshu[cat]||cfg.duanwei[cat]||cfg.hedahexiao[cat]||cfg.weidaweixiao[cat]||cfg.hewei[cat]||cfg.heshudanshuang[cat]||cfg.toushuDanshuang[cat]; if(dir)nums.push(...dir.map(n=>n.toString().padStart(2,'0'))); if(cfg.zodiac[cat])nums.push(...cfg.zodiac[cat].map(n=>n.toString().padStart(2,'0'))); return new Set(nums); }); let inter=sets[0]; for(let i=1;i<sets.length;i++)inter=new Set([...inter].filter(x=>sets[i].has(x))); const res=[...inter].sort((a,b)=>parseInt(a)-parseInt(b)); if(!res.length){showToast('无共同号码');return;} const str=res.join('-'); const cf=await confirm(`转换结果：${str}\n是否替换选中文本？`); if(cf){ta.value=ta.value.substring(0,s)+str+ta.value.substring(e);convertOrderText();} }
+async function semanticReplace(){ const ta=document.querySelector('.source-order-input'); if(!ta)return; const s=ta.selectionStart,e=ta.selectionEnd; if(s===e){showToast('请先选择文本');return;} const sel=ta.value.substring(s,e); const cfg=getAllConfigData(); const vc=getAllValidCategories(cfg); const tokens=sel.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t=>t.trim()); const matched=tokens.filter(t=>vc.has(t)); if(!matched.length){showToast('未识别有效分类');return;} let sets=matched.map(cat=>{ let nums=[]; if(cfg.shengxiaoAttr[cat]){ cfg.shengxiaoAttr[cat].forEach(z=>{ if(cfg.zodiac[z])nums.push(...cfg.zodiac[z].map(n=>n.toString().padStart(2,'0'))); }); } const dir=cfg.wuxing[cat]||cfg.bose[cat]||cfg.banbo[cat]||cfg.danshuang[cat]||cfg.weishu[cat]||cfg.daxiaodanshuang[cat]||cfg.daxiao[cat]||cfg.heshu[cat]||cfg.toushu[cat]||cfg.menshu[cat]||cfg.duanwei[cat]||cfg.hedahexiao[cat]||cfg.weidaweixiao[cat]||cfg.hewei[cat]||cfg.heshudanshuang[cat]||cfg.toushuDanshuang[cat]; if(dir)nums.push(...dir.map(n=>n.toString().padStart(2,'0'))); if(cfg.zodiac[cat])nums.push(...cfg.zodiac[cat].map(n=>n.toString().padStart(2,'0'))); return new Set(nums); }); let inter=sets[0]; for(let i=1;i<sets.length;i++)inter=new Set([...inter].filter(x=>sets[i].has(x))); const res=[...inter].sort((a,b)=>parseInt(a)-parseInt(b)); if(!res.length){showToast('无共同号码');return;} const str=res.join('-'); const cf=await confirm(`转换结果：${str}\n是否替换选中文本？`); if(cf){ta.value=ta.value.substring(0,s)+str+ta.value.substring(e);convertOrderText();} }
 
-function tokenizeAndJoin(content) {
-  const cfg = getAllConfigData();
-  const vc = getAllValidCategories(cfg);
-  const tokens = content.split(/[^\u4e00-\u9fa5\d]+/).filter(t => t.trim()).map(t => t.trim());
-  const res = [];
-  tokens.forEach(t => {
-    const tm = t.match(/^(\d{2,})尾$/);
-    const hm = t.match(/^(\d{2,})头$/);
-    if (tm) { const ds = tm[1].split('').map(d => d + '尾'); res.push(...ds); }
-    else if (hm) { const ds = hm[1].split('').map(d => d + '头'); res.push(...ds); }
-    else if (/^\d{1,2}$/.test(t)) { const n = parseInt(t); if (n >= 1 && n <= 49) res.push(t.length === 1 ? '0' + t : t); }
-    else if (vc.has(t)) { res.push(t); }
-    else if (/^[\u4e00-\u9fa5]+$/.test(t)) { const cs = t.match(/[\u4e00-\u9fa5]/g) || []; if (cs.every(c => vc.has(c))) res.push(...cs); }
-  });
-  return res.join('-');
-}
+function tokenizeAndJoin(content){ const cfg=getAllConfigData(); const vc=getAllValidCategories(cfg); const tokens=content.split(/[^\u4e00-\u9fa5\d]+/).filter(t=>t.trim()).map(t=>t.trim()); const res=[]; tokens.forEach(t=>{ const tm=t.match(/^(\d{2,})尾$/); const hm=t.match(/^(\d{2,})头$/); if(tm){ const ds=tm[1].split('').map(d=>d+'尾'); res.push(...ds); } else if(hm){ const ds=hm[1].split('').map(d=>d+'头'); res.push(...ds); } else if(/^\d{1,2}$/.test(t)){ const n=parseInt(t); if(n>=1&&n<=49)res.push(t.length===1?'0'+t:t); } else if(vc.has(t)){ res.push(t); } else if(/^[\u4e00-\u9fa5]+$/.test(t)){ const cs=t.match(/[\u4e00-\u9fa5]/g)||[]; if(cs.every(c=>vc.has(c)))res.push(...cs); } }); return res.join('-'); }
+function getAllValidCategories(cfg){ const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); return s; }
 
-function getAllValidCategories(cfg) { const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); return s; }
-
-// ========== 订单记录查看（含下单人） ==========
-async function showOrderRecord(filter='all'){
-  try {
-    const recs = await getOrders(document.getElementById('filterDate')?.value);
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    if(document.getElementById('orderWin')) document.getElementById('orderWin').remove();
-    const w = document.createElement('div'); w.className = 'floating-window'; w.id = 'orderWin';
-    w.style.width = '750px'; w.style.height = '600px'; w.style.left = '50%'; w.style.top = '50%'; w.style.transform = 'translate(-50%,-50%)';
-    let html = `<div class="modal-header"><h3>下单记录</h3><div class="window-controls"><button onclick="maximizeWindow('orderWin')">🗖</button><button onclick="document.getElementById('orderWin').remove()">×</button></div></div><div class="modal-body">
-      <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <select id="recordUserFilter" onchange="applyPrizeFilter()" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;">
-          <option value="all">全部用户</option>
-          ${users.map(u => `<option value="${u}">${u}</option>`).join('')}
-        </select>
-        <button onclick="checkAll()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button>
-        <button onclick="uncheckAll()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button>
-        <button onclick="deleteChecked()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button>
-        <span style="margin-left:auto;">对奖：</span>
-        <input type="text" id="prizeNumberInput" placeholder="号码" maxlength="2" oninput="applyPrizeFilter()" style="padding:4px;border-radius:4px;border:1px solid #ccc;width:50px;">
-      </div>
-      <div id="orderListContainer">`;
-    if (recs.length === 0) html += '<div style="padding:20px;text-align:center;">暂无记录</div>';
-    else {
-      recs.forEach(o => {
-        const orderer = o.orderer || '未知';
-        const ordererColor = getUserColor(orderer);
-        const userColor = getUserColor(o.user);
-        html += `<div class="order-item"><input type="checkbox" class="order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span><span class="order-meta"><span style="color:${userColor};">用户：${o.user}</span></span><span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${o.date}</span></div><button class="order-del" onclick="deleteOrderRecord(${o.id})">删除</button></div>`;
-      });
-    }
-    html += '</div></div>';
-    w.innerHTML = html; document.body.appendChild(w);
-    makeWindowDraggable('orderWin'); highestZ += 1; w.style.zIndex = highestZ;
-  } catch(e) { showToast('加载失败'); }
-}
-
-async function deleteOrderRecord(id) {
-  if (!(await confirm('确定删除？'))) return;
-  try {
-    await deleteOrder(id);
-    updateTableFromRecords();
-    showOrderRecord();
-  } catch(e) { showToast('删除失败'); }
-}
-
-async function showReportOrderRecord(filter='all'){
-  try {
-    const recs = await getReportOrders(document.getElementById('filterDate')?.value);
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    if(document.getElementById('reportWin')) document.getElementById('reportWin').remove();
-    const w = document.createElement('div'); w.className = 'floating-window'; w.id = 'reportWin';
-    w.style.width = '700px'; w.style.height = '500px'; w.style.left = '50%'; w.style.top = '50%'; w.style.transform = 'translate(-50%,-50%)';
-    let html = `<div class="modal-header"><h3>上报数据</h3><div class="window-controls"><button onclick="maximizeWindow('reportWin')">🗖</button><button onclick="document.getElementById('reportWin').remove()">×</button></div></div><div class="modal-body">
-      <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <select id="reportRecordUserFilter" onchange="showReportOrderRecord(this.value)" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;">
-          <option value="all">全部用户</option>
-          ${users.map(u => `<option value="${u}">${u}</option>`).join('')}
-        </select>
-        <button onclick="checkAllReport()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button>
-        <button onclick="uncheckAllReport()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button>
-        <button onclick="deleteCheckedReport()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button>
-      </div>`;
-    if (recs.length === 0) html += '<div style="padding:20px;text-align:center;">暂无记录</div>';
-    else {
-      recs.forEach(o => {
-        const orderer = o.orderer || '未知';
-        const ordererColor = getUserColor(orderer);
-        const userColor = getUserColor(o.user);
-        html += `<div class="order-item"><input type="checkbox" class="report-order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span><span class="order-meta"><span style="color:${userColor};">用户：${o.user}</span></span><span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${o.date}</span></div><button class="order-del" onclick="deleteReportOrderRecord(${o.id})">删除</button></div>`;
-      });
-    }
-    html += '</div>';
-    w.innerHTML = html; document.body.appendChild(w);
-    makeWindowDraggable('reportWin'); highestZ += 1; w.style.zIndex = highestZ;
-  } catch(e) { showToast('加载失败'); }
-}
-
-async function deleteReportOrderRecord(id) {
-  if (!(await confirm('确定删除？'))) return;
-  try {
-    await deleteReportOrder(id);
-    updateTableFromRecords();
-    showReportOrderRecord();
-  } catch(e) { showToast('删除失败'); }
-}
-
-function checkAll(){ document.querySelectorAll('.order-check').forEach(cb=>cb.checked=true); }
-function uncheckAll(){ document.querySelectorAll('.order-check').forEach(cb=>cb.checked=false); }
-function checkAllReport(){ document.querySelectorAll('.report-order-check').forEach(cb=>cb.checked=true); }
-function uncheckAllReport(){ document.querySelectorAll('.report-order-check').forEach(cb=>cb.checked=false); }
-
-async function deleteChecked(){
-  const ids=[]; document.querySelectorAll('.order-check:checked').forEach(cb=>ids.push(Number(cb.dataset.id)));
-  if(ids.length===0){showToast('请选择');return;}
-  if(!(await confirm(`确定要删除选中的 ${ids.length} 条订单记录吗？`))) return;
-  try {
-    await batchDeleteOrders(ids);
-    updateTableFromRecords();
-    showOrderRecord();
-  } catch(e) { showToast('删除失败'); }
-}
-
-async function deleteCheckedReport(){
-  const ids=[]; document.querySelectorAll('.report-order-check:checked').forEach(cb=>ids.push(Number(cb.dataset.id)));
-  if(ids.length===0){showToast('请选择');return;}
-  if(!(await confirm(`确定要删除选中的 ${ids.length} 条上报记录吗？`))) return;
-  try {
-    await batchDeleteReportOrders(ids);
-    updateTableFromRecords();
-    showReportOrderRecord();
-  } catch(e) { showToast('删除失败'); }
-}
-
-// ========== 对奖高亮（修复版：发送整条订单内容） ==========
+// ========== 对奖高亮（恢复原版逻辑） ==========
 async function highlightContent(content, targetNum, cfg) {
   if (!targetNum) return content;
   try {
     const data = await fetchApi('/api/highlight', { method:'POST', body: JSON.stringify({ content, targetNum, config: cfg }) });
     return data.highlighted;
   } catch(e) { return content; }
+}
+
+function getNumberListForCategoryLocal(cat, cfg) {
+  const nums = [];
+  if (cfg.shengxiaoAttr[cat]) { cfg.shengxiaoAttr[cat].forEach(z => { if (cfg.zodiac[z]) nums.push(...cfg.zodiac[z].map(n => n.padStart(2,'0'))); }); }
+  const sources = [cfg.wuxing, cfg.bose, cfg.banbo, cfg.danshuang, cfg.weishu, cfg.daxiaodanshuang, cfg.daxiao, cfg.heshu, cfg.toushu, cfg.menshu, cfg.duanwei, cfg.hedahexiao, cfg.weidaweixiao, cfg.hewei, cfg.heshudanshuang, cfg.toushuDanshuang, cfg.zodiac];
+  for (const src of sources) { if (src && src[cat]) nums.push(...src[cat].map(n => n.padStart(2,'0'))); }
+  return [...new Set(nums)];
 }
 
 async function applyPrizeFilter() {
@@ -1637,7 +1257,6 @@ async function applyPrizeFilter() {
   const cfg = getAllConfigData();
 
   if (pn) {
-    const vc = getAllValidCategories(cfg);
     const nums = getNumberListForCategoryLocal(pn, cfg);
     filtered = filtered.filter(it => {
       const lines = it.content.split('\n');
@@ -1647,11 +1266,8 @@ async function applyPrizeFilter() {
         const cont = m[1];
         const items = cont.split('-');
         for (const item of items) {
-          if (/^\d{1,2}$/.test(item)) {
-            if (item.padStart(2,'0') === pn.padStart(2,'0')) return true;
-          } else if (vc.has(item)) {
-            if (nums.includes(pn.padStart(2,'0'))) return true;
-          }
+          if (/^\d{1,2}$/.test(item)) { if (item.padStart(2,'0') === pn.padStart(2,'0')) return true; }
+          else if (nums.includes(pn.padStart(2,'0'))) return true;
         }
       }
       return false;
@@ -1660,10 +1276,7 @@ async function applyPrizeFilter() {
 
   const cont = document.getElementById('orderListContainer');
   if (!cont) return;
-  if (filtered.length === 0) {
-    cont.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';
-    return;
-  }
+  if (filtered.length === 0) { cont.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>'; return; }
   const itemsHtml = await Promise.all(filtered.map(async it => {
     const orderer = it.orderer || '未知';
     const ordererColor = getUserColor(orderer);
@@ -1674,400 +1287,155 @@ async function applyPrizeFilter() {
   cont.innerHTML = itemsHtml.join('');
 }
 
-function getNumberListForCategoryLocal(cat, cfg) {
-  const nums = [];
-  if (cfg.shengxiaoAttr[cat]) {
-    cfg.shengxiaoAttr[cat].forEach(z => {
-      if (cfg.zodiac[z]) nums.push(...cfg.zodiac[z].map(n => n.padStart(2,'0')));
-    });
-  }
-  const sources = [cfg.wuxing, cfg.bose, cfg.banbo, cfg.danshuang, cfg.weishu, cfg.daxiaodanshuang, cfg.daxiao, cfg.heshu, cfg.toushu, cfg.menshu, cfg.duanwei, cfg.hedahexiao, cfg.weidaweixiao, cfg.hewei, cfg.heshudanshuang, cfg.toushuDanshuang, cfg.zodiac];
-  for (const src of sources) {
-    if (src && src[cat]) nums.push(...src[cat].map(n => n.padStart(2,'0')));
-  }
-  return [...new Set(nums)];
+function getUserColor(u) { if (!u) return 'hsl(0,0%,50%)'; let h = 0; for (let i = 0; i < u.length; i++) h = u.charCodeAt(i) + ((h << 5) - h); return `hsl(${(h % 360 + 360) % 360}, 70%, 45%)`; }
+
+// ========== 订单记录 ==========
+async function showOrderRecord(filter='all'){
+  try {
+    const recs = await getOrders(document.getElementById('filterDate')?.value);
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    if(document.getElementById('orderWin')) document.getElementById('orderWin').remove();
+    const w = document.createElement('div'); w.className = 'floating-window'; w.id = 'orderWin';
+    w.style.width = '750px'; w.style.height = '600px'; w.style.left = '50%'; w.style.top = '50%'; w.style.transform = 'translate(-50%,-50%)';
+    let html = `<div class="modal-header"><h3>下单记录</h3><div class="window-controls"><button onclick="maximizeWindow('orderWin')">🗖</button><button onclick="document.getElementById('orderWin').remove()">×</button></div></div><div class="modal-body">
+      <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="recordUserFilter" onchange="applyPrizeFilter()" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;"><option value="all">全部用户</option>${users.map(u => `<option value="${u}">${u}</option>`).join('')}</select>
+        <button onclick="checkAll()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAll()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="deleteChecked()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button>
+        <span style="margin-left:auto;">对奖：</span><input type="text" id="prizeNumberInput" placeholder="号码" maxlength="2" oninput="applyPrizeFilter()" style="padding:4px;border-radius:4px;border:1px solid #ccc;width:50px;"></div><div id="orderListContainer">`;
+    if (recs.length === 0) html += '<div style="padding:20px;text-align:center;">暂无记录</div>';
+    else {
+      recs.forEach(o => {
+        const orderer = o.orderer || '未知';
+        const ordererColor = getUserColor(orderer);
+        const userColor = getUserColor(o.user);
+        html += `<div class="order-item"><input type="checkbox" class="order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span><span class="order-meta"><span style="color:${userColor};">用户：${o.user}</span></span><span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${o.date}</span></div><button class="order-del" onclick="deleteOrderRecord(${o.id})">删除</button></div>`;
+      });
+    }
+    html += '</div></div>'; w.innerHTML = html; document.body.appendChild(w);
+    makeWindowDraggable('orderWin'); highestZ += 1; w.style.zIndex = highestZ;
+  } catch(e) { showToast('加载失败'); }
 }
 
-function getUserColor(u) {
-  if (!u) return 'hsl(0,0%,50%)';
-  let h = 0;
-  for (let i = 0; i < u.length; i++) h = u.charCodeAt(i) + ((h << 5) - h);
-  return `hsl(${(h % 360 + 360) % 360}, 70%, 45%)`;
+async function deleteOrderRecord(id) { if (!(await confirm('确定删除？'))) return; try { await deleteOrder(id); updateTableFromRecords(); showOrderRecord(); } catch(e) { showToast('删除失败'); } }
+
+async function showReportOrderRecord(filter='all'){
+  try {
+    const recs = await getReportOrders(document.getElementById('filterDate')?.value);
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    if(document.getElementById('reportWin')) document.getElementById('reportWin').remove();
+    const w = document.createElement('div'); w.className = 'floating-window'; w.id = 'reportWin';
+    w.style.width = '700px'; w.style.height = '500px'; w.style.left = '50%'; w.style.top = '50%'; w.style.transform = 'translate(-50%,-50%)';
+    let html = `<div class="modal-header"><h3>上报数据</h3><div class="window-controls"><button onclick="maximizeWindow('reportWin')">🗖</button><button onclick="document.getElementById('reportWin').remove()">×</button></div></div><div class="modal-body">
+      <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="reportRecordUserFilter" onchange="showReportOrderRecord(this.value)" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;"><option value="all">全部用户</option>${users.map(u => `<option value="${u}">${u}</option>`).join('')}</select>
+        <button onclick="checkAllReport()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAllReport()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="deleteCheckedReport()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button></div>`;
+    if (recs.length === 0) html += '<div style="padding:20px;text-align:center;">暂无记录</div>';
+    else {
+      recs.forEach(o => {
+        const orderer = o.orderer || '未知';
+        const ordererColor = getUserColor(orderer);
+        const userColor = getUserColor(o.user);
+        html += `<div class="order-item"><input type="checkbox" class="report-order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span><span class="order-meta"><span style="color:${userColor};">用户：${o.user}</span></span><span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${o.date}</span></div><button class="order-del" onclick="deleteReportOrderRecord(${o.id})">删除</button></div>`;
+      });
+    }
+    html += '</div>'; w.innerHTML = html; document.body.appendChild(w);
+    makeWindowDraggable('reportWin'); highestZ += 1; w.style.zIndex = highestZ;
+  } catch(e) { showToast('加载失败'); }
 }
+
+async function deleteReportOrderRecord(id) { if (!(await confirm('确定删除？'))) return; try { await deleteReportOrder(id); updateTableFromRecords(); showReportOrderRecord(); } catch(e) { showToast('删除失败'); } }
+
+function checkAll(){ document.querySelectorAll('.order-check').forEach(cb=>cb.checked=true); }
+function uncheckAll(){ document.querySelectorAll('.order-check').forEach(cb=>cb.checked=false); }
+function checkAllReport(){ document.querySelectorAll('.report-order-check').forEach(cb=>cb.checked=true); }
+function uncheckAllReport(){ document.querySelectorAll('.report-order-check').forEach(cb=>cb.checked=false); }
+
+async function deleteChecked(){ const ids=[]; document.querySelectorAll('.order-check:checked').forEach(cb=>ids.push(Number(cb.dataset.id))); if(ids.length===0){showToast('请选择');return;} if(!(await confirm(`确定要删除选中的 ${ids.length} 条订单记录吗？`))) return; try { await batchDeleteOrders(ids); updateTableFromRecords(); showOrderRecord(); } catch(e) { showToast('删除失败'); } }
+async function deleteCheckedReport(){ const ids=[]; document.querySelectorAll('.report-order-check:checked').forEach(cb=>ids.push(Number(cb.dataset.id))); if(ids.length===0){showToast('请选择');return;} if(!(await confirm(`确定要删除选中的 ${ids.length} 条上报记录吗？`))) return; try { await batchDeleteReportOrders(ids); updateTableFromRecords(); showReportOrderRecord(); } catch(e) { showToast('删除失败'); } }
 
 // ========== 用户管理 ==========
 function showUserManager() {
   if (document.getElementById('userManagerWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'userManagerWin';
   win.style.width = '500px'; win.style.height = '450px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
-  win.innerHTML = `
-    <div class="modal-header"><h3>管理用户和下单人</h3><div class="window-controls"><button onclick="maximizeWindow('userManagerWin')">🗖</button><button onclick="pinWindow('userManagerWin')">📌</button><button onclick="document.getElementById('userManagerWin').remove()">×</button></div></div>
-    <div class="modal-body">
-      <div style="margin-bottom:12px;display:flex;gap:6px;">
-        <input type="text" id="newUserName" placeholder="用户名" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;">
-        <button onclick="addUserAction()" style="padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;">添加</button>
-      </div>
-      <div id="userList"></div>
-      <hr style="margin:15px 0;">
-      <div style="margin-bottom:8px;font-weight:bold;">下单人管理</div>
-      <div style="margin-bottom:12px;display:flex;gap:6px;">
-        <input type="text" id="newOrdererName" placeholder="下单人姓名" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;">
-        <button onclick="addOrdererAction()" style="padding:6px 12px;background:#e67e22;color:#fff;border:none;border-radius:4px;">添加下单人</button>
-      </div>
-      <div id="ordererList"></div>
-    </div>
+  win.innerHTML = `<div class="modal-header"><h3>管理用户和下单人</h3><div class="window-controls"><button onclick="maximizeWindow('userManagerWin')">🗖</button><button onclick="pinWindow('userManagerWin')">📌</button><button onclick="document.getElementById('userManagerWin').remove()">×</button></div></div><div class="modal-body">
+    <div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newUserName" placeholder="用户名" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addUserAction()" style="padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="userList"></div>
+    <hr style="margin:15px 0;"><div style="margin-bottom:8px;font-weight:bold;">下单人管理</div>
+    <div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newOrdererName" placeholder="下单人姓名" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addOrdererAction()" style="padding:6px 12px;background:#e67e22;color:#fff;border:none;border-radius:4px;">添加下单人</button></div><div id="ordererList"></div></div>
     <div class="modal-footer"><button onclick="document.getElementById('userManagerWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`;
   document.body.appendChild(win);
-  renderUserList();
-  renderOrdererList();
+  renderUserList(); renderOrdererList();
   makeWindowDraggable('userManagerWin'); highestZ += 1; win.style.zIndex = highestZ;
 }
 
-function renderUserList() {
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
-  const container = document.getElementById('userList');
-  if (!container) return;
-  if (users.length === 0) { container.innerHTML = '<div style="text-align:center;color:#666;padding:10px;">暂无用户</div>'; return; }
-  container.innerHTML = users.map(u => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px;border:1px solid #eee;border-radius:4px;"><span style="flex:1;">${u}</span><button onclick="deleteUserAction('${u}')" style="background:#e74c3c;color:#fff;border:none;padding:2px 8px;border-radius:3px;">删除</button></div>`).join('');
+function renderUserList(){ const users=JSON.parse(localStorage.getItem('users')||'[]'); const c=document.getElementById('userList'); if(!c)return; if(users.length===0){c.innerHTML='<div style="text-align:center;color:#666;padding:10px;">暂无用户</div>';return;} c.innerHTML=users.map(u=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px;border:1px solid #eee;border-radius:4px;"><span style="flex:1;">${u}</span><button onclick="deleteUserAction('${u}')" style="background:#e74c3c;color:#fff;border:none;padding:2px 8px;border-radius:3px;">删除</button></div>`).join(''); }
+function renderOrdererList(){ const orderers=JSON.parse(localStorage.getItem('orderers')||'[]'); const c=document.getElementById('ordererList'); if(!c)return; if(orderers.length===0){c.innerHTML='<div style="text-align:center;color:#666;padding:10px;">暂无下单人</div>';return;} c.innerHTML=orderers.map((o,i)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px;border:1px solid #eee;border-radius:4px;"><span style="flex:1;">${o}</span><button onclick="deleteOrdererAction(${i})" style="background:#e74c3c;color:#fff;border:none;padding:2px 8px;border-radius:3px;">删除</button></div>`).join(''); }
+
+async function addUserAction(){ const name=document.getElementById('newUserName')?.value.trim(); if(!name){showToast('请输入用户名');return;} const users=JSON.parse(localStorage.getItem('users')||'[]'); if(users.includes(name)){showToast('用户已存在');return;} users.push(name); saveSetting('users',JSON.stringify(users)); document.getElementById('newUserName').value=''; renderUserList(); updateSelects(); showToast('用户添加成功'); }
+async function deleteUserAction(name){ if(!(await confirm(`确定删除用户"${name}"？`)))return; let users=JSON.parse(localStorage.getItem('users')||'[]'); users=users.filter(u=>u!==name); saveSetting('users',JSON.stringify(users)); renderUserList(); updateSelects(); showToast('用户已删除'); }
+async function addOrdererAction(){ const name=document.getElementById('newOrdererName')?.value.trim(); if(!name){showToast('请输入下单人姓名');return;} const orderers=JSON.parse(localStorage.getItem('orderers')||'[]'); if(orderers.includes(name)){showToast('下单人已存在');return;} orderers.push(name); saveSetting('orderers',JSON.stringify(orderers)); document.getElementById('newOrdererName').value=''; renderOrdererList(); updateSelects(); showToast('下单人添加成功'); }
+async function deleteOrdererAction(index){ if(!(await confirm('确定删除该下单人？')))return; const orderers=JSON.parse(localStorage.getItem('orderers')||'[]'); orderers.splice(index,1); saveSetting('orderers',JSON.stringify(orderers)); renderOrdererList(); updateSelects(); showToast('下单人已删除'); }
+
+function updateSelects(){
+  const orderers=JSON.parse(localStorage.getItem('orderers')||'[]');
+  const users=JSON.parse(localStorage.getItem('users')||'[]');
+  const orderSel=document.getElementById('orderUserSelect'); if(orderSel){orderSel.innerHTML='';orderers.forEach(o=>{const opt=document.createElement('option');opt.value=o;opt.textContent=o;orderSel.appendChild(opt);});}
+  const viewSel=document.getElementById('viewUserSelect'); if(viewSel){viewSel.innerHTML='';users.forEach(u=>{const o=document.createElement('option');o.value=u;o.textContent=u;viewSel.appendChild(o);});}
 }
 
-function renderOrdererList() {
-  const orderers = JSON.parse(localStorage.getItem('orderers') || '[]');
-  const container = document.getElementById('ordererList');
-  if (!container) return;
-  if (orderers.length === 0) { container.innerHTML = '<div style="text-align:center;color:#666;padding:10px;">暂无下单人</div>'; return; }
-  container.innerHTML = orderers.map((o,i) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px;border:1px solid #eee;border-radius:4px;"><span style="flex:1;">${o}</span><button onclick="deleteOrdererAction(${i})" style="background:#e74c3c;color:#fff;border:none;padding:2px 8px;border-radius:3px;">删除</button></div>`).join('');
-}
-
-async function addUserAction() {
-  const name = document.getElementById('newUserName')?.value.trim();
-  if (!name) { showToast('请输入用户名'); return; }
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
-  if (users.includes(name)) { showToast('用户已存在'); return; }
-  users.push(name);
-  saveSetting('users', JSON.stringify(users));
-  document.getElementById('newUserName').value = '';
-  renderUserList();
-  updateSelects();
-  showToast('用户添加成功');
-}
-
-async function deleteUserAction(name) {
-  if (!(await confirm(`确定删除用户"${name}"？`))) return;
-  let users = JSON.parse(localStorage.getItem('users') || '[]');
-  users = users.filter(u => u !== name);
-  saveSetting('users', JSON.stringify(users));
-  renderUserList();
-  updateSelects();
-  showToast('用户已删除');
-}
-
-async function addOrdererAction() {
-  const name = document.getElementById('newOrdererName')?.value.trim();
-  if (!name) { showToast('请输入下单人姓名'); return; }
-  const orderers = JSON.parse(localStorage.getItem('orderers') || '[]');
-  if (orderers.includes(name)) { showToast('下单人已存在'); return; }
-  orderers.push(name);
-  saveSetting('orderers', JSON.stringify(orderers));
-  document.getElementById('newOrdererName').value = '';
-  renderOrdererList();
-  updateSelects();
-  showToast('下单人添加成功');
-}
-
-async function deleteOrdererAction(index) {
-  if (!(await confirm('确定删除该下单人？'))) return;
-  const orderers = JSON.parse(localStorage.getItem('orderers') || '[]');
-  orderers.splice(index, 1);
-  saveSetting('orderers', JSON.stringify(orderers));
-  renderOrdererList();
-  updateSelects();
-  showToast('下单人已删除');
-}
-
-function updateSelects() {
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
-  const orderers = JSON.parse(localStorage.getItem('orderers') || '[]');
-  const orderSel = document.getElementById('orderUserSelect');
-  if (orderSel) {
-    orderSel.innerHTML = '';
-    orderers.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; orderSel.appendChild(opt); });
-  }
-  const viewSel = document.getElementById('viewUserSelect');
-  if (viewSel) {
-    viewSel.innerHTML = '';
-    users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; viewSel.appendChild(o); });
-  }
-}
-
-// ========== 浮动窗口控制 ==========
+// ========== 浮动窗口 ==========
 let highestZ = 2000;
-function makeWindowDraggable(winId) {
-  const win = document.getElementById(winId);
-  if (!win) return;
-  const header = win.querySelector('.modal-header') || win.querySelector('.database-modal-header');
-  if (!header) return;
-  let isDragging = false, startX, startY, startLeft, startTop;
-  header.addEventListener('mousedown', (e) => {
-    if (e.target.closest('.window-controls')) return;
-    isDragging = true;
-    const rect = win.getBoundingClientRect();
-    startX = e.clientX; startY = e.clientY;
-    startLeft = rect.left; startTop = rect.top;
-    win.style.cursor = 'grabbing';
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    win.style.left = (startLeft + e.clientX - startX) + 'px';
-    win.style.top = (startTop + e.clientY - startY) + 'px';
-    win.style.transform = 'none';
-  });
-  document.addEventListener('mouseup', () => { isDragging = false; win.style.cursor = ''; });
-  win.addEventListener('mousedown', () => { highestZ += 1; win.style.zIndex = highestZ; });
-}
+function makeWindowDraggable(winId){ const win=document.getElementById(winId); if(!win)return; const header=win.querySelector('.modal-header')||win.querySelector('.database-modal-header'); if(!header)return; let isDragging=false,startX,startY,startLeft,startTop; header.addEventListener('mousedown',(e)=>{if(e.target.closest('.window-controls'))return;isDragging=true;const rect=win.getBoundingClientRect();startX=e.clientX;startY=e.clientY;startLeft=rect.left;startTop=rect.top;win.style.cursor='grabbing';e.preventDefault();}); document.addEventListener('mousemove',(e)=>{if(!isDragging)return;win.style.left=(startLeft+e.clientX-startX)+'px';win.style.top=(startTop+e.clientY-startY)+'px';win.style.transform='none';}); document.addEventListener('mouseup',()=>{isDragging=false;win.style.cursor='';}); win.addEventListener('mousedown',()=>{highestZ+=1;win.style.zIndex=highestZ;}); }
+function maximizeWindow(winId){ const win=document.getElementById(winId); if(!win)return; const isMax=win.getAttribute('data-maximized')==='true'; if(isMax){win.style.width=win.getAttribute('data-orig-width')||'';win.style.height=win.getAttribute('data-orig-height')||'';win.style.left=win.getAttribute('data-orig-left')||'';win.style.top=win.getAttribute('data-orig-top')||'';win.style.transform=win.getAttribute('data-orig-transform')||'';win.style.right='';win.style.bottom='';win.setAttribute('data-maximized','false');win.style.resize='both';}else{const rect=win.getBoundingClientRect();win.setAttribute('data-orig-width',win.style.width||(rect.width+'px'));win.setAttribute('data-orig-height',win.style.height||(rect.height+'px'));win.setAttribute('data-orig-left',win.style.left||(rect.left+'px'));win.setAttribute('data-orig-top',win.style.top||(rect.top+'px'));win.setAttribute('data-orig-transform',win.style.transform||'');win.style.left='0';win.style.top='0';win.style.right='0';win.style.bottom='0';win.style.width='auto';win.style.height='auto';win.style.transform='none';win.setAttribute('data-maximized','true');win.style.resize='none';} }
+function pinWindow(winId){ const win=document.getElementById(winId); if(!win)return; highestZ+=1;win.style.zIndex=highestZ;showToast('窗口已置顶'); }
 
-function maximizeWindow(winId) {
-  const win = document.getElementById(winId);
-  if (!win) return;
-  const isMaximized = win.getAttribute('data-maximized') === 'true';
-  if (isMaximized) {
-    win.style.width = win.getAttribute('data-orig-width') || '';
-    win.style.height = win.getAttribute('data-orig-height') || '';
-    win.style.left = win.getAttribute('data-orig-left') || '';
-    win.style.top = win.getAttribute('data-orig-top') || '';
-    win.style.transform = win.getAttribute('data-orig-transform') || '';
-    win.style.right = ''; win.style.bottom = '';
-    win.setAttribute('data-maximized', 'false');
-    win.style.resize = 'both';
-  } else {
-    const rect = win.getBoundingClientRect();
-    win.setAttribute('data-orig-width', win.style.width || (rect.width + 'px'));
-    win.setAttribute('data-orig-height', win.style.height || (rect.height + 'px'));
-    win.setAttribute('data-orig-left', win.style.left || (rect.left + 'px'));
-    win.setAttribute('data-orig-top', win.style.top || (rect.top + 'px'));
-    win.setAttribute('data-orig-transform', win.style.transform || '');
-    win.style.left = '0'; win.style.top = '0'; win.style.right = '0'; win.style.bottom = '0';
-    win.style.width = 'auto'; win.style.height = 'auto'; win.style.transform = 'none';
-    win.setAttribute('data-maximized', 'true');
-    win.style.resize = 'none';
-  }
-}
+async function showDatabase(){ const pwd=await prompt("请输入数据库密码：",""); if(pwd!=="891105"){await alert("密码错误");return;} const modal=document.getElementById('databaseModal'); if(!modal)return; modal.style.display='flex';highestZ+=1;modal.style.zIndex=highestZ;renderCustomConfigContainer();makeWindowDraggable('databaseModalBox'); }
+function hideDatabase(){ const modal=document.getElementById('databaseModal'); if(modal)modal.style.display='none'; }
 
-function pinWindow(winId) {
-  const win = document.getElementById(winId);
-  if (!win) return;
-  highestZ += 1; win.style.zIndex = highestZ;
-  showToast('窗口已置顶');
-}
-
-// ========== 数据库弹窗 ==========
-async function showDatabase() {
-  const pwd = await prompt("请输入数据库密码：","");
-  if (pwd !== "891105") { await alert("密码错误"); return; }
-  const modal = document.getElementById('databaseModal');
-  if (!modal) return;
-  modal.style.display = 'flex';
-  highestZ += 1; modal.style.zIndex = highestZ;
-  renderCustomConfigContainer();
-  makeWindowDraggable('databaseModalBox');
-}
-function hideDatabase() { const modal = document.getElementById('databaseModal'); if (modal) modal.style.display = 'none'; }
-
-// ========== 识别弹窗 ==========
-function showRecognizeModal() {
-  if (document.getElementById('recognizeWin')) return;
-  const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recognizeWin';
-  win.style.width = '850px'; win.style.height = '650px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
-  win.setAttribute('data-orig-width', '850px'); win.setAttribute('data-orig-height', '650px');
-  win.innerHTML = `
-    <div class="modal-header">订单输入<div class="window-controls"><button onclick="maximizeWindow('recognizeWin')">🗖</button><button onclick="pinWindow('recognizeWin')">📌</button><button onclick="document.getElementById('recognizeWin').remove()">×</button></div></div>
-    <div class="modal-body" style="display:flex;flex-direction:column;gap:10px;">
-      <div class="card recognize-card" style="flex:1;display:flex;flex-direction:column;">
-        <div class="card-title" style="display:flex;align-items:center;gap:5px;">
-          <select id="orderUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;"></select>
-          <input type="date" id="orderDate" style="padding:4px;border-radius:4px;border:1px solid #ccc;margin-left:8px;">
-          <div class="amount-stat-box" id="orderTotalAmountBox" style="display:none;"><span>合计：</span><span id="orderTotalAmount">0</span></div>
-          <button class="btn btn-prefix" onclick="showPrefixManager()" style="margin-left:auto;">前缀</button>
-          <button class="btn btn-amount-prefix" onclick="showAmountPrefixManager()">金额前缀</button>
-          <button class="btn btn-amount-prefix2" onclick="showAmountSuffixManager()">金额后缀</button>
-        </div>
-        <div class="order-input-container" style="flex:1;"><div class="input-column"><div class="box-label">订单输入框</div><textarea class="source-order-input" placeholder="" oninput="convertOrderText()"></textarea></div><div class="result-column"><div class="box-label">识别结果</div><div class="result-area-new"><textarea class="result-content" id="orderResult" readonly></textarea></div></div></div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-paste" onclick="pasteOrder()">粘贴订单</button><button class="btn btn-save-order" onclick="saveOrder()">保存下单</button><button class="btn btn-report" onclick="saveReportOrder()">上报</button><button class="btn btn-clear" onclick="clearAllInput()">清空</button><button class="btn btn-replace-sep" onclick="replaceSeparators()">换分隔</button><button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button><button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button>
-        </div>
-      </div>
-      <div class="card category-card"><div class="card-title">分类快捷选择</div><div class="btn-group">
-          <button class="category-btn" onclick="quickAddWithAmount('家禽', this)">家禽</button><button class="category-btn" onclick="quickAddWithAmount('野兽', this)">野兽</button><button class="category-btn" onclick="quickAddWithAmount('红波', this)">红波</button><button class="category-btn" onclick="quickAddWithAmount('蓝波', this)">蓝波</button><button class="category-btn" onclick="quickAddWithAmount('绿波', this)">绿波</button><button class="category-btn" onclick="quickAddWithAmount('红双', this)">红双</button><button class="category-btn" onclick="quickAddWithAmount('红单', this)">红单</button><button class="category-btn" onclick="quickAddWithAmount('蓝双', this)">蓝双</button><button class="category-btn" onclick="quickAddWithAmount('蓝单', this)">蓝单</button><button class="category-btn" onclick="quickAddWithAmount('绿双', this)">绿双</button><button class="category-btn" onclick="quickAddWithAmount('绿单', this)">绿单</button><button class="category-btn" onclick="quickAddWithAmount('单数', this)">单数</button><button class="category-btn" onclick="quickAddWithAmount('双数', this)">双数</button><button class="category-btn" onclick="quickAddWithAmount('鼠', this)">鼠</button><button class="category-btn" onclick="quickAddWithAmount('牛', this)">牛</button><button class="category-btn" onclick="quickAddWithAmount('虎', this)">虎</button><button class="category-btn" onclick="quickAddWithAmount('兔', this)">兔</button><button class="category-btn" onclick="quickAddWithAmount('龙', this)">龙</button><button class="category-btn" onclick="quickAddWithAmount('蛇', this)">蛇</button><button class="category-btn" onclick="quickAddWithAmount('马', this)">马</button><button class="category-btn" onclick="quickAddWithAmount('羊', this)">羊</button><button class="category-btn" onclick="quickAddWithAmount('猴', this)">猴</button><button class="category-btn" onclick="quickAddWithAmount('鸡', this)">鸡</button><button class="category-btn" onclick="quickAddWithAmount('狗', this)">狗</button><button class="category-btn" onclick="quickAddWithAmount('猪', this)">猪</button><button class="category-btn" onclick="quickAddWithAmount('金', this)">金</button><button class="category-btn" onclick="quickAddWithAmount('木', this)">木</button><button class="category-btn" onclick="quickAddWithAmount('水', this)">水</button><button class="category-btn" onclick="quickAddWithAmount('火', this)">火</button><button class="category-btn" onclick="quickAddWithAmount('土', this)">土</button>
-        </div></div>
-    </div>`;
-  document.body.appendChild(win);
-  updateSelects();
-  const today = getTodayCST(); const dateInput = win.querySelector('#orderDate'); if (dateInput) dateInput.value = today;
-  makeWindowDraggable('recognizeWin'); highestZ += 1; win.style.zIndex = highestZ;
+function showRecognizeModal(){
+  if(document.getElementById('recognizeWin'))return;
+  const win=document.createElement('div');win.className='floating-window';win.id='recognizeWin';
+  win.style.width='850px';win.style.height='650px';win.style.left='50%';win.style.top='50%';win.style.transform='translate(-50%,-50%)';
+  win.setAttribute('data-orig-width','850px');win.setAttribute('data-orig-height','650px');
+  win.innerHTML=`<div class="modal-header">订单输入<div class="window-controls"><button onclick="maximizeWindow('recognizeWin')">🗖</button><button onclick="pinWindow('recognizeWin')">📌</button><button onclick="document.getElementById('recognizeWin').remove()">×</button></div></div><div class="modal-body" style="display:flex;flex-direction:column;gap:10px;"><div class="card recognize-card" style="flex:1;display:flex;flex-direction:column;"><div class="card-title" style="display:flex;align-items:center;gap:5px;"><select id="orderUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;"></select><input type="date" id="orderDate" style="padding:4px;border-radius:4px;border:1px solid #ccc;margin-left:8px;"><div class="amount-stat-box" id="orderTotalAmountBox" style="display:none;"><span>合计：</span><span id="orderTotalAmount">0</span></div><button class="btn btn-prefix" onclick="showPrefixManager()" style="margin-left:auto;">前缀</button><button class="btn btn-amount-prefix" onclick="showAmountPrefixManager()">金额前缀</button><button class="btn btn-amount-prefix2" onclick="showAmountSuffixManager()">金额后缀</button></div><div class="order-input-container" style="flex:1;"><div class="input-column"><div class="box-label">订单输入框</div><textarea class="source-order-input" placeholder="" oninput="convertOrderText()"></textarea></div><div class="result-column"><div class="box-label">识别结果</div><div class="result-area-new"><textarea class="result-content" id="orderResult" readonly></textarea></div></div></div><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-paste" onclick="pasteOrder()">粘贴订单</button><button class="btn btn-save-order" onclick="saveOrder()">保存下单</button><button class="btn btn-report" onclick="saveReportOrder()">上报</button><button class="btn btn-clear" onclick="clearAllInput()">清空</button><button class="btn btn-replace-sep" onclick="replaceSeparators()">换分隔</button><button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button><button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button></div></div><div class="card category-card"><div class="card-title">分类快捷选择</div><div class="btn-group">${['家禽','野兽','红波','蓝波','绿波','红双','红单','蓝双','蓝单','绿双','绿单','单数','双数','鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪','金','木','水','火','土'].map(cat=>`<button class="category-btn" onclick="quickAddWithAmount('${cat}', this)">${cat}</button>`).join('')}</div></div></div>`;
+  document.body.appendChild(win); updateSelects();
+  const today=getTodayCST(); const dateInput=win.querySelector('#orderDate'); if(dateInput)dateInput.value=today;
+  makeWindowDraggable('recognizeWin'); highestZ+=1; win.style.zIndex=highestZ;
 }
 
 function clearAllInput(){ const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.value=''; updateOrderTotalDisplay(); }
 async function pasteOrder(){ try{ const text=await navigator.clipboard.readText(); if(text){const si=document.querySelector('.source-order-input');if(si){si.value=text;convertOrderText();}} }catch(err){showToast('无法访问剪贴板');} }
 
-// ========== 截图 ==========
-async function screenshotTable(tid) {
-  const tbl = document.getElementById(tid);
-  if (!tbl) { showToast('表格不存在'); return; }
-  try {
-    const canvas = await html2canvas(tbl, { backgroundColor: '#ffffff', scale: 2, logging: false });
-    canvas.toBlob(async blob => {
-      if (!blob) { showToast('生成图片失败'); return; }
-      try {
-        const item = new ClipboardItem({ 'image/png': blob });
-        await navigator.clipboard.write([item]);
-        showToast('截图已复制');
-      } catch(e) { showToast('复制失败'); }
-    }, 'image/png');
-  } catch(e) { showToast('截图失败'); }
-}
+async function screenshotTable(tid){ const tbl=document.getElementById(tid); if(!tbl){showToast('表格不存在');return;} try{ const canvas=await html2canvas(tbl,{backgroundColor:'#ffffff',scale:2,logging:false}); canvas.toBlob(async blob=>{ if(!blob){showToast('生成图片失败');return;} try{ const item=new ClipboardItem({'image/png':blob}); await navigator.clipboard.write([item]); showToast('截图已复制'); }catch(e){showToast('复制失败'); } },'image/png'); }catch(e){showToast('截图失败');} }
 
 // ========== 数据库配置读写 ==========
-function getAllConfigData() {
-  const configData = {
-    zodiac:{}, shengxiaoAttr:{}, wuxing:{}, bose:{}, banbo:{}, danshuang:{}, weishu:{},
-    daxiaodanshuang:{}, daxiao:{}, heshu:{}, toushu:{}, menshu:{}, duanwei:{},
-    hedahexiao:{}, weidaweixiao:{}, hewei:{}, heshudanshuang:{}, toushuDanshuang:{}
-  };
-  const ids = {
-    zodiac: { shu:'鼠', niu:'牛', hu:'虎', tu2:'兔', long:'龙', she:'蛇', ma:'马', yang:'羊', hou:'猴', ji:'鸡', gou:'狗', zhu:'猪' },
-    shengxiaoAttr: { sx_jiaqin:'家禽', sx_yeshou:'野兽', sx_jimei:'吉美', sx_xiongchou:'凶丑', sx_yinxing:'阴性', sx_yangxing:'阳性', sx_tianxiao:'天肖', sx_dixiao:'地肖', sx_danbi:'单笔', sx_shuangbi:'双笔', sx_baibian:'白边' },
-    wuxing: { jin:'金', mu:'木', shui:'水', huo:'火', tu:'土' },
-    bose: { hongbo:'红波', lanbo:'蓝波', lvbo:'绿波' },
-    banbo: { hongshuang:'红双', hongdan:'红单', lanshuang:'蓝双', landan:'蓝单', lvshuang:'绿双', lvdan:'绿单' },
-    danshuang: { danshu:'单数', shuangshu:'双数' },
-    weishu: {}, daxiaodanshuang: { dadan:'大单', dashuang:'大双', xiaodan:'小单', xiaoshuang:'小双' },
-    daxiao: { dx_xiao:'小', dx_da:'大' },
-    heshu: {}, toushu: {}, menshu: {}, duanwei: {}, hedahexiao: { hdx_hexiao:'合小', hdx_heda:'合大' },
-    weidaweixiao: { wdx_weixiao:'尾小', wdx_weida:'尾大' },
-    hewei: {}, heshudanshuang: { hsd_hsd:'合数单', hsd_hss:'合数双' },
-    toushuDanshuang: {}
-  };
-  for (let i = 0; i <= 9; i++) ids.weishu[`ws_${i}`] = `${i}尾`;
-  for (let i = 1; i <= 13; i++) ids.heshu[`hs_${i.toString().padStart(2,'0')}`] = `${i}合`;
-  for (let i = 0; i <= 4; i++) ids.toushu[`ts_${i}`] = `${i}头`;
-  for (let i = 1; i <= 5; i++) ids.menshu[`ms_${i}`] = `${i}门`;
-  for (let i = 1; i <= 7; i++) ids.duanwei[`dw_${i}`] = `${i}段`;
-  for (let i = 0; i <= 9; i++) ids.hewei[`hw_${i}`] = `${i}合尾`;
-  for (let i = 0; i <= 4; i++) {
-    ids.toushuDanshuang[`tds_${i}dan`] = `${i}头单`;
-    ids.toushuDanshuang[`tds_${i}shuang`] = `${i}头双`;
-  }
-  for (const [group, groupIds] of Object.entries(ids)) {
-    for (const [id, label] of Object.entries(groupIds)) {
-      const el = document.getElementById(`config_${id}`);
-      if (!el) continue;
-      const val = el.value.trim();
-      if (group === 'zodiac' || group === 'wuxing' || group === 'bose' || group === 'banbo' ||
-          group === 'danshuang' || group === 'weishu' || group === 'daxiaodanshuang' ||
-          group === 'daxiao' || group === 'heshu' || group === 'toushu' || group === 'menshu' ||
-          group === 'duanwei' || group === 'hedahexiao' || group === 'weidaweixiao' ||
-          group === 'hewei' || group === 'heshudanshuang' || group === 'toushuDanshuang') {
-        configData[group][label] = val.split(/\s+/).filter(n => /^\d+$/.test(n));
-      } else if (group === 'shengxiaoAttr') {
-        configData[group][label] = val.split(/\s+/);
-      }
-    }
-  }
-  const customCats = JSON.parse(localStorage.getItem('customConfigCategories') || '[]');
-  customCats.forEach((cat, idx) => {
-    const el = document.getElementById(`config_custom_${idx}`);
-    if (el) {
-      const val = el.value.trim();
-      configData.weishu[cat.label] = val.split(/\s+/).filter(n => /^\d+$/.test(n));
-    }
-  });
+function getAllConfigData(){
+  const configData={zodiac:{},shengxiaoAttr:{},wuxing:{},bose:{},banbo:{},danshuang:{},weishu:{},daxiaodanshuang:{},daxiao:{},heshu:{},toushu:{},menshu:{},duanwei:{},hedahexiao:{},weidaweixiao:{},hewei:{},heshudanshuang:{},toushuDanshuang:{}};
+  const ids={zodiac:{shu:'鼠',niu:'牛',hu:'虎',tu2:'兔',long:'龙',she:'蛇',ma:'马',yang:'羊',hou:'猴',ji:'鸡',gou:'狗',zhu:'猪'},shengxiaoAttr:{sx_jiaqin:'家禽',sx_yeshou:'野兽',sx_jimei:'吉美',sx_xiongchou:'凶丑',sx_yinxing:'阴性',sx_yangxing:'阳性',sx_tianxiao:'天肖',sx_dixiao:'地肖',sx_danbi:'单笔',sx_shuangbi:'双笔',sx_baibian:'白边'},wuxing:{jin:'金',mu:'木',shui:'水',huo:'火',tu:'土'},bose:{hongbo:'红波',lanbo:'蓝波',lvbo:'绿波'},banbo:{hongshuang:'红双',hongdan:'红单',lanshuang:'蓝双',landan:'蓝单',lvshuang:'绿双',lvdan:'绿单'},danshuang:{danshu:'单数',shuangshu:'双数'},weishu:{},daxiaodanshuang:{dadan:'大单',dashuang:'大双',xiaodan:'小单',xiaoshuang:'小双'},daxiao:{dx_xiao:'小',dx_da:'大'},heshu:{},toushu:{},menshu:{},duanwei:{},hedahexiao:{hdx_hexiao:'合小',hdx_heda:'合大'},weidaweixiao:{wdx_weixiao:'尾小',wdx_weida:'尾大'},hewei:{},heshudanshuang:{hsd_hsd:'合数单',hsd_hss:'合数双'},toushuDanshuang:{}};
+  for(let i=0;i<=9;i++)ids.weishu[`ws_${i}`]=`${i}尾`;
+  for(let i=1;i<=13;i++)ids.heshu[`hs_${i.toString().padStart(2,'0')}`]=`${i}合`;
+  for(let i=0;i<=4;i++)ids.toushu[`ts_${i}`]=`${i}头`;
+  for(let i=1;i<=5;i++)ids.menshu[`ms_${i}`]=`${i}门`;
+  for(let i=1;i<=7;i++)ids.duanwei[`dw_${i}`]=`${i}段`;
+  for(let i=0;i<=9;i++)ids.hewei[`hw_${i}`]=`${i}合尾`;
+  for(let i=0;i<=4;i++){ids.toushuDanshuang[`tds_${i}dan`]=`${i}头单`;ids.toushuDanshuang[`tds_${i}shuang`]=`${i}头双`;}
+  for(const[group,groupIds]of Object.entries(ids)){for(const[id,label]of Object.entries(groupIds)){const el=document.getElementById(`config_${id}`);if(!el)continue;const val=el.value.trim();if(group==='zodiac'||group==='wuxing'||group==='bose'||group==='banbo'||group==='danshuang'||group==='weishu'||group==='daxiaodanshuang'||group==='daxiao'||group==='heshu'||group==='toushu'||group==='menshu'||group==='duanwei'||group==='hedahexiao'||group==='weidaweixiao'||group==='hewei'||group==='heshudanshuang'||group==='toushuDanshuang'){configData[group][label]=val.split(/\s+/).filter(n=>/^\d+$/.test(n));}else if(group==='shengxiaoAttr'){configData[group][label]=val.split(/\s+/);}}}
+  const customCats=JSON.parse(localStorage.getItem('customConfigCategories')||'[]'); customCats.forEach((cat,idx)=>{const el=document.getElementById(`config_custom_${idx}`);if(el){const val=el.value.trim();configData.weishu[cat.label]=val.split(/\s+/).filter(n=>/^\d+$/.test(n));}});
   return configData;
 }
+function lockAllInputs(){document.querySelectorAll('.config-input').forEach(el=>el.disabled=true);}
+function unlockAllInputs(){document.querySelectorAll('.config-input').forEach(el=>el.disabled=false);}
+function initDataConfig(){lockAllInputs();renderCustomConfigContainer();}
+async function enableEditConfig(){if((await prompt("输入修改密码："))==="891105"){unlockAllInputs();showToast("解锁成功");}else{showToast("密码错误");}}
+async function saveDataConfig(){if((await prompt("输入保存密码："))!=="891105"){showToast("密码错误");return;}const newConfig={};document.querySelectorAll('.config-input').forEach(el=>{const id=el.id.replace('config_','');if(!id.startsWith('custom_'))newConfig[id]=el.value.trim();});saveSetting('customDataConfigObj',JSON.stringify(newConfig));const cats=JSON.parse(localStorage.getItem('customConfigCategories')||'[]');cats.forEach((c,i)=>{const el=document.getElementById(`config_custom_${i}`);if(el)c.value=el.value.trim();});saveSetting('customConfigCategories',JSON.stringify(cats));lockAllInputs();showToast("保存成功");}
+async function resetDataConfig(){if((await prompt("输入密码："))!=="891105"){showToast("密码错误");return;}localStorage.removeItem('customDataConfigObj');location.reload();}
+function loadCustomCategories(){return JSON.parse(localStorage.getItem('customConfigCategories')||'[]');}
+function saveCustomCategories(cats){localStorage.setItem('customConfigCategories',JSON.stringify(cats));saveSetting('customConfigCategories',JSON.stringify(cats));}
+function renderCustomConfigContainer(){const container=document.getElementById('customConfigContainer');if(!container)return;const cats=loadCustomCategories();if(cats.length===0){container.innerHTML='';return;}let html=`<div class="config-section"><div class="config-section-title">自定义分类</div>`;cats.forEach((cat,idx)=>{html+=`<div class="config-item"><div class="config-label">${cat.label}</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_custom_${idx}" value="${cat.value||''}"><button onclick="deleteCustomCategoryByIndex(${idx})" style="margin-left:5px;background:#dc3545;color:#fff;border:none;border-radius:3px;padding:2px 5px;">删</button></div>`;});html+=`</div>`;container.innerHTML=html;}
+async function addCustomCategory(){const label=await prompt('请输入新分类名称（如：大尾）');if(!label)return;const value=await prompt(`请输入"${label}"对应的号码（空格分隔）`);if(value===null)return;const cats=loadCustomCategories();cats.push({label,value:value.trim()});saveCustomCategories(cats);renderCustomConfigContainer();showToast('自定义分类已添加，请点击"保存"按钮存储配置');}
+async function deleteCustomCategory(){const cats=loadCustomCategories();if(cats.length===0){showToast('没有可删除的自定义分类');return;}const labels=cats.map((c,i)=>`${i+1}. ${c.label}`).join('\n');const idxStr=await prompt(`请输入要删除的分类编号：\n${labels}`);if(!idxStr)return;const idx=parseInt(idxStr)-1;if(isNaN(idx)||idx<0||idx>=cats.length){showToast('无效编号');return;}cats.splice(idx,1);saveCustomCategories(cats);renderCustomConfigContainer();showToast('自定义分类已删除，请点击"保存"按钮使更改生效');}
+function deleteCustomCategoryByIndex(index){const cats=loadCustomCategories();cats.splice(index,1);saveCustomCategories(cats);renderCustomConfigContainer();}
 
-function lockAllInputs() { document.querySelectorAll('.config-input').forEach(el => el.disabled = true); }
-function unlockAllInputs() { document.querySelectorAll('.config-input').forEach(el => el.disabled = false); }
-function initDataConfig() { lockAllInputs(); renderCustomConfigContainer(); }
-
-async function enableEditConfig() {
-  if ((await prompt("输入修改密码：")) === "891105") { unlockAllInputs(); showToast("解锁成功"); }
-  else { showToast("密码错误"); }
-}
-
-async function saveDataConfig() {
-  if ((await prompt("输入保存密码：")) !== "891105") { showToast("密码错误"); return; }
-  const newConfig = {};
-  document.querySelectorAll('.config-input').forEach(el => {
-    const id = el.id.replace('config_', '');
-    if (!id.startsWith('custom_')) newConfig[id] = el.value.trim();
-  });
-  saveSetting('customDataConfigObj', JSON.stringify(newConfig));
-  const cats = JSON.parse(localStorage.getItem('customConfigCategories') || '[]');
-  cats.forEach((c, i) => {
-    const el = document.getElementById(`config_custom_${i}`);
-    if (el) c.value = el.value.trim();
-  });
-  saveSetting('customConfigCategories', JSON.stringify(cats));
-  lockAllInputs();
-  showToast("保存成功");
-}
-
-async function resetDataConfig() {
-  if ((await prompt("输入密码：")) !== "891105") { showToast("密码错误"); return; }
-  localStorage.removeItem('customDataConfigObj');
-  location.reload();
-}
-
-function loadCustomCategories() { return JSON.parse(localStorage.getItem('customConfigCategories') || '[]'); }
-function saveCustomCategories(cats) { localStorage.setItem('customConfigCategories', JSON.stringify(cats)); saveSetting('customConfigCategories', JSON.stringify(cats)); }
-
-function renderCustomConfigContainer() {
-  const container = document.getElementById('customConfigContainer');
-  if (!container) return;
-  const cats = loadCustomCategories();
-  if (cats.length === 0) { container.innerHTML = ''; return; }
-  let html = `<div class="config-section"><div class="config-section-title">自定义分类</div>`;
-  cats.forEach((cat, idx) => {
-    html += `<div class="config-item"><div class="config-label">${cat.label}</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_custom_${idx}" value="${cat.value || ''}"><button onclick="deleteCustomCategoryByIndex(${idx})" style="margin-left:5px;background:#dc3545;color:#fff;border:none;border-radius:3px;padding:2px 5px;">删</button></div>`;
-  });
-  html += `</div>`;
-  container.innerHTML = html;
-}
-
-async function addCustomCategory() {
-  const label = await prompt('请输入新分类名称（如：大尾）');
-  if (!label) return;
-  const value = await prompt(`请输入"${label}"对应的号码（空格分隔）`);
-  if (value === null) return;
-  const cats = loadCustomCategories();
-  cats.push({ label, value: value.trim() });
-  saveCustomCategories(cats);
-  renderCustomConfigContainer();
-  showToast('自定义分类已添加，请点击"保存"按钮存储配置');
-}
-
-async function deleteCustomCategory() {
-  const cats = loadCustomCategories();
-  if (cats.length === 0) { showToast('没有可删除的自定义分类'); return; }
-  const labels = cats.map((c,i) => `${i+1}. ${c.label}`).join('\n');
-  const idxStr = await prompt(`请输入要删除的分类编号：\n${labels}`);
-  if (!idxStr) return;
-  const idx = parseInt(idxStr) - 1;
-  if (isNaN(idx) || idx < 0 || idx >= cats.length) { showToast('无效编号'); return; }
-  cats.splice(idx, 1);
-  saveCustomCategories(cats);
-  renderCustomConfigContainer();
-  showToast('自定义分类已删除，请点击"保存"按钮使更改生效');
-}
-
-function deleteCustomCategoryByIndex(index) {
-  const cats = loadCustomCategories();
-  cats.splice(index, 1);
-  saveCustomCategories(cats);
-  renderCustomConfigContainer();
-}
-
-// ========== 事件绑定 ==========
 document.getElementById('rebateRate')?.addEventListener('input', updateTableFromRecords);
 document.getElementById('multipleVal')?.addEventListener('input', updateTableFromRecords);
 document.getElementById('reportRebateRate')?.addEventListener('input', updateTableFromRecords);
@@ -2087,37 +1455,13 @@ document.getElementById('startZodiacSelect')?.addEventListener('change', async (
   updateTableFromRecords();
 });
 
-// ========== 启动 ==========
 window.onload = async () => {
-  try {
-    const saved = localStorage.getItem('savedCredentials');
-    if (saved) {
-      const cred = JSON.parse(saved);
-      document.getElementById('loginUsername').value = cred.username || '';
-      document.getElementById('loginPassword').value = cred.password || '';
-      document.getElementById('rememberPwd').checked = true;
-    }
-  } catch(e) {}
-
+  try { const saved = localStorage.getItem('savedCredentials'); if (saved) { const cred = JSON.parse(saved); document.getElementById('loginUsername').value = cred.username || ''; document.getElementById('loginPassword').value = cred.password || ''; document.getElementById('rememberPwd').checked = true; } } catch(e) {}
   const savedZodiac = localStorage.getItem('selectedStartZodiac') || '马';
   document.getElementById('startZodiacSelect').value = savedZodiac;
   currentZodiacMap = buildZodiacMap(savedZodiac);
-
   if (authToken) {
-    try {
-      await fetchApi('/api/config');
-      document.getElementById('loginOverlay').style.display = 'none';
-      document.getElementById('mainContent').style.display = '';
-      initMainSystem();
-    } catch(e) {
-      document.getElementById('loginOverlay').style.display = '';
-      document.getElementById('mainContent').style.display = 'none';
-    }
-  } else {
-    document.getElementById('loginOverlay').style.display = '';
-    document.getElementById('mainContent').style.display = 'none';
-  }
+    try { await fetchApi('/api/config'); document.getElementById('loginOverlay').style.display = 'none'; document.getElementById('mainContent').style.display = ''; initMainSystem(); }
+    catch(e) { document.getElementById('loginOverlay').style.display = ''; document.getElementById('mainContent').style.display = 'none'; }
+  } else { document.getElementById('loginOverlay').style.display = ''; document.getElementById('mainContent').style.display = 'none'; }
 };
-</script>
-</body>
-</html>
