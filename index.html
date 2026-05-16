@@ -977,10 +977,11 @@ function initMainSystem() {
   if (currentUser && currentUser.role === 'admin') document.getElementById('cardMgrBtn').style.display = '';
   updateTableFromRecords();
   loadAllSettings();
+  updateSelects();
 }
 
 // ========== 本地配置读写（同步到后端） ==========
-const SETTINGS_KEYS = ['replacePresets','categoryAliases','customPrefixes','customSuffixes','customAmountSuffixes','customAmountPrefixes','customConfigCategories','customDataConfigObj','users','selectedStartZodiac'];
+const SETTINGS_KEYS = ['replacePresets','categoryAliases','customPrefixes','customSuffixes','customAmountSuffixes','customAmountPrefixes','customConfigCategories','customDataConfigObj','users','selectedStartZodiac','orderers'];
 
 async function saveSetting(key, value) {
   const valStr = typeof value === 'string' ? value : JSON.stringify(value);
@@ -1074,7 +1075,7 @@ async function showCardManager() {
 async function convertOrderText() {
   const inputEl = document.querySelector('.source-order-input');
   if (!inputEl) return;
-  const text = inputEl.value.trim();
+  const text = applyCategoryAliases(applyReplacePresets(inputEl.value.trim()));
   const resultEl = document.getElementById('orderResult');
   if (!resultEl) return;
   if (!text) { resultEl.value = ''; updateOrderTotalDisplay(); return; }
@@ -1091,11 +1092,11 @@ async function convertOrderText() {
 }
 
 // ========== 订单操作（全部调用后端 API） ==========
-async function saveOrderRecord(content, date, totalAmount) {
-  return fetchApi('/api/orders', { method:'POST', body: JSON.stringify({ content, date, totalAmount }) });
+async function saveOrderRecord(content, orderer, date, totalAmount) {
+  return fetchApi('/api/orders', { method:'POST', body: JSON.stringify({ content, orderer, date, totalAmount }) });
 }
-async function saveReportOrderRecord(content, date, totalAmount) {
-  return fetchApi('/api/report-orders', { method:'POST', body: JSON.stringify({ content, date, totalAmount }) });
+async function saveReportOrderRecord(content, orderer, date, totalAmount) {
+  return fetchApi('/api/report-orders', { method:'POST', body: JSON.stringify({ content, orderer, date, totalAmount }) });
 }
 async function getOrders(date) {
   const query = date ? `?date=${date}` : '';
@@ -1120,8 +1121,8 @@ async function batchDeleteReportOrders(ids) {
 
 // ========== 保存订单 ==========
 async function saveOrder(){
-  const user = document.getElementById('orderUserSelect')?.value;
-  if(!user){showToast('请选择用户');return;}
+  const orderer = document.getElementById('orderUserSelect')?.value;
+  if(!orderer){showToast('请选择下单人');return;}
   let input = document.getElementById('orderResult')?.value.trim()||document.querySelector('.source-order-input')?.value.trim();
   if(!input)return;
   const vl = input.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;});
@@ -1130,7 +1131,7 @@ async function saveOrder(){
   const date = document.getElementById('orderDate')?.value||getTodayCST();
   const total = computeCurrentOrderTotal();
   try {
-    await saveOrderRecord(content, date, total);
+    await saveOrderRecord(content, orderer, date, total);
     showToast('下单成功');
     clearOrderInputs();
     updateTableFromRecords();
@@ -1138,8 +1139,8 @@ async function saveOrder(){
 }
 
 async function saveReportOrder(){
-  const user = document.getElementById('orderUserSelect')?.value;
-  if(!user){showToast('请选择用户');return;}
+  const orderer = document.getElementById('orderUserSelect')?.value;
+  if(!orderer){showToast('请选择下单人');return;}
   let input = document.getElementById('orderResult')?.value.trim()||document.querySelector('.source-order-input')?.value.trim();
   if(!input)return;
   const vl = input.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;});
@@ -1148,7 +1149,7 @@ async function saveReportOrder(){
   const date = document.getElementById('orderDate')?.value||getTodayCST();
   const total = computeCurrentOrderTotal();
   try {
-    await saveReportOrderRecord(content, date, total);
+    await saveReportOrderRecord(content, orderer, date, total);
     showToast('上报成功');
     clearOrderInputs();
     updateTableFromRecords();
@@ -1401,9 +1402,10 @@ async function resetTable() {
   } catch(e) { showToast('清空失败'); }
 }
 
-// ========== 原版功能函数（保留，无变化） ==========
+// ========== 原版功能函数 ==========
 function getTodayCST() { const now = new Date(); const offset = 8*60; const localTime = now.getTime() + (now.getTimezoneOffset() + offset) * 60000; const cstDate = new Date(localTime); return `${cstDate.getFullYear()}-${String(cstDate.getMonth()+1).padStart(2,'0')}-${String(cstDate.getDate()).padStart(2,'0')}`; }
 
+// ========== 合计金额计算（修复版） ==========
 function updateOrderTotalDisplay(){
   const re = document.getElementById('orderResult');
   const box = document.getElementById('orderTotalAmountBox');
@@ -1502,7 +1504,7 @@ function tokenizeAndJoin(content) {
 
 function getAllValidCategories(cfg) { const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); return s; }
 
-// ========== 订单记录查看 ==========
+// ========== 订单记录查看（含下单人） ==========
 async function showOrderRecord(filter='all'){
   try {
     const recs = await getOrders(document.getElementById('filterDate')?.value);
@@ -1526,7 +1528,10 @@ async function showOrderRecord(filter='all'){
     if (recs.length === 0) html += '<div style="padding:20px;text-align:center;">暂无记录</div>';
     else {
       recs.forEach(o => {
-        html += `<div class="order-item"><input type="checkbox" class="order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span>合计：${o.totalAmount}</span><span style="color:${getUserColor(o.user)};">用户：${o.user}</span><span>${o.date}</span></div><button class="order-del" onclick="deleteOrderRecord(${o.id})">删除</button></div>`;
+        const orderer = o.orderer || '未知';
+        const ordererColor = getUserColor(orderer);
+        const userColor = getUserColor(o.user);
+        html += `<div class="order-item"><input type="checkbox" class="order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span><span class="order-meta"><span style="color:${userColor};">用户：${o.user}</span></span><span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${o.date}</span></div><button class="order-del" onclick="deleteOrderRecord(${o.id})">删除</button></div>`;
       });
     }
     html += '</div></div>';
@@ -1564,7 +1569,10 @@ async function showReportOrderRecord(filter='all'){
     if (recs.length === 0) html += '<div style="padding:20px;text-align:center;">暂无记录</div>';
     else {
       recs.forEach(o => {
-        html += `<div class="order-item"><input type="checkbox" class="report-order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span>合计：${o.totalAmount}</span><span style="color:red;">用户：${o.user}</span><span>${o.date}</span></div><button class="order-del" onclick="deleteReportOrderRecord(${o.id})">删除</button></div>`;
+        const orderer = o.orderer || '未知';
+        const ordererColor = getUserColor(orderer);
+        const userColor = getUserColor(o.user);
+        html += `<div class="order-item"><input type="checkbox" class="report-order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span><span class="order-meta"><span style="color:${userColor};">用户：${o.user}</span></span><span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${o.date}</span></div><button class="order-del" onclick="deleteReportOrderRecord(${o.id})">删除</button></div>`;
       });
     }
     html += '</div>';
@@ -1609,45 +1617,13 @@ async function deleteCheckedReport(){
   } catch(e) { showToast('删除失败'); }
 }
 
-// ========== 对奖高亮（调用后端） ==========
+// ========== 对奖高亮（修复版：发送整条订单内容） ==========
 async function highlightContent(content, targetNum, cfg) {
   if (!targetNum) return content;
   try {
     const data = await fetchApi('/api/highlight', { method:'POST', body: JSON.stringify({ content, targetNum, config: cfg }) });
     return data.highlighted;
   } catch(e) { return content; }
-}
-
-function orderContainsTarget(content, targetNum, cfg) {
-  if (!targetNum) return true;
-  const t = targetNum.toString().padStart(2, '0');
-  const lines = content.split('\n');
-  for (const line of lines) {
-    const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-    if (!m) continue;
-    const cont = m[1];
-    const items = cont.split('-');
-    for (const item of items) {
-      if (/^\d{1,2}$/.test(item) && item.padStart(2,'0') === t) return true;
-      const nums = getNumberListForCategory(item, cfg);
-      if (nums && nums.includes(t)) return true;
-    }
-  }
-  return false;
-}
-
-function getNumberListForCategory(cat, cfg) {
-  const nums = [];
-  if (cfg.shengxiaoAttr[cat]) {
-    cfg.shengxiaoAttr[cat].forEach(z => {
-      if (cfg.zodiac[z]) nums.push(...cfg.zodiac[z].map(n => n.padStart(2, '0')));
-    });
-  }
-  const sources = [cfg.wuxing, cfg.bose, cfg.banbo, cfg.danshuang, cfg.weishu, cfg.daxiaodanshuang, cfg.daxiao, cfg.heshu, cfg.toushu, cfg.menshu, cfg.duanwei, cfg.hedahexiao, cfg.weidaweixiao, cfg.hewei, cfg.heshudanshuang, cfg.toushuDanshuang, cfg.zodiac];
-  for (const src of sources) {
-    if (src && src[cat]) nums.push(...src[cat].map(n => n.padStart(2, '0')));
-  }
-  return [...new Set(nums)];
 }
 
 async function applyPrizeFilter() {
@@ -1659,34 +1635,61 @@ async function applyPrizeFilter() {
   const recs = await getOrders(document.getElementById('filterDate')?.value);
   let filtered = uv === 'all' ? recs : recs.filter(r => r.user === uv);
   const cfg = getAllConfigData();
-  let final = [];
+
   if (pn) {
-    for (const it of filtered) {
-      if (orderContainsTarget(it.content, pn, cfg)) final.push(it);
-    }
-  } else { final = filtered; }
+    const vc = getAllValidCategories(cfg);
+    const nums = getNumberListForCategoryLocal(pn, cfg);
+    filtered = filtered.filter(it => {
+      const lines = it.content.split('\n');
+      for (const line of lines) {
+        const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
+        if (!m) continue;
+        const cont = m[1];
+        const items = cont.split('-');
+        for (const item of items) {
+          if (/^\d{1,2}$/.test(item)) {
+            if (item.padStart(2,'0') === pn.padStart(2,'0')) return true;
+          } else if (vc.has(item)) {
+            if (nums.includes(pn.padStart(2,'0'))) return true;
+          }
+        }
+      }
+      return false;
+    });
+  }
+
   const cont = document.getElementById('orderListContainer');
   if (!cont) return;
-  if (final.length === 0) {
+  if (filtered.length === 0) {
     cont.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';
     return;
   }
-  const itemsHtml = await Promise.all(final.map(async it => {
-    const ts = it.date; const ud = it.user || '未知'; const col = getUserColor(ud); const ta = it.totalAmount || 0;
-    const lines = it.content.split('\n');
-    const hl = await Promise.all(lines.map(async l => {
-      const m = l.match(/^(.+?)\s+各数\s+(\d+)$/);
-      if (!m) return l;
-      const cont = m[1], amt = m[2];
-      const hc = await highlightContent(cont, pn, cfg);
-      return `${hc} 各数 ${amt}`;
-    }));
-    return `<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${hl.join('<br>')}</div><div class="order-info"><span class="order-total">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord(${it.id})">删除</button></div>`;
+  const itemsHtml = await Promise.all(filtered.map(async it => {
+    const orderer = it.orderer || '未知';
+    const ordererColor = getUserColor(orderer);
+    const userColor = getUserColor(it.user);
+    const highlightedContent = await highlightContent(it.content, pn, cfg);
+    return `<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${highlightedContent.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total">合计：${it.totalAmount}</span><span class="order-meta"><span style="color:${userColor};">用户：${it.user}</span></span><span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${it.date}</span></div><button class="order-del" onclick="deleteOrderRecord(${it.id})">删除</button></div>`;
   }));
   cont.innerHTML = itemsHtml.join('');
 }
 
+function getNumberListForCategoryLocal(cat, cfg) {
+  const nums = [];
+  if (cfg.shengxiaoAttr[cat]) {
+    cfg.shengxiaoAttr[cat].forEach(z => {
+      if (cfg.zodiac[z]) nums.push(...cfg.zodiac[z].map(n => n.padStart(2,'0')));
+    });
+  }
+  const sources = [cfg.wuxing, cfg.bose, cfg.banbo, cfg.danshuang, cfg.weishu, cfg.daxiaodanshuang, cfg.daxiao, cfg.heshu, cfg.toushu, cfg.menshu, cfg.duanwei, cfg.hedahexiao, cfg.weidaweixiao, cfg.hewei, cfg.heshudanshuang, cfg.toushuDanshuang, cfg.zodiac];
+  for (const src of sources) {
+    if (src && src[cat]) nums.push(...src[cat].map(n => n.padStart(2,'0')));
+  }
+  return [...new Set(nums)];
+}
+
 function getUserColor(u) {
+  if (!u) return 'hsl(0,0%,50%)';
   let h = 0;
   for (let i = 0; i < u.length; i++) h = u.charCodeAt(i) + ((h << 5) - h);
   return `hsl(${(h % 360 + 360) % 360}, 70%, 45%)`;
@@ -1696,19 +1699,27 @@ function getUserColor(u) {
 function showUserManager() {
   if (document.getElementById('userManagerWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'userManagerWin';
-  win.style.width = '450px'; win.style.height = '400px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
+  win.style.width = '500px'; win.style.height = '450px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
   win.innerHTML = `
-    <div class="modal-header"><h3>管理用户</h3><div class="window-controls"><button onclick="maximizeWindow('userManagerWin')">🗖</button><button onclick="pinWindow('userManagerWin')">📌</button><button onclick="document.getElementById('userManagerWin').remove()">×</button></div></div>
+    <div class="modal-header"><h3>管理用户和下单人</h3><div class="window-controls"><button onclick="maximizeWindow('userManagerWin')">🗖</button><button onclick="pinWindow('userManagerWin')">📌</button><button onclick="document.getElementById('userManagerWin').remove()">×</button></div></div>
     <div class="modal-body">
       <div style="margin-bottom:12px;display:flex;gap:6px;">
         <input type="text" id="newUserName" placeholder="用户名" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;">
         <button onclick="addUserAction()" style="padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;">添加</button>
       </div>
       <div id="userList"></div>
+      <hr style="margin:15px 0;">
+      <div style="margin-bottom:8px;font-weight:bold;">下单人管理</div>
+      <div style="margin-bottom:12px;display:flex;gap:6px;">
+        <input type="text" id="newOrdererName" placeholder="下单人姓名" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;">
+        <button onclick="addOrdererAction()" style="padding:6px 12px;background:#e67e22;color:#fff;border:none;border-radius:4px;">添加下单人</button>
+      </div>
+      <div id="ordererList"></div>
     </div>
     <div class="modal-footer"><button onclick="document.getElementById('userManagerWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`;
   document.body.appendChild(win);
   renderUserList();
+  renderOrdererList();
   makeWindowDraggable('userManagerWin'); highestZ += 1; win.style.zIndex = highestZ;
 }
 
@@ -1716,8 +1727,16 @@ function renderUserList() {
   const users = JSON.parse(localStorage.getItem('users') || '[]');
   const container = document.getElementById('userList');
   if (!container) return;
-  if (users.length === 0) { container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">暂无用户</div>'; return; }
+  if (users.length === 0) { container.innerHTML = '<div style="text-align:center;color:#666;padding:10px;">暂无用户</div>'; return; }
   container.innerHTML = users.map(u => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px;border:1px solid #eee;border-radius:4px;"><span style="flex:1;">${u}</span><button onclick="deleteUserAction('${u}')" style="background:#e74c3c;color:#fff;border:none;padding:2px 8px;border-radius:3px;">删除</button></div>`).join('');
+}
+
+function renderOrdererList() {
+  const orderers = JSON.parse(localStorage.getItem('orderers') || '[]');
+  const container = document.getElementById('ordererList');
+  if (!container) return;
+  if (orderers.length === 0) { container.innerHTML = '<div style="text-align:center;color:#666;padding:10px;">暂无下单人</div>'; return; }
+  container.innerHTML = orderers.map((o,i) => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px;border:1px solid #eee;border-radius:4px;"><span style="flex:1;">${o}</span><button onclick="deleteOrdererAction(${i})" style="background:#e74c3c;color:#fff;border:none;padding:2px 8px;border-radius:3px;">删除</button></div>`).join('');
 }
 
 async function addUserAction() {
@@ -1743,12 +1762,36 @@ async function deleteUserAction(name) {
   showToast('用户已删除');
 }
 
+async function addOrdererAction() {
+  const name = document.getElementById('newOrdererName')?.value.trim();
+  if (!name) { showToast('请输入下单人姓名'); return; }
+  const orderers = JSON.parse(localStorage.getItem('orderers') || '[]');
+  if (orderers.includes(name)) { showToast('下单人已存在'); return; }
+  orderers.push(name);
+  saveSetting('orderers', JSON.stringify(orderers));
+  document.getElementById('newOrdererName').value = '';
+  renderOrdererList();
+  updateSelects();
+  showToast('下单人添加成功');
+}
+
+async function deleteOrdererAction(index) {
+  if (!(await confirm('确定删除该下单人？'))) return;
+  const orderers = JSON.parse(localStorage.getItem('orderers') || '[]');
+  orderers.splice(index, 1);
+  saveSetting('orderers', JSON.stringify(orderers));
+  renderOrdererList();
+  updateSelects();
+  showToast('下单人已删除');
+}
+
 function updateSelects() {
   const users = JSON.parse(localStorage.getItem('users') || '[]');
+  const orderers = JSON.parse(localStorage.getItem('orderers') || '[]');
   const orderSel = document.getElementById('orderUserSelect');
   if (orderSel) {
     orderSel.innerHTML = '';
-    users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; orderSel.appendChild(o); });
+    orderers.forEach(o => { const opt = document.createElement('option'); opt.value = o; opt.textContent = o; orderSel.appendChild(opt); });
   }
   const viewSel = document.getElementById('viewUserSelect');
   if (viewSel) {
@@ -2033,10 +2076,19 @@ document.getElementById('numAmountMin')?.addEventListener('input', updateTableFr
 document.getElementById('numAmountMax')?.addEventListener('input', updateTableFromRecords);
 document.getElementById('zodiacAmountMin')?.addEventListener('input', updateTableFromRecords);
 document.getElementById('zodiacAmountMax')?.addEventListener('input', updateTableFromRecords);
+document.getElementById('startZodiacSelect')?.addEventListener('change', async () => {
+  const newZodiac = document.getElementById('startZodiacSelect').value;
+  const savedZodiac = localStorage.getItem('selectedStartZodiac') || '马';
+  if (newZodiac === savedZodiac) return;
+  const inputPwd = await prompt("请输入本年生肖切换密码：", "");
+  if (inputPwd !== "150408") { await alert("密码错误"); document.getElementById('startZodiacSelect').value = savedZodiac; return; }
+  saveSetting('selectedStartZodiac', newZodiac);
+  currentZodiacMap = buildZodiacMap(newZodiac);
+  updateTableFromRecords();
+});
 
 // ========== 启动 ==========
 window.onload = async () => {
-  // 加载记住的密码
   try {
     const saved = localStorage.getItem('savedCredentials');
     if (saved) {
@@ -2047,7 +2099,6 @@ window.onload = async () => {
     }
   } catch(e) {}
 
-  // 加载本年生肖
   const savedZodiac = localStorage.getItem('selectedStartZodiac') || '马';
   document.getElementById('startZodiacSelect').value = savedZodiac;
   currentZodiacMap = buildZodiacMap(savedZodiac);
