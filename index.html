@@ -690,7 +690,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
           <div class="config-item"><div class="config-label long-label">4头双</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_tds_4shuang" value="40 42 44 46 48"></div>
         </div>
 
-        <!-- 动态自定义分类容器 -->
         <div id="customConfigContainer"></div>
 
         <div class="data-config-actions">
@@ -719,6 +718,10 @@ async function fetchApi(url, options = {}) {
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   const res = await fetch(API_BASE + url, { ...options, headers });
   if (res.status === 401 || res.status === 403) {
+    const data = await res.json().catch(() => ({}));
+    if (data.needActivation) {
+      throw new Error('NEED_ACTIVATION');
+    }
     authToken = null;
     localStorage.removeItem('authToken');
     showLoginScreen();
@@ -757,7 +760,7 @@ window.alert = async (msg) => { await showCustomDialog({ title: '提示', messag
 window.confirm = async (msg) => { return await showCustomDialog({ title: '请确认', message: msg, type: 'confirm' }); };
 window.prompt = async (msg, def) => { return await showCustomDialog({ title: '请输入', message: msg, type: 'prompt', defaultValue: def }); };
 
-// ========== 登录/注册界面 ==========
+// ========== 登录/注册/激活界面 ==========
 function showLoginScreen() {
   const overlay = document.createElement('div');
   overlay.className = 'login-overlay';
@@ -772,13 +775,19 @@ function showLoginScreen() {
         <hr>
         <button class="btn" id="adminLoginBtnSmall">管理员登录</button>
         <div class="link" id="switchToRegister">注册新用户</div>
+        <div class="link" id="switchToActivate" style="margin-top:5px;">激活账号</div>
       </div>
       <div id="registerMode" style="display:none;">
         <input type="text" id="regUsername" placeholder="用户名">
         <input type="password" id="regPassword" placeholder="密码">
-        <input type="text" id="regCardCode" placeholder="卡密">
         <button class="btn" id="registerBtn">注册</button>
         <div class="link" id="switchToLogin">返回登录</div>
+      </div>
+      <div id="activateMode" style="display:none;">
+        <input type="text" id="actUsername" placeholder="用户名">
+        <input type="text" id="actCode" placeholder="激活码">
+        <button class="btn" id="activateBtn">激活</button>
+        <div class="link" id="switchToLoginFromActivate">返回登录</div>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -794,10 +803,15 @@ function showLoginScreen() {
       currentUser = { username: data.username, role: data.role };
       overlay.remove();
       initMainSystem();
-    } catch(e) { showToast(e.message); }
+    } catch(e) {
+      if (e.message === 'NEED_ACTIVATION') {
+        showToast('账号未激活或已过期，请先激活');
+      } else {
+        showToast(e.message);
+      }
+    }
   };
 
-  // 管理员登录改为内嵌输入框
   document.getElementById('adminLoginBtnSmall').onclick = () => {
     const exist = document.getElementById('adminPwdArea');
     if (exist) exist.remove();
@@ -825,22 +839,44 @@ function showLoginScreen() {
   document.getElementById('registerBtn').onclick = async () => {
     const username = document.getElementById('regUsername').value.trim();
     const password = document.getElementById('regPassword').value.trim();
-    const cardCode = document.getElementById('regCardCode').value.trim();
-    if (!username || !password || !cardCode) return showToast('请填写完整信息');
+    if (!username || !password) return showToast('请输入用户名和密码');
     try {
-      await fetchApi('/api/auth/register', { method:'POST', body: JSON.stringify({ username, password, cardCode }) });
-      showToast('注册成功，请登录');
-      document.getElementById('switchToLogin').click();
+      await fetchApi('/api/auth/register', { method:'POST', body: JSON.stringify({ username, password }) });
+      showToast('注册成功，请使用激活码激活');
+      document.getElementById('switchToActivate').click();
+    } catch(e) { showToast(e.message); }
+  };
+
+  document.getElementById('activateBtn').onclick = async () => {
+    const username = document.getElementById('actUsername').value.trim();
+    const cardCode = document.getElementById('actCode').value.trim();
+    if (!username || !cardCode) return showToast('请输入用户名和激活码');
+    try {
+      await fetchApi('/api/auth/activate', { method:'POST', body: JSON.stringify({ username, cardCode }) });
+      showToast('激活成功，请登录');
+      document.getElementById('switchToLoginFromActivate').click();
     } catch(e) { showToast(e.message); }
   };
 
   document.getElementById('switchToRegister').onclick = () => {
     document.getElementById('loginMode').style.display = 'none';
     document.getElementById('registerMode').style.display = 'block';
+    document.getElementById('activateMode').style.display = 'none';
   };
   document.getElementById('switchToLogin').onclick = () => {
     document.getElementById('loginMode').style.display = 'block';
     document.getElementById('registerMode').style.display = 'none';
+    document.getElementById('activateMode').style.display = 'none';
+  };
+  document.getElementById('switchToActivate').onclick = () => {
+    document.getElementById('loginMode').style.display = 'none';
+    document.getElementById('registerMode').style.display = 'none';
+    document.getElementById('activateMode').style.display = 'block';
+  };
+  document.getElementById('switchToLoginFromActivate').onclick = () => {
+    document.getElementById('loginMode').style.display = 'block';
+    document.getElementById('registerMode').style.display = 'none';
+    document.getElementById('activateMode').style.display = 'none';
   };
 }
 
@@ -858,44 +894,61 @@ function initMainSystem() {
   if (window._originalInit) window._originalInit();
 }
 
-// ========== 卡密管理（调用后端） ==========
+// ========== 卡密管理（管理员调用后端生成激活码） ==========
 async function showCardManager() {
   if (!currentUser || currentUser.role !== 'admin') { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
   try {
     const cards = await fetchApi('/api/cards');
     const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'cardMgrWin';
-    win.style.width = '600px'; win.style.height = '500px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%,-50%)';
+    win.style.width = '650px'; win.style.height = '500px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%,-50%)';
     let html = `<div class="modal-header"><h3>卡密管理</h3><div class="window-controls"><button onclick="maximizeWindow('cardMgrWin')">🗖</button><button onclick="document.getElementById('cardMgrWin').remove()">×</button></div></div><div class="modal-body">
-      <div style="margin-bottom:10px;display:flex;gap:10px;"><input type="number" id="expireDays" placeholder="天数" value="30" style="width:80px;"><button onclick="generateCard()">生成卡密</button></div>
+      <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;">
+        <input type="number" id="expireDays" placeholder="有效天数" value="30" min="1" style="width:80px;padding:5px;">
+        <button onclick="generateCard()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">生成激活码</button>
+      </div>
+      <div style="margin-bottom:5px;font-size:12px;color:#666;">激活码格式：HKMC-XXXX-XXXX-XXXX</div>
       <div id="cardList">`;
     cards.forEach(c => {
-      html += `<div style="border:1px solid #eee;padding:6px;margin:4px 0;display:flex;justify-content:space-between;"><span>${c.code} (${c.status}) ${c.username? '绑定:'+c.username:''}</span>${c.status==='active'?`<button onclick="disableCard(${c.id})">禁用</button>`:''}</div>`;
+      html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-weight:bold;font-size:16px;">${c.code}</span>
+        <span style="font-size:12px;color:${c.status==='active'?'green':c.status==='used'?'blue':'red'};">[${c.status}]</span>
+        ${c.username ? `<span style="font-size:11px;color:#666;">绑定:${c.username}</span>` : ''}
+        <span style="font-size:11px;color:#666;">有效期:${c.expire_days}天</span>
+        <div style="margin-left:auto;display:flex;gap:5px;">
+          ${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}
+          <button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button>
+        </div>
+      </div>`;
     });
     html += '</div></div>';
     win.innerHTML = html; document.body.appendChild(win);
     makeWindowDraggable('cardMgrWin'); highestZ += 1; win.style.zIndex = highestZ;
 
     window.generateCard = async () => {
-      const days = document.getElementById('expireDays')?.value || 30;
+      const days = parseInt(document.getElementById('expireDays')?.value) || 30;
       try {
-        const res = await fetchApi('/api/cards/generate', { method:'POST', body: JSON.stringify({ expireDays: parseInt(days) }) });
-        showToast('卡密：' + res.code);
+        const res = await fetchApi('/api/cards/generate', { method:'POST', body: JSON.stringify({ expireDays: days }) });
+        showToast('激活码已生成：' + res.code);
         document.getElementById('cardMgrWin').remove();
         showCardManager();
       } catch(e) { showToast(e.message); }
     };
     window.disableCard = async (id) => {
+      if (!(await confirm('确定禁用该激活码？'))) return;
       try {
         await fetchApi(`/api/cards/${id}/disable`, { method:'POST' });
         document.getElementById('cardMgrWin').remove();
         showCardManager();
       } catch(e) { showToast(e.message); }
     };
+    window.copyCardCode = (code) => {
+      navigator.clipboard.writeText(code).then(() => showToast('已复制')).catch(() => showToast('复制失败'));
+    };
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 识别函数改为调用后端 ==========
+// ========== 识别函数（完全依赖后端，不再使用本地兜底） ==========
 async function convertOrderText() {
   const inputEl = document.querySelector('.source-order-input');
   if (!inputEl) return;
@@ -911,135 +964,12 @@ async function convertOrderText() {
     resultEl.value = data.result;
     updateOrderTotalDisplay();
   } catch (e) {
-    // 如果后端识别失败，回退到本地识别（调用原版本地识别函数）
-    try {
-      convertOrderTextLocal();
-    } catch(e2) {
-      showToast('识别失败：' + e.message);
-    }
+    showToast('识别失败，请检查网络或稍后重试');
   }
 }
 
-// 本地识别函数（将原版 convertOrderText 重命名为此）
-function convertOrderTextLocal() {
-  const inputEl=document.querySelector('.source-order-input');
-  if(!inputEl)return;
-  let text=applyCategoryAliases(applyReplacePresets(inputEl.value.trim()));
-  const resultEl=document.getElementById('orderResult');
-  if(!resultEl)return;
-  if(!text){resultEl.value='';updateOrderTotalDisplay();return;}
-  const lines=text.split('\n'); const resultLines=[];
-  const HARD_AMP_LIST = ['各','各号','号','个','=','各数','每数','每号','个号','每个号','各码','各号码'];
-  const cusAmp = getCustomAmountPrefixes();
-  const allAmpList = [...HARD_AMP_LIST, ...cusAmp];
-  allAmpList.sort((a,b) => b.length - a.length);
-  const AMP_ORIGINAL = '(?:' + allAmpList.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
-  const IGN=['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼'];
-  const cusPre=getCustomPrefixes(); const allPre=[...IGN,...cusPre];
-  const baseSuf='元块咪米斤#،。\\s';
-  const cusAmtSuf=getCustomAmountSuffixes(); const allAmtChars=[...new Set([...baseSuf.split(''),...cusAmtSuf])].join('');
-  const AMTS=`[${allAmtChars}]*`;
-  function cn2n(s){ const m={'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000}; let sum=0,tmp=0; for(let c of s){ const v=m[c]; if(v===10||v===100||v===1000){ if(tmp===0)tmp=1; tmp*=v; sum+=tmp; tmp=0; }else if(v!==undefined){ if(tmp>0){sum+=tmp;tmp=0;} tmp=v; } } sum+=tmp; return sum; }
-  const SIMPLE_PAIR = /^(\d{1,2})[^\d\s]+(\d+)$/;
-  const cfg = getAllConfigData();
-  const vc = getAllValidCategories(cfg);
-  const ZODIAC_SET = new Set(Object.keys(cfg.zodiac));
-
-  lines.forEach(line=>{
-    line=line.trim();
-    if(!line)return;
-    const pairMatch = line.match(SIMPLE_PAIR);
-    if(pairMatch){
-      let num = pairMatch[1];
-      const amount = pairMatch[2];
-      if(num.length===1) num = '0'+num;
-      resultLines.push(`${num} 各数 ${amount}`);
-      return;
-    }
-    let cl=line;
-    allPre.forEach(p=>{if(cl.startsWith(p))cl=cl.substring(p.length).trim();});
-    cl = cl.replace(/[^\u4e00-\u9fa5\d]+$/, '');
-    cl=cl.replace(/([一二三四五六七八九十百千]+)/g,(m)=>cn2n(m));
-    while (cl && !/^[\d\u4e00-\u9fa5]/.test(cl)) {
-      cl = cl.substring(1).trim();
-    }
-    const leadingChineseMatch = cl.match(/^([\u4e00-\u9fa5]+)/);
-    if (leadingChineseMatch) {
-      const leadingChinese = leadingChineseMatch[1];
-      let isValidPrefix = false;
-      for (let i = 1; i <= leadingChinese.length; i++) {
-        const sub = leadingChinese.substring(0, i);
-        if (vc.has(sub)) {
-          isValidPrefix = true;
-          break;
-        }
-      }
-      if (!isValidPrefix) {
-        cl = cl.substring(leadingChinese.length).trim();
-      }
-    }
-
-    const shxMatch = cl.match(new RegExp(`^(.+?)(各肖|各)(\\d+)${AMTS}$`));
-    if (shxMatch) {
-      const rawContent = shxMatch[1];
-      const amtRaw = parseInt(shxMatch[3]) || 0;
-      if (!/\d/.test(rawContent)) {
-        const zodiacs = [];
-        for (const ch of rawContent) {
-          if (ZODIAC_SET.has(ch)) zodiacs.push(ch);
-        }
-        if (zodiacs.length > 0) {
-          const curBenming = document.getElementById('startZodiacSelect')?.value || '马';
-          const benmingList = [];
-          const otherList = [];
-          zodiacs.forEach(z => {
-            if (z === curBenming) benmingList.push(z);
-            else otherList.push(z);
-          });
-          const amtPerBen = Math.round(amtRaw / 5);
-          const amtPerOther = Math.round(amtRaw / 4);
-          if (benmingList.length > 0) resultLines.push(`${benmingList.join('-')} 各数 ${amtPerBen}`);
-          if (otherList.length > 0) resultLines.push(`${otherList.join('-')} 各数 ${amtPerOther}`);
-          return;
-        }
-      }
-    }
-
-    const op=new RegExp(`(${AMP_ORIGINAL}\\d+${AMTS})`,'g');
-    const om=cl.match(op);
-    if(om&&om.length>0){
-      let rl=cl;
-      om.forEach(om=>{
-        const oi=rl.indexOf(om);
-        if(oi!==-1){
-          const cont=rl.substring(0,oi).trim();
-          const am=om.match(/(\d+)/);
-          if(am){
-            const amt=am[1];
-            if(cont){ const jo=tokenizeAndJoin(cont); if(jo)resultLines.push(`${jo} 各数 ${amt}`); }
-            rl=rl.substring(oi+om.length);
-          }
-        }
-      });
-      if(rl.trim()){ const jo=tokenizeAndJoin(rl.trim()); if(jo)resultLines.push(`${jo} 各数 0`); }
-    }else{
-      const pat=new RegExp(`^(.+?)${AMP_ORIGINAL}(\\d+)$`);
-      const m=cl.match(pat);
-      if(m){ const jo=tokenizeAndJoin(m[1].trim()); if(jo)resultLines.push(`${jo} 各数 ${m[2]}`); }
-      else{
-        const sp=new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})(\\d+)$`);
-        const sm=cl.match(sp);
-        if(sm){ let num=sm[1].trim(); if(parseInt(num)>=1&&parseInt(num)<=49){ num=num.length===1?`0${num}`:num; resultLines.push(`${num} 各数 ${sm[2]}`); } }
-        else{ const jo=tokenizeAndJoin(cl); if(jo)resultLines.push(`${jo} 各数 0`); }
-      }
-    }
-  });
-  resultEl.value=resultLines.join('\n');
-  updateOrderTotalDisplay();
-}
-
 // ========== 原版全部代码（保留所有功能） ==========
-// ===== 卡密认证（原版本地验证保留备用） =====
+// ===== 卡密认证（原版本地验证保留备用，现由后端接管） =====
 const ADMIN_PASSWORD = "150408"; const CARD_KEYS_STORE = 'cardKeys'; const SESSION_KEY = 'authSession'; const CARD_SECRET = "XK9mP2wQ7vL5";
 function getCardKeys() { try { return JSON.parse(localStorage.getItem(CARD_KEYS_STORE) || '[]'); } catch (e) { return []; } }
 function saveCardKeys(keys) { localStorage.setItem(CARD_KEYS_STORE, JSON.stringify(keys)); }
@@ -1049,8 +979,8 @@ function clearAuthSession() { sessionStorage.removeItem(SESSION_KEY); }
 function generateSelfVerifyingCard(expireDays) { const now = Date.now(); const expireMs = expireDays * 86400000; const raw = `${now}-${expireMs}-${CARD_SECRET}`; let hash = 0; for (let i = 0; i < raw.length; i++) { hash = ((hash << 5) - hash) + raw.charCodeAt(i); hash |= 0; } hash = Math.abs(hash).toString(16).toUpperCase().padStart(4, '0'); return `${now.toString(36).toUpperCase()}-${expireMs.toString(36).toUpperCase()}-${hash}`; }
 function verifySelfVerifyingCard(code) { const parts = code.split('-'); if (parts.length !== 3) return { valid: false, reason: '卡密格式错误' }; const payload = parts[0] + '-' + parts[1]; const providedHash = parts[2]; const now = Date.now(); let createTime, expireMs; try { createTime = parseInt(parts[0], 36); expireMs = parseInt(parts[1], 36); } catch (e) { return { valid: false, reason: '卡密无效' }; } if (isNaN(createTime) || isNaN(expireMs)) return { valid: false, reason: '卡密无效' }; if (now > createTime + expireMs) return { valid: false, reason: '卡密已过期' }; const raw = `${createTime}-${expireMs}-${CARD_SECRET}`; let hash = 0; for (let i = 0; i < raw.length; i++) { hash = ((hash << 5) - hash) + raw.charCodeAt(i); hash |= 0; } const computedHash = Math.abs(hash).toString(16).toUpperCase().padStart(4, '0'); if (computedHash !== providedHash) return { valid: false, reason: '卡密验证失败' }; const keys = getCardKeys(); const found = keys.find(k => k.code === code); if (found && found.status === 'disabled') return { valid: false, reason: '卡密已被禁用' }; if (!found) { keys.push({ code, status: 'active', createTime: new Date(createTime).toISOString(), expireDays: Math.ceil(expireMs / 86400000) }); saveCardKeys(keys); } return { valid: true, card: { code, status: 'active' } }; }
 function checkCardAccess(code) { return verifySelfVerifyingCard(code); }
-function isAdmin() { const session = getAuthSession(); return session && session.role === 'admin'; }
-function checkCurrentAccess() { const session = getAuthSession(); if (!session) return false; if (session.role === 'admin') return true; if (session.role === 'card' && session.cardCode) { const result = verifySelfVerifyingCard(session.cardCode); if (!result.valid) { clearAuthSession(); return false; } return true; } return false; }
+function isAdmin() { return currentUser && currentUser.role === 'admin'; }
+function checkCurrentAccess() { return !!authToken; }
 
 // ===== 订单变量与基础函数 =====
 let tableBetData = {}, userBetData = {}, reportBetData = {}, reportAmountData = {};
@@ -1662,7 +1592,6 @@ window.onload = async () => {
   if (!authToken) {
     showLoginScreen();
   } else {
-    // 尝试验证 token 有效性（通过请求配置接口）
     try {
       await fetchApi('/api/config');
       initMainSystem();
