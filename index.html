@@ -887,17 +887,17 @@ function showActivateModal(username = '') {
 function showLoginModal() {
   if (document.getElementById('loginWin')) return;
 
-  // 尝试读取保存的账号密码
-  const saved = localStorage.getItem('savedCredentials');
+  // 安全读取保存的账号密码
   let savedUsername = '', savedPassword = '', savedRemember = false;
-  if (saved) {
-    try {
+  try {
+    const saved = localStorage.getItem('savedCredentials');
+    if (saved) {
       const cred = JSON.parse(saved);
       savedUsername = cred.username || '';
       savedPassword = cred.password || '';
       savedRemember = true;
-    } catch(e) {}
-  }
+    }
+  } catch(e) {}
 
   const win = document.createElement('div');
   win.className = 'floating-window';
@@ -985,7 +985,6 @@ function showAdminLoginModal() {
       localStorage.setItem('authToken', authToken);
       currentUser = { username: 'admin', role: 'admin' };
       win.remove();
-      // 隐藏欢迎页，显示主工作台
       document.getElementById('welcomePage').style.display = 'none';
       document.getElementById('mainContent').style.display = '';
       initMainSystem();
@@ -1698,12 +1697,10 @@ window.onload = async () => {
   if (authToken) {
     try {
       await fetchApi('/api/config');
-      // 验证通过，隐藏欢迎页，显示主工作台
       document.getElementById('welcomePage').style.display = 'none';
       document.getElementById('mainContent').style.display = '';
       initMainSystem();
     } catch(e) {
-      // token 无效，显示欢迎页
       document.getElementById('welcomePage').style.display = '';
       document.getElementById('mainContent').style.display = 'none';
     }
