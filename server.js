@@ -4,6 +4,7 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,17 +13,20 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 const db = new Database(path.join(__dirname, 'data.db'));
 db.pragma('journal_mode = WAL');
 
-// 创建数据表
+// 创建表
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     role TEXT DEFAULT 'user',
+    activated INTEGER DEFAULT 0,
+    activated_at TEXT,
     card_id INTEGER,
     created_at TEXT NOT NULL,
     FOREIGN KEY (card_id) REFERENCES cards(id)
   );
+
   CREATE TABLE IF NOT EXISTS cards (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT UNIQUE NOT NULL,
@@ -32,6 +36,7 @@ db.exec(`
     user_id INTEGER,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
+
   CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
@@ -40,6 +45,7 @@ db.exec(`
     totalAmount REAL DEFAULT 0,
     timestamp TEXT NOT NULL
   );
+
   CREATE TABLE IF NOT EXISTS report_orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
@@ -73,7 +79,21 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// ========== 内置分类数据（识别需要） ==========
+// ========== 激活码生成工具 ==========
+function generateActivationCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const segments = [];
+  for (let i = 0; i < 4; i++) {
+    let seg = '';
+    for (let j = 0; j < 4; j++) {
+      seg += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    segments.push(seg);
+  }
+  return 'HKMC-' + segments.join('-');
+}
+
+// ========== 内置分类数据（识别用） ==========
 const DEFAULT_CONFIG = {
   zodiac: {
     鼠: ["07","19","31","43"], 牛: ["06","18","30","42"], 虎: ["05","17","29","41"],
@@ -176,7 +196,6 @@ const DEFAULT_CONFIG = {
   }
 };
 
-// 动态生成尾数
 for (let i = 0; i <= 9; i++) {
   const key = i + '尾';
   DEFAULT_CONFIG.weishu[key] = [];
@@ -191,13 +210,10 @@ let currentConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 function mergeConfig(custom) {
   if (!custom) return currentConfig;
   const merged = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-  if (custom.weishu) {
-    merged.weishu = { ...DEFAULT_CONFIG.weishu, ...custom.weishu };
-  }
+  if (custom.weishu) merged.weishu = { ...DEFAULT_CONFIG.weishu, ...custom.weishu };
   return merged;
 }
 
-// 获取所有有效分类名
 function getAllValidCategories(config) {
   const s = new Set();
   for (const key in config.zodiac) s.add(key);
@@ -265,6 +281,8 @@ function parseLine(line, config) {
 }
 
 // ========== 用户认证 API ==========
+
+// 管理员登录
 app.post('/api/auth/admin', (req, res) => {
   const { password } = req.body;
   if (password === "150408") {
@@ -274,52 +292,65 @@ app.post('/api/auth/admin', (req, res) => {
   res.status(401).json({ error: '管理员密码错误' });
 });
 
+// 用户注册（仅用户名密码，不激活）
 app.post('/api/auth/register', (req, res) => {
-  const { username, password, cardCode } = req.body;
-  if (!username || !password || !cardCode) return res.status(400).json({ error: '请填写完整信息' });
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: '请填写完整信息' });
 
   const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
   if (existingUser) return res.status(400).json({ error: '用户名已存在' });
 
+  const passwordHash = bcrypt.hashSync(password, 10);
+  const timestamp = new Date().toISOString();
+  db.prepare('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)').run(username, passwordHash, timestamp);
+
+  res.json({ success: true, message: '注册成功，请使用激活码激活' });
+});
+
+// 激活账号
+app.post('/api/auth/activate', (req, res) => {
+  const { username, cardCode } = req.body;
+  if (!username || !cardCode) return res.status(400).json({ error: '请填写完整信息' });
+
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  if (!user) return res.status(400).json({ error: '用户不存在' });
+  if (user.activated === 1) {
+    // 检查是否过期
+    const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(user.card_id);
+    if (card) {
+      const activatedAt = new Date(user.activated_at).getTime();
+      const expireMs = card.expire_days * 86400000;
+      if (Date.now() < activatedAt + expireMs) {
+        return res.status(400).json({ error: '账号已激活且在有效期内' });
+      }
+    }
+  }
+
   const card = db.prepare('SELECT * FROM cards WHERE code = ? AND status = ?').get(cardCode, 'active');
   if (!card) {
     const anyCard = db.prepare('SELECT * FROM cards WHERE code = ?').get(cardCode);
-    if (anyCard) return res.status(400).json({ error: `卡密状态为 ${anyCard.status}，无法使用` });
-    return res.status(400).json({ error: '卡密无效（不存在）' });
+    if (anyCard) return res.status(400).json({ error: `激活码状态为 ${anyCard.status}，无法使用` });
+    return res.status(400).json({ error: '激活码无效（不存在）' });
   }
 
-  const now = Date.now();
-  const parts = cardCode.split('-');
-  if (parts.length !== 3) return res.status(400).json({ error: '卡密格式错误（需要3段）' });
-  const createTime = parseInt(parts[0], 36);
-  const expireMs = parseInt(parts[1], 36);
-  if (isNaN(createTime) || isNaN(expireMs)) return res.status(400).json({ error: '卡密解析失败' });
-
-  const raw = `${createTime}-${expireMs}-XK9mP2wQ7vL5`;
-  let hash = 0;
-  for (let i = 0; i < raw.length; i++) {
-    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
-    hash |= 0;
-  }
-  const computedHash = Math.abs(hash).toString(16).toUpperCase().padStart(4, '0');
-  if (computedHash !== parts[2].toUpperCase()) return res.status(400).json({ error: '卡密校验失败（哈希不匹配）' });
-
-  if (now > createTime + expireMs) {
+  // 检查激活码是否过期（从创建时间算）
+  const cardCreated = new Date(card.created_at).getTime();
+  const cardExpireMs = card.expire_days * 86400000;
+  if (Date.now() > cardCreated + cardExpireMs) {
     db.prepare('UPDATE cards SET status = ? WHERE id = ?').run('expired', card.id);
-    return res.status(400).json({ error: '卡密已过期' });
+    return res.status(400).json({ error: '激活码已过期' });
   }
 
-  const passwordHash = bcrypt.hashSync(password, 10);
-  const timestamp = new Date().toISOString();
-  const insertUser = db.prepare('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)');
-  const userResult = insertUser.run(username, passwordHash, timestamp);
+  const nowISO = new Date().toISOString();
+  // 激活用户
+  db.prepare('UPDATE users SET activated = 1, activated_at = ?, card_id = ? WHERE id = ?').run(nowISO, card.id, user.id);
+  // 更新卡密
+  db.prepare('UPDATE cards SET status = ?, user_id = ? WHERE id = ?').run('used', user.id, card.id);
 
-  db.prepare('UPDATE cards SET status = ?, user_id = ? WHERE id = ?').run('used', userResult.lastInsertRowid, card.id);
-  db.prepare('UPDATE users SET card_id = ? WHERE id = ?').run(card.id, userResult.lastInsertRowid);
-
-  res.json({ success: true, message: '注册成功' });
+  res.json({ success: true, message: '激活成功，请登录' });
 });
 
+// 用户登录
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
@@ -327,6 +358,34 @@ app.post('/api/auth/login', (req, res) => {
   if (!bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: '用户名或密码错误' });
   }
+
+  if (user.role === 'admin') {
+    const token = jwt.sign({ id: user.id, username: user.username, role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
+    return res.json({ token, username: user.username, role: 'admin' });
+  }
+
+  if (user.activated === 0) {
+    return res.status(403).json({ error: '账号未激活', needActivation: true });
+  }
+
+  if (user.activated === 2) {
+    return res.status(403).json({ error: '激活已过期，请重新激活', needActivation: true });
+  }
+
+  // 检查激活有效期
+  if (user.activated === 1 && user.card_id) {
+    const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(user.card_id);
+    if (card) {
+      const activatedAt = new Date(user.activated_at).getTime();
+      const expireMs = card.expire_days * 86400000;
+      if (Date.now() > activatedAt + expireMs) {
+        // 过期，设为2
+        db.prepare('UPDATE users SET activated = 2 WHERE id = ?').run(user.id);
+        return res.status(403).json({ error: '激活已过期，请重新激活', needActivation: true });
+      }
+    }
+  }
+
   const token = jwt.sign(
     { id: user.id, username: user.username, role: user.role },
     JWT_SECRET,
@@ -340,17 +399,9 @@ app.post('/api/cards/generate', authenticateToken, requireAdmin, (req, res) => {
   const { expireDays } = req.body;
   if (!expireDays || expireDays < 1) return res.status(400).json({ error: '有效期至少1天' });
 
-  const now = Date.now();
-  const expireMs = expireDays * 86400000;
-  const raw = `${now}-${expireMs}-XK9mP2wQ7vL5`;
-  let hash = 0;
-  for (let i = 0; i < raw.length; i++) {
-    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
-    hash |= 0;
-  }
-  const code = `${now.toString(36).toUpperCase()}-${expireMs.toString(36).toUpperCase()}-${Math.abs(hash).toString(16).toUpperCase().padStart(4, '0')}`;
-
+  const code = generateActivationCode();
   db.prepare('INSERT INTO cards (code, status, expire_days, created_at) VALUES (?, ?, ?, ?)').run(code, 'active', expireDays, new Date().toISOString());
+
   res.json({ success: true, code });
 });
 
@@ -418,7 +469,6 @@ app.post('/api/orders/batch-delete', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
-// 上报订单（同 orders）
 app.get('/api/report-orders', authenticateToken, (req, res) => {
   const { date } = req.query;
   let rows;
@@ -467,7 +517,7 @@ app.post('/api/report-orders/batch-delete', authenticateToken, (req, res) => {
   res.json({ success: true });
 });
 
-// ========== 识别接口（后端完全负责识别） ==========
+// ========== 识别接口 ==========
 app.post('/api/recognize', authenticateToken, (req, res) => {
   try {
     const { text, config: customConfig } = req.body;
@@ -657,7 +707,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
   }
 });
 
-// 配置接口（用于前端传递自定义分类到后端）
+// 配置接口
 app.post('/api/config', authenticateToken, (req, res) => {
   currentConfig = mergeConfig(req.body);
   res.json({ success: true });
@@ -667,7 +717,6 @@ app.get('/api/config', authenticateToken, (req, res) => {
   res.json(currentConfig);
 });
 
-// 所有其他请求返回 index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
