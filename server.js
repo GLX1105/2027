@@ -4,15 +4,16 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '150408';
 
 const db = new Database(path.join(__dirname, 'data.db'));
 db.pragma('journal_mode = WAL');
 
+// 创建表
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,10 +54,18 @@ db.exec(`
     totalAmount REAL DEFAULT 0,
     timestamp TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS user_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    UNIQUE(user, key)
+  );
 `);
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
 
 // ========== 认证中间件 ==========
@@ -282,7 +291,7 @@ function parseLine(line, config) {
 // ========== 用户认证 API ==========
 app.post('/api/auth/admin', (req, res) => {
   const { password } = req.body;
-  if (password === (process.env.ADMIN_PASSWORD || '150408')) {
+  if (password === ADMIN_PASSWORD) {
     const token = jwt.sign({ username: 'admin', role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
     return res.json({ token, role: 'admin' });
   }
@@ -408,7 +417,7 @@ app.post('/api/cards/:id/disable', authenticateToken, requireAdmin, (req, res) =
   res.json({ success: true });
 });
 
-// ========== 订单 API（需登录） ==========
+// ========== 订单 API ==========
 app.get('/api/orders', authenticateToken, (req, res) => {
   const { date } = req.query;
   let rows;
@@ -646,6 +655,8 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
     }
 
     const betData = {};
+    const reportAmountData = {};
+
     for (const order of orders) {
       const lines = order.content.split('\n').filter(l => l.trim());
       for (const line of lines) {
@@ -663,11 +674,15 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       const lines = order.content.split('\n').filter(l => l.trim());
       for (const line of lines) {
         const { numbers, zodiacs, amount } = parseLine(line, config);
-        numbers.forEach(num => { betData[num] = (betData[num] || 0) - amount; });
+        numbers.forEach(num => {
+          betData[num] = (betData[num] || 0) - amount;
+          reportAmountData[num] = (reportAmountData[num] || 0) + amount;
+        });
         zodiacs.forEach(z => {
           (config.zodiac[z] || []).forEach(n => {
             const num = n.padStart(2, '0');
             betData[num] = (betData[num] || 0) - amount;
+            reportAmountData[num] = (reportAmountData[num] || 0) + amount;
           });
         });
       }
@@ -688,7 +703,55 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       rank: idx + 1
     }));
 
-    res.json({ list: result, totalBet, totalRebate: rebate });
+    res.json({ list: result, totalBet, totalRebate: rebate, reportAmountData });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ========== 频率统计接口 ==========
+app.post('/api/frequency', authenticateToken, (req, res) => {
+  try {
+    const { date, config: customConfig, amountMin, amountMax, zodiacAmountMin, zodiacAmountMax } = req.body;
+    const config = mergeConfig(customConfig || {});
+    const nMin = parseInt(amountMin) || 1;
+    const nMax = parseInt(amountMax) || 50000;
+    const zMin = parseInt(zodiacAmountMin) || 1;
+    const zMax = parseInt(zodiacAmountMax) || 50000;
+
+    let orders;
+    if (req.user.role === 'admin') {
+      orders = date ? db.prepare('SELECT * FROM orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM orders').all();
+    } else {
+      orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username);
+    }
+
+    const numberCount = {};
+    const zodiacCount = {};
+    const numberAmountCount = {};
+    const zodiacAmountCount = {};
+
+    for (const order of orders) {
+      const lines = order.content.split('\n').filter(l => l.trim());
+      for (const line of lines) {
+        const { numbers, zodiacs, amount } = parseLine(line, config);
+        numbers.forEach(num => {
+          numberCount[num] = (numberCount[num] || 0) + 1;
+          if (amount >= nMin && amount <= nMax) {
+            numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+          }
+        });
+        zodiacs.forEach(z => {
+          zodiacCount[z] = (zodiacCount[z] || 0) + 1;
+          if (amount >= zMin && amount <= zMax) {
+            zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
+          }
+        });
+      }
+    }
+
+    res.json({ numberCount, zodiacCount, numberAmountCount, zodiacAmountCount });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -740,6 +803,98 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
     console.error(e);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ========== 用户配置 API ==========
+app.get('/api/settings', authenticateToken, (req, res) => {
+  const rows = db.prepare('SELECT key, value FROM user_settings WHERE user = ?').all(req.user.username);
+  const settings = {};
+  rows.forEach(row => {
+    try {
+      settings[row.key] = JSON.parse(row.value);
+    } catch (e) {
+      settings[row.key] = row.value;
+    }
+  });
+  res.json(settings);
+});
+
+app.post('/api/settings', authenticateToken, (req, res) => {
+  const { key, value } = req.body;
+  if (!key) return res.status(400).json({ error: '缺少 key' });
+
+  const valStr = typeof value === 'string' ? value : JSON.stringify(value);
+  const existing = db.prepare('SELECT id FROM user_settings WHERE user = ? AND key = ?').get(req.user.username, key);
+  if (existing) {
+    db.prepare('UPDATE user_settings SET value = ? WHERE user = ? AND key = ?').run(valStr, req.user.username, key);
+  } else {
+    db.prepare('INSERT INTO user_settings (user, key, value) VALUES (?, ?, ?)').run(req.user.username, key, valStr);
+  }
+  res.json({ success: true });
+});
+
+// ========== 导出导入 API ==========
+app.get('/api/export', authenticateToken, (req, res) => {
+  let orders, reportOrders;
+  if (req.user.role === 'admin') {
+    orders = db.prepare('SELECT * FROM orders').all();
+    reportOrders = db.prepare('SELECT * FROM report_orders').all();
+  } else {
+    orders = db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username);
+    reportOrders = db.prepare('SELECT * FROM report_orders WHERE user = ?').all(req.user.username);
+  }
+  const settings = db.prepare('SELECT key, value FROM user_settings WHERE user = ?').all(req.user.username);
+  const config = {};
+  settings.forEach(s => {
+    try { config[s.key] = JSON.parse(s.value); } catch(e) { config[s.key] = s.value; }
+  });
+  res.json({ orders, reportOrders, config, exportTime: new Date().toISOString() });
+});
+
+app.post('/api/import', authenticateToken, (req, res) => {
+  const { orders, reportOrders, config } = req.body;
+  if (!orders && !reportOrders) return res.status(400).json({ error: '无有效数据' });
+
+  const insertOrder = db.prepare('INSERT OR IGNORE INTO orders (content, user, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?)');
+  const insertReport = db.prepare('INSERT OR IGNORE INTO report_orders (content, user, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?)');
+
+  const transaction = db.transaction(() => {
+    if (orders && orders.length) {
+      orders.forEach(o => {
+        insertOrder.run(o.content, o.user || req.user.username, o.date, o.totalAmount || 0, o.timestamp);
+      });
+    }
+    if (reportOrders && reportOrders.length) {
+      reportOrders.forEach(o => {
+        insertReport.run(o.content, o.user || req.user.username, o.date, o.totalAmount || 0, o.timestamp);
+      });
+    }
+    if (config) {
+      for (const key in config) {
+        const val = typeof config[key] === 'string' ? config[key] : JSON.stringify(config[key]);
+        const existing = db.prepare('SELECT id FROM user_settings WHERE user = ? AND key = ?').get(req.user.username, key);
+        if (existing) {
+          db.prepare('UPDATE user_settings SET value = ? WHERE user = ? AND key = ?').run(val, req.user.username, key);
+        } else {
+          db.prepare('INSERT INTO user_settings (user, key, value) VALUES (?, ?, ?)').run(req.user.username, key, val);
+        }
+      }
+    }
+  });
+  transaction();
+  res.json({ success: true });
+});
+
+// ========== 清空 API ==========
+app.post('/api/reset', authenticateToken, (req, res) => {
+  if (req.user.role === 'admin') {
+    db.prepare('DELETE FROM orders').run();
+    db.prepare('DELETE FROM report_orders').run();
+  } else {
+    db.prepare('DELETE FROM orders WHERE user = ?').run(req.user.username);
+    db.prepare('DELETE FROM report_orders WHERE user = ?').run(req.user.username);
+  }
+  res.json({ success: true });
 });
 
 // 配置接口
