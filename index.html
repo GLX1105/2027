@@ -725,6 +725,8 @@ async function fetchApi(url, options = {}) {
     authToken = null;
     localStorage.removeItem('authToken');
     showLoginScreen();
+      const existing = document.getElementById('loginOverlay');
+if (existing) existing.remove();
     throw new Error('未登录');
   }
   if (!res.ok) {
