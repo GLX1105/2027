@@ -915,7 +915,6 @@ function logout() { authToken = null; localStorage.removeItem('authToken'); curr
 
 function initMainSystem() {
   if (currentUser && currentUser.role === 'admin') document.getElementById('cardMgrBtn').style.display = '';
-  // 修复问题2：设置默认日期为中国时区当天
   const today = getTodayCST();
   const fdEl = document.getElementById('filterDate');
   if (fdEl) fdEl.value = today;
@@ -943,7 +942,6 @@ async function loadAllSettings() {
       }
     }
   } catch(e) {}
-  // 默认值
   if (!localSettings.users) localSettings.users = [];
   if (!localSettings.replacePresets) localSettings.replacePresets = [];
   if (!localSettings.categoryAliases) localSettings.categoryAliases = [];
@@ -984,7 +982,7 @@ async function showCardManager() {
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 识别函数（前端本地识别，修复合计累加） ==========
+// ========== 识别函数（本地识别，修复合计） ==========
 function convertOrderText() {
   const inputEl = document.querySelector('.source-order-input');
   if (!inputEl) return;
@@ -992,7 +990,6 @@ function convertOrderText() {
   const resultEl = document.getElementById('orderResult');
   if (!resultEl) return;
   if (!text) { resultEl.value = ''; updateTotalDisplay(); return; }
-  // 使用本地识别逻辑，支持自定义前缀/后缀
   const lines = text.split('\n');
   const resultLines = [];
   const HARD_AMP_LIST = ['各','各号','号','个','=','各数','每数','每号','个号','每个号','各码','各号码'];
@@ -1085,14 +1082,10 @@ function updateTotalDisplay() {
       const items = m[1].split('-').filter(i => i.trim());
       const amount = parseInt(m[2]) || 0;
       items.forEach(item => {
-        if (/^\d+$/.test(item)) {
-          total += amount; // 单个号码
-        } else if (cfg.zodiac[item]) {
-          total += cfg.zodiac[item].length * amount;
-        } else if (cfg.shengxiaoAttr[item]) {
-          cfg.shengxiaoAttr[item].forEach(z => {
-            if (cfg.zodiac[z]) total += cfg.zodiac[z].length * amount;
-          });
+        if (/^\d+$/.test(item)) total += amount;
+        else if (cfg.zodiac[item]) total += cfg.zodiac[item].length * amount;
+        else if (cfg.shengxiaoAttr[item]) {
+          cfg.shengxiaoAttr[item].forEach(z => { if (cfg.zodiac[z]) total += cfg.zodiac[z].length * amount; });
         } else {
           const nums = getNumberListForCategory(item, cfg);
           total += nums.length * amount;
@@ -1288,17 +1281,30 @@ function getNumberListForCategory(cat, cfg) {
   return [...new Set(nums)];
 }
 
-// ========== 配置管理界面操作 ==========
+// ========== 配置管理界面操作（密码验证调后端） ==========
+async function verifyPasswordAction(password, action) {
+  try {
+    const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password, action }) });
+    return res.valid;
+  } catch(e) { return false; }
+}
+
 function lockAllInputs() { document.querySelectorAll('.config-input').forEach(el => el.disabled = true); }
 function unlockAllInputs() { document.querySelectorAll('.config-input').forEach(el => el.disabled = false); }
 function initDataConfig() { lockAllInputs(); renderCustomConfigContainer(); }
 
 async function enableEditConfig() {
-  if ((await prompt("输入修改密码：")) === "891105") { unlockAllInputs(); showToast("解锁成功"); }
+  const pwd = await prompt("输入修改密码：");
+  if (!pwd) return;
+  const valid = await verifyPasswordAction(pwd, 'editConfig');
+  if (valid) { unlockAllInputs(); showToast("解锁成功"); }
   else { showToast("密码错误"); }
 }
 async function saveDataConfig() {
-  if ((await prompt("输入保存密码：")) !== "891105") { showToast("密码错误"); return; }
+  const pwd = await prompt("输入保存密码：");
+  if (!pwd) return;
+  const valid = await verifyPasswordAction(pwd, 'editConfig');
+  if (!valid) { showToast("密码错误"); return; }
   const newConfig = {};
   document.querySelectorAll('.config-input').forEach(el => {
     const id = el.id.replace('config_', '');
@@ -1313,7 +1319,10 @@ async function saveDataConfig() {
   showToast("保存成功");
 }
 async function resetDataConfig() {
-  if ((await prompt("输入密码：")) !== "891105") { showToast("密码错误"); return; }
+  const pwd = await prompt("输入密码：");
+  if (!pwd) return;
+  const valid = await verifyPasswordAction(pwd, 'resetData');
+  if (!valid) { showToast("密码错误"); return; }
   localSettings.customDataConfigObj = null;
   await saveSetting('customDataConfigObj', null);
   location.reload();
@@ -1558,7 +1567,7 @@ function applyReplacePresets(text) {
   return r;
 }
 
-// ========== 数据更新（从后端获取订单并计算） ==========
+// ========== 数据更新（从后端获取） ==========
 async function updateTableFromRecords() {
   const fd = document.getElementById('filterDate')?.value;
   const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
@@ -1577,7 +1586,7 @@ async function updateTableFromRecords() {
   } catch(e) { console.error(e); showToast('加载数据失败：'+e.message); }
 }
 
-// ========== 渲染函数（接收API数据） ==========
+// ========== 渲染函数 ==========
 const redNumbers = ['01','02','07','08','12','13','18','19','23','24','29','30','34','35','40','45','46'];
 const blueNumbers = ['03','04','09','10','14','15','20','25','26','31','36','37','41','42','47','48'];
 const zodiacOrder = ['马','蛇','龙','兔','虎','牛','鼠','猪','狗','鸡','猴','羊'];
@@ -1636,26 +1645,12 @@ function renderAmountFrequencyCardsFromData(freqData) {
 // ========== 报表控制 ==========
 function switchRiskReport() {
   const val = document.getElementById('riskReportSwitcher').value;
-  if (val === 'total') {
-    document.getElementById('riskSection').style.display = '';
-    document.getElementById('reportSection').style.display = 'none';
-    document.getElementById('viewUserSelect').style.display = 'none';
-    updateTableFromRecords();
-  } else if (val === 'user') {
-    document.getElementById('riskSection').style.display = '';
-    document.getElementById('reportSection').style.display = 'none';
-    document.getElementById('viewUserSelect').style.display = 'inline-block';
-    updateTableFromRecords();
-  } else if (val === 'report') {
-    document.getElementById('riskSection').style.display = 'none';
-    document.getElementById('reportSection').style.display = '';
-    updateTableFromRecords();
-  }
+  if (val === 'total') { document.getElementById('riskSection').style.display = ''; document.getElementById('reportSection').style.display = 'none'; document.getElementById('viewUserSelect').style.display = 'none'; updateTableFromRecords(); }
+  else if (val === 'user') { document.getElementById('riskSection').style.display = ''; document.getElementById('reportSection').style.display = 'none'; document.getElementById('viewUserSelect').style.display = 'inline-block'; updateTableFromRecords(); }
+  else if (val === 'report') { document.getElementById('riskSection').style.display = 'none'; document.getElementById('reportSection').style.display = ''; updateTableFromRecords(); }
 }
-
 function generateRiskTable() { updateTableFromRecords(); }
 function generateReportTable() { updateTableFromRecords(); }
-
 function applyReportCap() { generateReportTable(); }
 async function copyReportCapText() {
   const info = document.getElementById('reportCapInfo');
@@ -1663,7 +1658,6 @@ async function copyReportCapText() {
   if (!txt || txt === '无超出的号码') { showToast('没有可复制的文本'); return; }
   try { await navigator.clipboard.writeText(txt); showToast('已复制'); } catch(e) { showToast('复制失败'); }
 }
-
 function handleTableRowClick(event) {
   const td = event.target.closest('td'); if (!td) return;
   const tr = td.closest('tr'); if (!tr) return;
@@ -1671,31 +1665,33 @@ function handleTableRowClick(event) {
   tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected-row'));
   tr.classList.add('selected-row');
 }
-
 function getTodayCST() {
   const now = new Date(); const offset = 8 * 60;
   const localTime = now.getTime() + (now.getTimezoneOffset() + offset) * 60000;
   const cstDate = new Date(localTime);
   return `${cstDate.getFullYear()}-${String(cstDate.getMonth()+1).padStart(2,'0')}-${String(cstDate.getDate()).padStart(2,'0')}`;
 }
-
 async function changeStartZodiac() {
   const select = document.getElementById('startZodiacSelect');
   const newZodiac = select.value;
   const savedZodiac = localSettings.selectedStartZodiac || '马';
   if (newZodiac === savedZodiac) return;
   const inputPwd = await prompt("请输入本年生肖切换密码：", "");
-  if (inputPwd !== "150408") { await alert("密码错误"); select.value = savedZodiac; return; }
-  localSettings.selectedStartZodiac = newZodiac;
-  await saveSetting('selectedStartZodiac', newZodiac);
-  currentZodiacMap = buildZodiacMap(newZodiac);
-  updateTableFromRecords();
+  if (!inputPwd) return;
+  try {
+    const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password: inputPwd, action: 'changeZodiac' }) });
+    if (!res.valid) { await alert("密码错误"); select.value = savedZodiac; return; }
+    localSettings.selectedStartZodiac = newZodiac;
+    await saveSetting('selectedStartZodiac', newZodiac);
+    currentZodiacMap = buildZodiacMap(newZodiac);
+    updateTableFromRecords();
+  } catch(e) { showToast('验证失败'); select.value = savedZodiac; }
 }
 
-// ========== 订单操作 ==========
+// ========== 订单操作（含下单人） ==========
 async function saveOrder() {
-  const user = document.getElementById('orderUserSelect')?.value;
-  if (!user) { showToast('请选择用户'); return; }
+  const orderer = document.getElementById('orderUserSelect')?.value;
+  if (!orderer) { showToast('请选择下单人'); return; }
   let input = document.getElementById('orderResult')?.value.trim() || document.querySelector('.source-order-input')?.value.trim();
   if (!input) return;
   const vl = input.split('\n').filter(l => { const m = l.match(/各数\s+(\d+)/); return m && parseInt(m[1]) > 0; });
@@ -1704,16 +1700,15 @@ async function saveOrder() {
   const date = document.getElementById('orderDate')?.value || getTodayCST();
   const total = computeCurrentOrderTotal();
   try {
-    await fetchApi('/api/orders', { method:'POST', body: JSON.stringify({ content, user, date, totalAmount: total }) });
+    await fetchApi('/api/orders', { method:'POST', body: JSON.stringify({ content, orderer, date, totalAmount: total }) });
     showToast('下单成功');
     clearOrderInputs();
     updateTableFromRecords();
   } catch(e) { showToast('保存失败：'+e.message); }
 }
-
 async function saveReportOrder() {
-  const user = document.getElementById('orderUserSelect')?.value;
-  if (!user) { showToast('请选择用户'); return; }
+  const orderer = document.getElementById('orderUserSelect')?.value;
+  if (!orderer) { showToast('请选择下单人'); return; }
   let input = document.getElementById('orderResult')?.value.trim() || document.querySelector('.source-order-input')?.value.trim();
   if (!input) return;
   const vl = input.split('\n').filter(l => { const m = l.match(/各数\s+(\d+)/); return m && parseInt(m[1]) > 0; });
@@ -1722,20 +1717,18 @@ async function saveReportOrder() {
   const date = document.getElementById('orderDate')?.value || getTodayCST();
   const total = computeCurrentOrderTotal();
   try {
-    await fetchApi('/api/report-orders', { method:'POST', body: JSON.stringify({ content, user, date, totalAmount: total }) });
+    await fetchApi('/api/report-orders', { method:'POST', body: JSON.stringify({ content, orderer, date, totalAmount: total }) });
     showToast('上报成功');
     clearOrderInputs();
     updateTableFromRecords();
   } catch(e) { showToast('上报失败：'+e.message); }
 }
-
 function clearOrderInputs() {
   const si = document.querySelector('.source-order-input'); if(si) si.value = '';
   const re = document.getElementById('orderResult'); if(re) re.value = '';
   updateTotalDisplay();
   document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
 }
-
 function computeCurrentOrderTotal() {
   const re = document.getElementById('orderResult');
   if (!re) return 0;
@@ -1749,12 +1742,8 @@ function computeCurrentOrderTotal() {
       items.forEach(item => {
         if (/^\d+$/.test(item)) total += amount;
         else if (cfg.zodiac[item]) total += cfg.zodiac[item].length * amount;
-        else if (cfg.shengxiaoAttr[item]) {
-          cfg.shengxiaoAttr[item].forEach(z => { if (cfg.zodiac[z]) total += cfg.zodiac[z].length * amount; });
-        } else {
-          const nums = getNumberListForCategory(item, cfg);
-          total += nums.length * amount;
-        }
+        else if (cfg.shengxiaoAttr[item]) { cfg.shengxiaoAttr[item].forEach(z => { if (cfg.zodiac[z]) total += cfg.zodiac[z].length * amount; }); }
+        else { const nums = getNumberListForCategory(item, cfg); total += nums.length * amount; }
       });
     }
   });
@@ -1877,13 +1866,17 @@ function pinWindow(winId) {
 
 async function showDatabase() {
   const pwd = await prompt("请输入数据库密码：", "");
-  if (pwd !== "891105") { await alert("密码错误"); return; }
-  const modal = document.getElementById('databaseModal');
-  if (!modal) return;
-  modal.style.display = 'flex';
-  highestZ += 1; modal.style.zIndex = highestZ;
-  renderCustomConfigContainer();
-  makeWindowDraggable('databaseModalBox');
+  if (!pwd) return;
+  try {
+    const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password: pwd, action: 'showDatabase' }) });
+    if (!res.valid) { await alert("密码错误"); return; }
+    const modal = document.getElementById('databaseModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    highestZ += 1; modal.style.zIndex = highestZ;
+    renderCustomConfigContainer();
+    makeWindowDraggable('databaseModalBox');
+  } catch(e) { showToast('验证失败'); }
 }
 function hideDatabase() {
   const modal = document.getElementById('databaseModal');
@@ -1921,7 +1914,7 @@ async function pasteOrder() {
   } catch (err) { showToast('无法访问剪贴板'); }
 }
 
-// ========== 订单记录（从后端获取） ==========
+// ========== 订单记录（从后端获取，显示下单人+用户布局调整） ==========
 async function showOrderRecord(filter = 'all') {
   try {
     const recs = await fetchApi('/api/orders' + (document.getElementById('filterDate')?.value ? `?date=${document.getElementById('filterDate').value}` : ''));
@@ -1938,8 +1931,11 @@ async function showOrderRecord(filter = 'all') {
     else {
       recs.forEach(o => {
         const ts = o.timestamp ? new Date(o.timestamp).toLocaleString('zh-CN', { hour12: false }) : '';
-        const col = getUserColor(o.user);
-        html += `<div class="order-item"><input type="checkbox" class="order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g, '<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span><span class="order-meta"><span style="color:${col};">用户：${o.user}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord(${o.id})">删除</button></div>`;
+        const orderer = o.orderer || '未知';
+        const ordererColor = getUserColor(orderer);
+        // 用户（登录账号）显示在合计下方
+        const userDisplay = `<div style="font-size:10px;color:#666;">用户：${o.user || '未知'}</div>`;
+        html += `<div class="order-item"><input type="checkbox" class="order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g, '<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span>${userDisplay}<span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord(${o.id})">删除</button></div>`;
       });
     }
     html += '</div></div>'; w.innerHTML = html; document.body.appendChild(w);
@@ -1971,7 +1967,10 @@ async function showReportOrderRecord(filter = 'all') {
     else {
       recs.forEach(o => {
         const ts = o.timestamp ? new Date(o.timestamp).toLocaleString('zh-CN', { hour12: false }) : '';
-        html += `<div class="order-item"><input type="checkbox" class="report-order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g, '<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span><span class="order-meta"><span style="color:red;">用户：${o.user}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteReportOrderRecord(${o.id})">删除</button></div>`;
+        const orderer = o.orderer || '未知';
+        const ordererColor = getUserColor(orderer);
+        const userDisplay = `<div style="font-size:10px;color:#666;">用户：${o.user || '未知'}</div>`;
+        html += `<div class="order-item"><input type="checkbox" class="report-order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g, '<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span>${userDisplay}<span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteReportOrderRecord(${o.id})">删除</button></div>`;
       });
     }
     html += '</div>'; w.innerHTML = html; document.body.appendChild(w);
@@ -2015,7 +2014,7 @@ async function deleteCheckedReport() {
   } catch (e) { showToast('删除失败'); }
 }
 
-// ========== 对奖相关（修复高亮为红色） ==========
+// ========== 对奖高亮（修复） ==========
 function getUserColor(u) {
   if (!u) return 'hsl(0,0%,50%)';
   let h = 0; for (let i = 0; i < u.length; i++) h = u.charCodeAt(i) + ((h << 5) - h);
@@ -2059,8 +2058,10 @@ async function applyPrizeFilter() {
       content = data.highlighted;
     }
     const ts = it.timestamp ? new Date(it.timestamp).toLocaleString('zh-CN', { hour12: false }) : '';
-    const col = getUserColor(it.user);
-    return `<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${content.replace(/\n/g, '<br>')}</div><div class="order-info"><span class="order-total">合计：${it.totalAmount}</span><span class="order-meta"><span style="color:${col};">用户：${it.user}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord(${it.id})">删除</button></div>`;
+    const orderer = it.orderer || '未知';
+    const ordererColor = getUserColor(orderer);
+    const userDisplay = `<div style="font-size:10px;color:#666;">用户：${it.user || '未知'}</div>`;
+    return `<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${content.replace(/\n/g, '<br>')}</div><div class="order-info"><span class="order-total">合计：${it.totalAmount}</span>${userDisplay}<span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord(${it.id})">删除</button></div>`;
   }));
   cont.innerHTML = itemsHtml.join('');
 }
@@ -2103,8 +2104,10 @@ async function importData() {
 
 async function resetTable() {
   const pwd = await prompt("输入清空密码：", "");
-  if (pwd !== "891105") { await alert("密码错误"); return; }
+  if (!pwd) return;
   try {
+    const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password: pwd, action: 'resetData' }) });
+    if (!res.valid) { await alert("密码错误"); return; }
     await fetchApi('/api/reset', { method:'POST' });
     location.reload();
   } catch(e) { showToast('清空失败'); }
@@ -2177,4 +2180,3 @@ window.onload = async () => {
 </script>
 </body>
 </html>
-
