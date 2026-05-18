@@ -76,14 +76,6 @@ db.exec(`
     detail TEXT DEFAULT '',
     timestamp TEXT NOT NULL
   );
-
-  CREATE TABLE IF NOT EXISTS active_tokens (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
-    token TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    created_at TEXT NOT NULL
-  );
 `);
 
 // 为已有表添加可能缺失的字段
@@ -93,8 +85,8 @@ try { db.exec('ALTER TABLE cards ADD COLUMN creator TEXT DEFAULT \'admin\''); } 
 try { db.exec('ALTER TABLE orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
 try { db.exec('ALTER TABLE report_orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
 
-// ========== 启动时清理过期令牌 ==========
-db.prepare('DELETE FROM active_tokens WHERE expires_at < ?').run(new Date().toISOString());
+// 如果存在旧的 active_tokens 表则删除（清理遗留）
+try { db.exec('DROP TABLE IF EXISTS active_tokens'); } catch(e) {}
 
 // ========== 自动创建管理员账户 ==========
 const adminUser = db.prepare('SELECT * FROM users WHERE username = ?').get('17776192265');
@@ -433,41 +425,13 @@ app.post('/api/auth/login', (req, res) => {
     }
   }
 
-  // 设备限制检查（管理员除外）
-  if (user.role !== 'admin') {
-    // 清理该用户过期令牌
-    db.prepare('DELETE FROM active_tokens WHERE username = ? AND expires_at < ?').run(username, new Date().toISOString());
-    const activeCount = db.prepare('SELECT COUNT(*) as count FROM active_tokens WHERE username = ?').get(username).count;
-    let maxDevices = 2;
-    // 判断用户类型
-    const isDirectCreate = (user.card_id === null);
-    if (isDirectCreate) maxDevices = 5;
-    if (activeCount >= maxDevices) {
-      return res.status(403).json({ error: `已在${activeCount}台设备上登录，最多允许${maxDevices}台，请先退出其他设备` });
-    }
-  }
-
   const token = jwt.sign(
     { id: user.id, username: user.username, role: user.role, canManageCards: user.can_manage_cards },
     JWT_SECRET,
     { expiresIn: '24h' }
   );
 
-  // 记录活跃令牌
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  db.prepare('INSERT INTO active_tokens (username, token, expires_at, created_at) VALUES (?, ?, ?, ?)').run(username, token, expiresAt, new Date().toISOString());
-
   res.json({ token, username: user.username, role: user.role, canManageCards: user.can_manage_cards });
-});
-
-// ========== 退出登录 ==========
-app.post('/api/auth/logout', authenticateToken, (req, res) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (token) {
-    db.prepare('DELETE FROM active_tokens WHERE token = ?').run(token);
-  }
-  res.json({ success: true });
 });
 
 // ========== 修改密码（仅管理员） ==========
@@ -649,7 +613,6 @@ app.delete('/api/admin/accounts/:id', authenticateToken, requireAdmin, (req, res
   db.prepare('DELETE FROM report_orders WHERE user = ?').run(user.username);
   db.prepare('DELETE FROM user_settings WHERE user = ?').run(user.username);
   db.prepare('DELETE FROM cards WHERE creator = ?').run(user.username);
-  db.prepare('DELETE FROM active_tokens WHERE username = ?').run(user.username);
   db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
