@@ -47,7 +47,6 @@ body {background:#f5f7fa;font-size:14px;line-height:1.4;overflow-x:hidden;positi
     .modal-body {padding:8px!important;}
     .order-item {padding:4px 6px!important;flex-wrap:wrap!important;}
     .order-content {font-size:11px!important;line-height:1.2!important;max-height:none!important;overflow:visible!important;}
-    .storage-info {bottom:10px!important;right:10px!important;font-size:10px!important;padding:6px 8px!important;max-width:160px!important;background:rgba(0,0,0,0.4)!important;backdrop-filter:blur(6px)!important;}
     .database-modal {padding:10px!important;}
     .database-modal-box {width:100%!important;max-height:90vh!important;background:rgba(255,255,255,0.85)!important;backdrop-filter:blur(15px)!important;}
     .database-modal-body {padding:10px!important;max-height:70vh!important;}
@@ -424,7 +423,8 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 </style>
 </head>
 <body>
-    <!-- 登录遮罩 -->
+
+<!-- 登录遮罩（统一登录，去掉独立管理员入口） -->
 <div id="loginOverlay" class="login-overlay">
   <div class="login-card">
     <h1>🎰 港澳识别系统</h1>
@@ -436,18 +436,12 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
       <input type="password" id="loginPassword" placeholder="密码">
       <div style="display:flex;align-items:center;margin-bottom:12px;text-align:left;">
         <input type="checkbox" id="rememberPwd" style="width:18px;height:18px;margin-right:8px;">
-        <label for="rememberPwd" style="font-size:14px;color:#555;">记住账号密码</label>
+        <label for="rememberPwd" style="font-size:14px;color:#555;">记住账号</label>
       </div>
       <div class="login-error" id="loginError"></div>
       <button class="login-btn" id="loginBtn">登录</button>
       <div class="login-links">
         <span class="login-link" id="showRegisterLink">注册新用户</span>
-        <span class="login-link" id="showAdminLoginLink">管理员登录</span>
-      </div>
-      <!-- 管理员登录展开区 -->
-      <div id="adminLoginArea" style="display:none; margin-top:10px;">
-        <input type="password" id="adminPassword" placeholder="管理员密码">
-        <button class="login-btn" id="adminLoginConfirmBtn" style="background:#e67e22;">确认登录</button>
       </div>
     </div>
 
@@ -474,10 +468,9 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
     </div>
   </div>
 </div>
-
 <!-- 主工作台（默认隐藏） -->
 <div id="mainContent" style="display:none;">
-  <!-- 导航栏 -->
+  <!-- 导航栏（新增账户管理、修改密码按钮，仅管理员可见） -->
   <div class="navbar" id="mainNavbar">
     <div class="navbar-title">港澳识别系统</div>
     <div class="navbar-actions" id="navbarActions">
@@ -492,6 +485,8 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
       <button class="btn btn-export" onclick="exportData()">导出</button>
       <button class="btn btn-import" onclick="importData()">导入</button>
       <button class="btn btn-primary" id="cardMgrBtn" style="display:none;" onclick="showCardManager()">卡密管理</button>
+      <button class="btn btn-primary" id="accountMgrBtn" style="display:none;" onclick="showAccountManager()">账户管理</button>
+      <button class="btn btn-primary" id="changePwdBtn" style="display:none;" onclick="showChangePassword()">修改密码</button>
       <button class="btn btn-clear" onclick="logout()">退出登录</button>
     </div>
   </div>
@@ -586,7 +581,8 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         </div>
     </div>
   </div>
-    <!-- 数据库弹窗（完整静态分类号码） -->
+
+  <!-- 数据库弹窗（完整静态分类号码） -->
   <div class="database-modal" id="databaseModal" style="display:none;">
     <div class="database-modal-box" id="databaseModalBox">
       <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
@@ -828,7 +824,7 @@ window.alert = async (msg) => { await showCustomDialog({ title: '提示', messag
 window.confirm = async (msg) => { return await showCustomDialog({ title: '请确认', message: msg, type: 'confirm' }); };
 window.prompt = async (msg, def) => { return await showCustomDialog({ title: '请输入', message: msg, type: 'prompt', defaultValue: def }); };
 
-// ========== 登录/注册/激活 ==========
+// ========== 登录/注册/激活（统一登录，记住账号） ==========
 document.getElementById('loginBtn').onclick = async () => {
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value.trim();
@@ -837,9 +833,9 @@ document.getElementById('loginBtn').onclick = async () => {
   try {
     const data = await fetchApi('/api/auth/login', { method:'POST', body: JSON.stringify({ username, password }) });
     authToken = data.token; localStorage.setItem('authToken', authToken);
-    currentUser = { username: data.username, role: data.role };
-    if (remember) localStorage.setItem('savedCredentials', JSON.stringify({ username, password }));
-    else localStorage.removeItem('savedCredentials');
+    currentUser = { username: data.username, role: data.role, canManageCards: data.canManageCards };
+    if (remember) localStorage.setItem('savedUsername', username);
+    else localStorage.removeItem('savedUsername');
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('mainContent').style.display = '';
     initMainSystem();
@@ -881,23 +877,6 @@ document.getElementById('activateBtn').onclick = async () => {
     document.getElementById('loginError').textContent = '激活成功，请登录';
   } catch(e) { document.getElementById('activateError').textContent = e.message; }
 };
-document.getElementById('showAdminLoginLink').onclick = () => {
-  const area = document.getElementById('adminLoginArea');
-  area.style.display = area.style.display === 'none' ? '' : 'none';
-  if (area.style.display !== 'none') document.getElementById('adminPassword').focus();
-};
-document.getElementById('adminLoginConfirmBtn').onclick = async () => {
-  const password = document.getElementById('adminPassword').value.trim();
-  if (!password) { document.getElementById('loginError').textContent = '请输入管理员密码'; return; }
-  try {
-    const data = await fetchApi('/api/auth/admin', { method:'POST', body: JSON.stringify({ password }) });
-    authToken = data.token; localStorage.setItem('authToken', authToken);
-    currentUser = { username: 'admin', role: 'admin' };
-    document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('mainContent').style.display = '';
-    initMainSystem();
-  } catch(e) { document.getElementById('loginError').textContent = e.message; }
-};
 document.getElementById('backToLoginFromReg').onclick = () => {
   document.getElementById('registerFormView').style.display = 'none';
   document.getElementById('activateFormView').style.display = 'none';
@@ -914,7 +893,13 @@ document.getElementById('backToLoginFromAct').onclick = () => {
 function logout() { authToken = null; localStorage.removeItem('authToken'); currentUser = null; location.reload(); }
 
 function initMainSystem() {
-  if (currentUser && currentUser.role === 'admin') document.getElementById('cardMgrBtn').style.display = '';
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const canManageCards = currentUser && (currentUser.role === 'admin' || currentUser.canManageCards);
+  if (canManageCards) document.getElementById('cardMgrBtn').style.display = '';
+  if (isAdmin) {
+    document.getElementById('accountMgrBtn').style.display = '';
+    document.getElementById('changePwdBtn').style.display = '';
+  }
   const today = getTodayCST();
   const fdEl = document.getElementById('filterDate');
   if (fdEl) fdEl.value = today;
@@ -953,16 +938,32 @@ async function loadAllSettings() {
   if (!localSettings.selectedStartZodiac) localSettings.selectedStartZodiac = '马';
 }
 
-// ========== 卡密管理 ==========
-async function showCardManager() {
+// ========== 修改密码（仅管理员） ==========
+async function showChangePassword() {
   if (!currentUser || currentUser.role !== 'admin') { showToast('无权限'); return; }
+  const oldPwd = await prompt('请输入当前密码：');
+  if (!oldPwd) return;
+  const newPwd = await prompt('请输入新密码：');
+  if (!newPwd) return;
+  const confirmPwd = await prompt('请再次输入新密码：');
+  if (newPwd !== confirmPwd) { showToast('两次密码不一致'); return; }
+  try {
+    await fetchApi('/api/auth/change-password', { method:'POST', body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd }) });
+    showToast('密码修改成功，请重新登录');
+    logout();
+  } catch(e) { showToast(e.message); }
+}
+
+// ========== 卡密管理（管理员和子账户） ==========
+async function showCardManager() {
+  if (!currentUser || (currentUser.role !== 'admin' && !currentUser.canManageCards)) { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
   try {
     const cards = await fetchApi('/api/cards');
     const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'cardMgrWin';
     win.style.width = '650px'; win.style.height = '500px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%,-50%)';
     let html = `<div class="modal-header"><h3>卡密管理</h3><div class="window-controls"><button onclick="maximizeWindow('cardMgrWin')">🗖</button><button onclick="document.getElementById('cardMgrWin').remove()">×</button></div></div><div class="modal-body">
-      <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;"><input type="number" id="expireDays" placeholder="有效天数" value="30" min="1" style="width:80px;padding:5px;"><button onclick="generateCard()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">生成激活码</button></div>
+      <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;"><input type="number" id="expireDays" placeholder="有效天数" value="30" min="1" style="width:80px;padding:5px;"><button onclick="generateCard()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">生成激活码</button><button onclick="showCardLogs()" style="padding:6px 15px;background:#17a2b8;color:#fff;border:none;border-radius:4px;margin-left:auto;">操作日志</button></div>
       <div style="margin-bottom:5px;font-size:12px;color:#666;">激活码格式：HKMC-XXXX-XXXX-XXXX</div><div id="cardList">`;
     cards.forEach(c => {
       html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${c.code}</span><span style="font-size:12px;color:${c.status==='active'?'green':c.status==='used'?'blue':'red'};">[${c.status}]</span>${c.username ? `<span style="font-size:11px;color:#666;">绑定:${c.username}</span>` : ''}<span style="font-size:11px;color:#666;">有效期:${c.expire_days}天</span><div style="margin-left:auto;display:flex;gap:5px;">${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}<button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button></div></div>`;
@@ -979,6 +980,94 @@ async function showCardManager() {
       try { await fetchApi(`/api/cards/${id}/disable`, { method:'POST' }); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
     };
     window.copyCardCode = (code) => { navigator.clipboard.writeText(code).then(() => showToast('已复制')).catch(() => showToast('复制失败')); };
+    window.showCardLogs = async () => {
+      try {
+        const logs = await fetchApi('/api/cards/logs');
+        if (document.getElementById('cardLogWin')) document.getElementById('cardLogWin').remove();
+        const lw = document.createElement('div'); lw.className = 'floating-window'; lw.id = 'cardLogWin';
+        lw.style.width = '600px'; lw.style.height = '400px'; lw.style.left = '50%'; lw.style.top = '50%'; lw.style.transform = 'translate(-50%,-50%)';
+        let lhtml = `<div class="modal-header"><h3>卡密操作日志</h3><div class="window-controls"><button onclick="maximizeWindow('cardLogWin')">🗖</button><button onclick="document.getElementById('cardLogWin').remove()">×</button></div></div><div class="modal-body"><table style="width:100%;border-collapse:collapse;"><thead><tr><th>时间</th><th>操作人</th><th>操作</th><th>对象</th><th>详情</th></tr></thead><tbody>`;
+        if (logs.length === 0) lhtml += '<tr><td colspan="5" style="text-align:center;padding:20px;">暂无日志</td></tr>';
+        else logs.forEach(l => {
+          const ts = new Date(l.timestamp).toLocaleString('zh-CN', { hour12: false });
+          lhtml += `<tr><td>${ts}</td><td>${l.operator}</td><td>${l.action}</td><td>${l.target}</td><td>${l.detail||''}</td></tr>`;
+        });
+        lhtml += '</tbody></table></div>';
+        lw.innerHTML = lhtml; document.body.appendChild(lw);
+        makeWindowDraggable('cardLogWin'); highestZ += 1; lw.style.zIndex = highestZ;
+      } catch(e) { showToast('加载日志失败'); }
+    };
+  } catch(e) { showToast('无权限或出错'); }
+}
+
+// ========== 账户管理（管理员创建/管理子账户） ==========
+async function showAccountManager() {
+  if (!currentUser || currentUser.role !== 'admin') { showToast('无权限'); return; }
+  if (document.getElementById('accountMgrWin')) return;
+  try {
+    const accounts = await fetchApi('/api/admin/accounts');
+    const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'accountMgrWin';
+    win.style.width = '650px'; win.style.height = '500px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%,-50%)';
+    let html = `<div class="modal-header"><h3>账户管理</h3><div class="window-controls"><button onclick="maximizeWindow('accountMgrWin')">🗖</button><button onclick="document.getElementById('accountMgrWin').remove()">×</button></div></div><div class="modal-body">
+      <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;">
+        <input type="text" id="newAccountName" placeholder="用户名" style="width:120px;padding:5px;border:1px solid #ccc;border-radius:4px;">
+        <input type="password" id="newAccountPwd" placeholder="密码" style="width:120px;padding:5px;border:1px solid #ccc;border-radius:4px;">
+        <label style="font-size:12px;"><input type="checkbox" id="newAccountCardPerm"> 卡密权限</label>
+        <button onclick="createAccount()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">创建</button>
+      </div>
+      <div id="accountList">`;
+    if (accounts.length === 0) html += '<div style="text-align:center;color:#666;padding:20px;">暂无子账户</div>';
+    else {
+      accounts.forEach(a => {
+        html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-weight:bold;">${a.username}</span>
+          <span style="font-size:12px;color:${a.activated===1?'green':'red'};">[${a.activated===1?'正常':'已禁用'}]</span>
+          <span style="font-size:11px;color:#666;">卡密权限：${a.can_manage_cards===1?'有':'无'}</span>
+          <span style="font-size:11px;color:#666;">创建时间：${new Date(a.created_at).toLocaleString('zh-CN', { hour12: false })}</span>
+          <div style="margin-left:auto;display:flex;gap:5px;">
+            <button onclick="toggleAccountStatus(${a.id}, ${a.activated})" style="background:${a.activated===1?'#f39c12':'#28a745'};color:#fff;border:none;padding:3px 8px;border-radius:3px;">${a.activated===1?'禁用':'启用'}</button>
+            <button onclick="toggleCardPerm(${a.id}, ${a.can_manage_cards})" style="background:#17a2b8;color:#fff;border:none;padding:3px 8px;border-radius:3px;">${a.can_manage_cards===1?'取消卡密':'授予卡密'}</button>
+            <button onclick="deleteAccount(${a.id})" style="background:#e74c3c;color:#fff;border:none;padding:3px 8px;border-radius:3px;">删除</button>
+          </div></div>`;
+      });
+    }
+    html += '</div></div>'; win.innerHTML = html; document.body.appendChild(win);
+    makeWindowDraggable('accountMgrWin'); highestZ += 1; win.style.zIndex = highestZ;
+
+    window.createAccount = async () => {
+      const name = document.getElementById('newAccountName')?.value.trim();
+      const pwd = document.getElementById('newAccountPwd')?.value.trim();
+      const cardPerm = document.getElementById('newAccountCardPerm')?.checked || false;
+      if (!name || !pwd) { showToast('请输入用户名和密码'); return; }
+      try {
+        await fetchApi('/api/admin/create-account', { method:'POST', body: JSON.stringify({ username: name, password: pwd, canManageCards: cardPerm }) });
+        showToast('创建成功');
+        document.getElementById('accountMgrWin').remove();
+        showAccountManager();
+      } catch(e) { showToast(e.message); }
+    };
+    window.toggleAccountStatus = async (id, currentStatus) => {
+      try {
+        await fetchApi(`/api/admin/accounts/${id}/toggle-status`, { method:'POST', body: JSON.stringify({ activated: currentStatus === 1 ? 2 : 1 }) });
+        document.getElementById('accountMgrWin').remove();
+        showAccountManager();
+      } catch(e) { showToast(e.message); }
+    };
+    window.toggleCardPerm = async (id, currentPerm) => {
+      try {
+        await fetchApi(`/api/admin/accounts/${id}/toggle-card-perm`, { method:'POST', body: JSON.stringify({ canManageCards: currentPerm === 1 ? 0 : 1 }) });
+        document.getElementById('accountMgrWin').remove();
+        showAccountManager();
+      } catch(e) { showToast(e.message); }
+    };
+    window.deleteAccount = async (id) => {
+      if (!(await confirm('确定删除该账户吗？'))) return;
+      try {
+        await fetchApi(`/api/admin/accounts/${id}`, { method:'DELETE' });
+        document.getElementById('accountMgrWin').remove();
+        showAccountManager();
+      } catch(e) { showToast(e.message); }
+    };
   } catch(e) { showToast('无权限或出错'); }
 }
 
@@ -1280,8 +1369,7 @@ function getNumberListForCategory(cat, cfg) {
   for (const src of sources) if (src && src[cat]) nums.push(...src[cat].map(n => n.padStart(2, '0')));
   return [...new Set(nums)];
 }
-
-// ========== 配置管理界面操作（密码验证调后端） ==========
+    // ========== 配置管理界面操作（密码验证调后端） ==========
 async function verifyPasswordAction(password, action) {
   try {
     const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password, action }) });
@@ -1344,13 +1432,13 @@ function renderCustomConfigContainer() {
 async function addCustomCategory() {
   const label = await prompt('请输入新分类名称（如：大尾）');
   if (!label) return;
-  const value = await prompt(`请输入“${label}”对应的号码或分类名（空格分隔，例如：01 02 牛 马）`);
+  const value = await prompt(`请输入"${label}"对应的号码或分类名（空格分隔，例如：01 02 牛 马）`);
   if (value === null) return;
   const cats = loadCustomCategories();
   cats.push({ label, value: value.trim() });
   saveCustomCategories(cats);
   renderCustomConfigContainer();
-  showToast('自定义分类已添加，请点击“保存”按钮存储配置');
+  showToast('自定义分类已添加，请点击"保存"按钮存储配置');
 }
 async function deleteCustomCategory() {
   const cats = loadCustomCategories();
@@ -1363,7 +1451,7 @@ async function deleteCustomCategory() {
   cats.splice(idx, 1);
   saveCustomCategories(cats);
   renderCustomConfigContainer();
-  showToast('自定义分类已删除，请点击“保存”按钮使更改生效');
+  showToast('自定义分类已删除，请点击"保存"按钮使更改生效');
 }
 function deleteCustomCategoryByIndex(index) { const cats = loadCustomCategories(); cats.splice(index, 1); saveCustomCategories(cats); renderCustomConfigContainer(); }
 
@@ -1914,7 +2002,7 @@ async function pasteOrder() {
   } catch (err) { showToast('无法访问剪贴板'); }
 }
 
-// ========== 订单记录（从后端获取，显示下单人+用户布局调整） ==========
+// ========== 订单记录（显示下单人、用户颜色、布局调整） ==========
 async function showOrderRecord(filter = 'all') {
   try {
     const recs = await fetchApi('/api/orders' + (document.getElementById('filterDate')?.value ? `?date=${document.getElementById('filterDate').value}` : ''));
@@ -1933,8 +2021,8 @@ async function showOrderRecord(filter = 'all') {
         const ts = o.timestamp ? new Date(o.timestamp).toLocaleString('zh-CN', { hour12: false }) : '';
         const orderer = o.orderer || '未知';
         const ordererColor = getUserColor(orderer);
-        // 用户（登录账号）显示在合计下方
-        const userDisplay = `<div style="font-size:10px;color:#666;">用户：${o.user || '未知'}</div>`;
+        const userColor = getUserColor(o.user);
+        const userDisplay = `<span style="color:${userColor};font-size:10px;">用户：${o.user || '未知'}</span>`;
         html += `<div class="order-item"><input type="checkbox" class="order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g, '<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span>${userDisplay}<span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord(${o.id})">删除</button></div>`;
       });
     }
@@ -1969,7 +2057,8 @@ async function showReportOrderRecord(filter = 'all') {
         const ts = o.timestamp ? new Date(o.timestamp).toLocaleString('zh-CN', { hour12: false }) : '';
         const orderer = o.orderer || '未知';
         const ordererColor = getUserColor(orderer);
-        const userDisplay = `<div style="font-size:10px;color:#666;">用户：${o.user || '未知'}</div>`;
+        const userColor = getUserColor(o.user);
+        const userDisplay = `<span style="color:${userColor};font-size:10px;">用户：${o.user || '未知'}</span>`;
         html += `<div class="order-item"><input type="checkbox" class="report-order-check" data-id="${o.id}"><div class="order-content">${o.content.replace(/\n/g, '<br>')}</div><div class="order-info"><span class="order-total">合计：${o.totalAmount}</span>${userDisplay}<span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteReportOrderRecord(${o.id})">删除</button></div>`;
       });
     }
@@ -2060,7 +2149,8 @@ async function applyPrizeFilter() {
     const ts = it.timestamp ? new Date(it.timestamp).toLocaleString('zh-CN', { hour12: false }) : '';
     const orderer = it.orderer || '未知';
     const ordererColor = getUserColor(orderer);
-    const userDisplay = `<div style="font-size:10px;color:#666;">用户：${it.user || '未知'}</div>`;
+    const userColor = getUserColor(it.user);
+    const userDisplay = `<span style="color:${userColor};font-size:10px;">用户：${it.user || '未知'}</span>`;
     return `<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${content.replace(/\n/g, '<br>')}</div><div class="order-info"><span class="order-total">合计：${it.totalAmount}</span>${userDisplay}<span class="order-meta"><span style="color:${ordererColor};">下单人：${orderer}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord(${it.id})">删除</button></div>`;
   }));
   cont.innerHTML = itemsHtml.join('');
@@ -2149,11 +2239,9 @@ if (filterDateEl) {
 
 window.onload = async () => {
   try {
-    const saved = localStorage.getItem('savedCredentials');
-    if (saved) {
-      const cred = JSON.parse(saved);
-      document.getElementById('loginUsername').value = cred.username || '';
-      document.getElementById('loginPassword').value = cred.password || '';
+    const savedUsername = localStorage.getItem('savedUsername');
+    if (savedUsername) {
+      document.getElementById('loginUsername').value = savedUsername;
       document.getElementById('rememberPwd').checked = true;
     }
   } catch(e) {}
