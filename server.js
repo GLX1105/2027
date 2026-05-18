@@ -41,6 +41,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
     user TEXT NOT NULL,
+    orderer TEXT DEFAULT '',
     date TEXT NOT NULL,
     totalAmount REAL DEFAULT 0,
     timestamp TEXT NOT NULL
@@ -50,6 +51,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
     user TEXT NOT NULL,
+    orderer TEXT DEFAULT '',
     date TEXT NOT NULL,
     totalAmount REAL DEFAULT 0,
     timestamp TEXT NOT NULL
@@ -291,6 +293,27 @@ function parseLine(line, config) {
   });
   return { numbers: [...nums], zodiacs: [...zods], amount: amt };
 }
+
+// ========== 密码验证接口（供前端敏感操作使用） ==========
+app.post('/api/auth/verify-password', authenticateToken, (req, res) => {
+  const { password, action } = req.body;
+  if (!password) return res.status(400).json({ error: '缺少密码' });
+  
+  let valid = false;
+  if (action === 'editConfig' || action === 'resetData' || action === 'showDatabase') {
+    valid = (password === '891105');
+  } else if (action === 'changeZodiac') {
+    valid = (password === '150408');
+  } else {
+    return res.status(400).json({ error: '未知操作' });
+  }
+  
+  if (valid) {
+    res.json({ valid: true });
+  } else {
+    res.status(403).json({ error: '密码错误' });
+  }
+});
 
 // ========== 用户认证 API ==========
 app.post('/api/auth/admin', (req, res) => {
