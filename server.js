@@ -762,7 +762,7 @@ app.post('/api/frequency', authenticateToken, (req, res) => {
   }
 });
 
-// ========== 对奖高亮接口（兼容带/不带 各数） ==========
+// ========== 对奖高亮接口 ==========
 app.post('/api/highlight', authenticateToken, (req, res) => {
   try {
     const { content, targetNum, config: customConfig } = req.body;
@@ -806,7 +806,6 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
         const amt = m[2];
         return highlightParts(cont) + ` 各数 ${amt}`;
       } else {
-        // 没有各数，直接对整行做高亮（用于前端逐行发送 cont 的场景）
         return highlightParts(line);
       }
     });
