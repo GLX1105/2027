@@ -142,6 +142,7 @@ input[type="number"].small-input {width:50px;padding:3px 5px;border:1px solid #d
 .btn-amount-prefix2 {background:#8e44ad;color:white;padding:6px 10px;font-size:12px;min-height:30px;border-radius:15px;}
 .btn-remove-sep {background:#7f8c8d;color:white;padding:6px 10px;font-size:12px;min-height:30px;border-radius:15px;}
 .btn-replace-sep {background:#8e44ad;color:white;padding:6px 10px;font-size:12px;min-height:30px;border-radius:15px;}
+.btn-mark {background:#16a085;color:white;padding:6px 10px;font-size:12px;min-height:30px;border-radius:15px;}
 
 .recognize-card .btn-group {margin-top:12px;display:flex;flex-direction:row;gap:8px;flex-wrap:wrap;}
 .recognize-card .btn-group .btn {flex:1;}
@@ -325,7 +326,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 .box-label {font-size:12px;color:#666;padding:3px 8px;background:#fafafa;border-bottom:1px solid #eee;}
 .source-order-input {flex:1; border:none; border-right:1px solid #ddd; padding:8px; resize:none; font-size:13px; outline:none;}
 .result-area-new {flex:1;}
-.result-content { width:100%; height:100%; border:none; padding:8px; resize:none; font-size:13px; outline:none; overflow-y:auto; }
+.result-content { width:100%; height:100%; border:none; padding:8px; resize:none; font-size:13px; outline:none; overflow-y:auto; white-space:pre-wrap; }
 
 .freq-container {display:flex;gap:15px;flex-wrap:wrap;}
 .freq-card {flex:1;min-width:220px;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:10px;}
@@ -424,7 +425,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 </head>
 <body>
 
-<!-- 登录遮罩（统一登录，去掉独立管理员入口） -->
+<!-- 登录遮罩（统一登录） -->
 <div id="loginOverlay" class="login-overlay">
   <div class="login-card">
     <h1>🎰 港澳识别系统</h1>
@@ -470,7 +471,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 </div>
 <!-- 主工作台（默认隐藏） -->
 <div id="mainContent" style="display:none;">
-  <!-- 导航栏（新增账户管理、修改密码按钮，仅管理员可见） -->
+  <!-- 导航栏 -->
   <div class="navbar" id="mainNavbar">
     <div class="navbar-title">港澳识别系统</div>
     <div class="navbar-actions" id="navbarActions">
@@ -491,7 +492,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
     </div>
   </div>
 
-  <!-- 原统计卡片、风险表格等所有内容 -->
+  <!-- 主内容容器 -->
   <div class="container">
     <div class="recognize-wrap">
         <div class="card" style="margin-top:0;">
@@ -779,7 +780,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 <script>
 // ========== API 通信 ==========
 const API_BASE = '';
-let authToken = localStorage.getItem('authToken') || null;
+let authToken = sessionStorage.getItem('authToken') || null;
 let currentUser = null;
 
 async function fetchApi(url, options = {}) {
@@ -789,7 +790,7 @@ async function fetchApi(url, options = {}) {
   if (res.status === 401 || res.status === 403) {
     const data = await res.json().catch(() => ({}));
     if (data.needActivation) throw new Error('NEED_ACTIVATION');
-    authToken = null; localStorage.removeItem('authToken'); currentUser = null;
+    authToken = null; sessionStorage.removeItem('authToken'); currentUser = null;
     document.getElementById('loginOverlay').style.display = '';
     document.getElementById('mainContent').style.display = 'none';
     throw new Error(data.error || '未登录');
@@ -824,7 +825,7 @@ window.alert = async (msg) => { await showCustomDialog({ title: '提示', messag
 window.confirm = async (msg) => { return await showCustomDialog({ title: '请确认', message: msg, type: 'confirm' }); };
 window.prompt = async (msg, def) => { return await showCustomDialog({ title: '请输入', message: msg, type: 'prompt', defaultValue: def }); };
 
-// ========== 登录/注册/激活（统一登录，记住账号） ==========
+// ========== 登录/注册/激活 ==========
 document.getElementById('loginBtn').onclick = async () => {
   const username = document.getElementById('loginUsername').value.trim();
   const password = document.getElementById('loginPassword').value.trim();
@@ -832,7 +833,7 @@ document.getElementById('loginBtn').onclick = async () => {
   if (!username || !password) { document.getElementById('loginError').textContent = '请输入用户名和密码'; return; }
   try {
     const data = await fetchApi('/api/auth/login', { method:'POST', body: JSON.stringify({ username, password }) });
-    authToken = data.token; localStorage.setItem('authToken', authToken);
+    authToken = data.token; sessionStorage.setItem('authToken', authToken);
     currentUser = { username: data.username, role: data.role, canManageCards: data.canManageCards };
     if (remember) localStorage.setItem('savedUsername', username);
     else localStorage.removeItem('savedUsername');
@@ -890,7 +891,7 @@ document.getElementById('backToLoginFromAct').onclick = () => {
   document.getElementById('loginError').textContent = '';
 };
 
-function logout() { authToken = null; localStorage.removeItem('authToken'); currentUser = null; location.reload(); }
+function logout() { authToken = null; sessionStorage.removeItem('authToken'); currentUser = null; location.reload(); }
 
 function initMainSystem() {
   const isAdmin = currentUser && currentUser.role === 'admin';
@@ -908,7 +909,7 @@ function initMainSystem() {
   updateSelects();
 }
 
-// ========== 本地配置读写（同步到服务端） ==========
+// ========== 本地配置读写 ==========
 const SETTINGS_KEYS = ['replacePresets','categoryAliases','customPrefixes','customSuffixes','customAmountSuffixes','customAmountPrefixes','customConfigCategories','customDataConfigObj','users','selectedStartZodiac'];
 let localSettings = {};
 
@@ -954,7 +955,7 @@ async function showChangePassword() {
   } catch(e) { showToast(e.message); }
 }
 
-// ========== 卡密管理（管理员和子账户） ==========
+// ========== 卡密管理 ==========
 async function showCardManager() {
   if (!currentUser || (currentUser.role !== 'admin' && !currentUser.canManageCards)) { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
@@ -1000,7 +1001,7 @@ async function showCardManager() {
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 账户管理（管理员创建/管理子账户） ==========
+// ========== 账户管理 ==========
 async function showAccountManager() {
   if (!currentUser || currentUser.role !== 'admin') { showToast('无权限'); return; }
   if (document.getElementById('accountMgrWin')) return;
@@ -1071,14 +1072,36 @@ async function showAccountManager() {
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 识别函数（本地识别，修复合计） ==========
+// ========== 标记按钮 ==========
+function markSelection() {
+  const ta = document.querySelector('.source-order-input');
+  if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  if (s === e) { showToast('请先选择文本'); return; }
+  const sel = ta.value.substring(s, e).trim();
+  if (!sel) { showToast('选中内容为空'); return; }
+  const before = ta.value.substring(0, s);
+  const after = ta.value.substring(e);
+  ta.value = before + '\n' + sel + '\n' + after;
+  convertOrderText();
+}
+
+// ========== 识别函数（实时联动 + 无效行红色） ==========
+let convertTimer = null;
 function convertOrderText() {
+  if (convertTimer) clearTimeout(convertTimer);
+  convertTimer = setTimeout(() => {
+    _doConvert();
+  }, 300);
+}
+
+function _doConvert() {
   const inputEl = document.querySelector('.source-order-input');
   if (!inputEl) return;
   const text = applyCategoryAliases(applyReplacePresets(inputEl.value.trim()));
   const resultEl = document.getElementById('orderResult');
   if (!resultEl) return;
-  if (!text) { resultEl.value = ''; updateTotalDisplay(); return; }
+  if (!text) { resultEl.innerHTML = ''; updateTotalDisplay(); return; }
   const lines = text.split('\n');
   const resultLines = [];
   const HARD_AMP_LIST = ['各','各号','号','个','=','各数','每数','每号','个号','每个号','各码','各号码'];
@@ -1106,7 +1129,7 @@ function convertOrderText() {
     if (pairMatch) {
       let num = pairMatch[1]; const amount = pairMatch[2];
       if (num.length === 1) num = '0' + num;
-      resultLines.push(`${num} 各数 ${amount}`);
+      resultLines.push({ text: `${num} 各数 ${amount}`, valid: parseInt(amount) > 0 });
       return;
     }
     let cl = line;
@@ -1133,26 +1156,30 @@ function convertOrderText() {
           const cont = rl.substring(0, oi).trim();
           const am = om.match(/(\d+)/);
           if (am) {
-            const amt = am[1];
-            if (cont) { const jo = tokenizeAndJoin(cont); if (jo) resultLines.push(`${jo} 各数 ${amt}`); }
+            const amt = parseInt(am[1]);
+            if (cont) { const jo = tokenizeAndJoin(cont); if (jo) resultLines.push({ text: `${jo} 各数 ${amt}`, valid: jo.length > 0 && amt > 0 }); }
             rl = rl.substring(oi + om.length);
           }
         }
       });
-      if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) resultLines.push(`${jo} 各数 0`); }
+      if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) resultLines.push({ text: `${jo} 各数 0`, valid: false }); }
     } else {
       const pat = new RegExp(`^(.+?)${AMP_ORIGINAL}(\\d+)$`);
       const m = cl.match(pat);
-      if (m) { const jo = tokenizeAndJoin(m[1].trim()); if (jo) resultLines.push(`${jo} 各数 ${m[2]}`); }
+      if (m) { const jo = tokenizeAndJoin(m[1].trim()); const amt = parseInt(m[2]); if (jo) resultLines.push({ text: `${jo} 各数 ${amt}`, valid: jo.length > 0 && amt > 0 }); }
       else {
         const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})(\\d+)$`);
         const sm = cl.match(sp);
-        if (sm) { let num = sm[1].trim(); if (parseInt(num) >= 1 && parseInt(num) <= 49) { num = num.length === 1 ? `0${num}` : num; resultLines.push(`${num} 各数 ${sm[2]}`); } }
-        else { const jo = tokenizeAndJoin(cl); if (jo) resultLines.push(`${jo} 各数 0`); }
+        if (sm) { let num = sm[1].trim(); if (parseInt(num) >= 1 && parseInt(num) <= 49) { num = num.length === 1 ? `0${num}` : num; const amt = parseInt(sm[2]); resultLines.push({ text: `${num} 各数 ${amt}`, valid: amt > 0 }); } }
+        else { const jo = tokenizeAndJoin(cl); if (jo) resultLines.push({ text: `${jo} 各数 0`, valid: false }); }
       }
     }
   });
-  resultEl.value = resultLines.join('\n');
+  // 渲染HTML
+  resultEl.innerHTML = resultLines.map(r => {
+    const color = r.valid ? '' : ' style="color:red;"';
+    return `<span${color}>${r.text}</span>`;
+  }).join('<br>');
   updateTotalDisplay();
 }
 
@@ -1161,8 +1188,8 @@ function updateTotalDisplay() {
   const box = document.getElementById('orderTotalAmountBox');
   const span = document.getElementById('orderTotalAmount');
   if (!re || !box || !span) return;
-  const txt = re.value.trim();
-  if (!txt) { box.style.display = 'none'; return; }
+  const txt = re.innerText || re.textContent;
+  if (!txt.trim()) { box.style.display = 'none'; return; }
   let total = 0;
   const cfg = getAllConfigData();
   txt.split('\n').forEach(line => {
@@ -1185,7 +1212,7 @@ function updateTotalDisplay() {
   span.textContent = total;
   box.style.display = 'inline-flex';
 }
-
+    // ========== 分词辅助 ==========
 function tokenizeAndJoin(content) {
   const cfg = getAllConfigData();
   const vc = getAllValidCategories(cfg);
@@ -1369,7 +1396,8 @@ function getNumberListForCategory(cat, cfg) {
   for (const src of sources) if (src && src[cat]) nums.push(...src[cat].map(n => n.padStart(2, '0')));
   return [...new Set(nums)];
 }
-    // ========== 配置管理界面操作（密码验证调后端） ==========
+
+// ========== 配置管理界面操作（密码验证调后端） ==========
 async function verifyPasswordAction(password, action) {
   try {
     const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password, action }) });
@@ -1432,13 +1460,13 @@ function renderCustomConfigContainer() {
 async function addCustomCategory() {
   const label = await prompt('请输入新分类名称（如：大尾）');
   if (!label) return;
-  const value = await prompt(`请输入"${label}"对应的号码或分类名（空格分隔，例如：01 02 牛 马）`);
+  const value = await prompt(`请输入“${label}”对应的号码或分类名（空格分隔，例如：01 02 牛 马）`);
   if (value === null) return;
   const cats = loadCustomCategories();
   cats.push({ label, value: value.trim() });
   saveCustomCategories(cats);
   renderCustomConfigContainer();
-  showToast('自定义分类已添加，请点击"保存"按钮存储配置');
+  showToast('自定义分类已添加，请点击“保存”按钮存储配置');
 }
 async function deleteCustomCategory() {
   const cats = loadCustomCategories();
@@ -1451,7 +1479,7 @@ async function deleteCustomCategory() {
   cats.splice(idx, 1);
   saveCustomCategories(cats);
   renderCustomConfigContainer();
-  showToast('自定义分类已删除，请点击"保存"按钮使更改生效');
+  showToast('自定义分类已删除，请点击“保存”按钮使更改生效');
 }
 function deleteCustomCategoryByIndex(index) { const cats = loadCustomCategories(); cats.splice(index, 1); saveCustomCategories(cats); renderCustomConfigContainer(); }
 
@@ -1729,8 +1757,7 @@ function renderAmountFrequencyCardsFromData(freqData) {
   const nt = document.getElementById('numberAmountFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
   const zt = document.getElementById('zodiacAmountFreqTable'); if(zt){zt.innerHTML='';const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';for(let r=0;r<6;r++){const l=lz[r],r2=rz[r];const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0;ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;}ztb+='</tbody>';zt.innerHTML=zth+ztb;}
 }
-
-// ========== 报表控制 ==========
+    // ========== 报表控制 ==========
 function switchRiskReport() {
   const val = document.getElementById('riskReportSwitcher').value;
   if (val === 'total') { document.getElementById('riskSection').style.display = ''; document.getElementById('reportSection').style.display = 'none'; document.getElementById('viewUserSelect').style.display = 'none'; updateTableFromRecords(); }
@@ -1780,11 +1807,17 @@ async function changeStartZodiac() {
 async function saveOrder() {
   const orderer = document.getElementById('orderUserSelect')?.value;
   if (!orderer) { showToast('请选择下单人'); return; }
-  let input = document.getElementById('orderResult')?.value.trim() || document.querySelector('.source-order-input')?.value.trim();
-  if (!input) return;
-  const vl = input.split('\n').filter(l => { const m = l.match(/各数\s+(\d+)/); return m && parseInt(m[1]) > 0; });
-  if (!vl.length) { showToast('订单无效'); return; }
-  const content = vl.join('\n');
+  let inputEl = document.getElementById('orderResult');
+  if (!inputEl) return;
+  const lines = [];
+  const spans = inputEl.querySelectorAll('span');
+  spans.forEach(span => {
+    const txt = span.innerText || span.textContent;
+    const m = txt.match(/各数\s+(\d+)/);
+    if (m && parseInt(m[1]) > 0) lines.push(txt);
+  });
+  if (!lines.length) { showToast('订单无效'); return; }
+  const content = lines.join('\n');
   const date = document.getElementById('orderDate')?.value || getTodayCST();
   const total = computeCurrentOrderTotal();
   try {
@@ -1797,11 +1830,17 @@ async function saveOrder() {
 async function saveReportOrder() {
   const orderer = document.getElementById('orderUserSelect')?.value;
   if (!orderer) { showToast('请选择下单人'); return; }
-  let input = document.getElementById('orderResult')?.value.trim() || document.querySelector('.source-order-input')?.value.trim();
-  if (!input) return;
-  const vl = input.split('\n').filter(l => { const m = l.match(/各数\s+(\d+)/); return m && parseInt(m[1]) > 0; });
-  if (!vl.length) { showToast('订单无效'); return; }
-  const content = vl.join('\n');
+  let inputEl = document.getElementById('orderResult');
+  if (!inputEl) return;
+  const lines = [];
+  const spans = inputEl.querySelectorAll('span');
+  spans.forEach(span => {
+    const txt = span.innerText || span.textContent;
+    const m = txt.match(/各数\s+(\d+)/);
+    if (m && parseInt(m[1]) > 0) lines.push(txt);
+  });
+  if (!lines.length) { showToast('订单无效'); return; }
+  const content = lines.join('\n');
   const date = document.getElementById('orderDate')?.value || getTodayCST();
   const total = computeCurrentOrderTotal();
   try {
@@ -1813,7 +1852,7 @@ async function saveReportOrder() {
 }
 function clearOrderInputs() {
   const si = document.querySelector('.source-order-input'); if(si) si.value = '';
-  const re = document.getElementById('orderResult'); if(re) re.value = '';
+  const re = document.getElementById('orderResult'); if(re) re.innerHTML = '';
   updateTotalDisplay();
   document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
 }
@@ -1822,7 +1861,8 @@ function computeCurrentOrderTotal() {
   if (!re) return 0;
   let total = 0;
   const cfg = getAllConfigData();
-  re.value.trim().split('\n').forEach(line => {
+  const txt = re.innerText || re.textContent;
+  txt.split('\n').forEach(line => {
     const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
     if (m) {
       const items = m[1].split('-').filter(i => i.trim());
@@ -1837,7 +1877,8 @@ function computeCurrentOrderTotal() {
   });
   return total;
 }
-    // ========== 用户管理 ==========
+
+// ========== 用户管理 ==========
 function getUsers() { return localSettings.users || []; }
 async function saveUsers(users) { localSettings.users = users; await saveSetting('users', users); }
 
@@ -1977,7 +2018,7 @@ function showRecognizeModal() {
   win.style.width = '850px'; win.style.height = '650px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
   win.setAttribute('data-orig-width', '850px');
   win.setAttribute('data-orig-height', '650px');
-  win.innerHTML = `<div class="modal-header">订单输入<div class="window-controls"><button onclick="maximizeWindow('recognizeWin')">🗖</button><button onclick="pinWindow('recognizeWin')">📌</button><button onclick="document.getElementById('recognizeWin').remove()">×</button></div></div><div class="modal-body" style="display:flex; flex-direction:column; gap:10px;"><div class="card recognize-card" style="flex:1; display:flex; flex-direction:column;"><div class="card-title" style="display:flex; align-items:center; gap:5px;"><select id="orderUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;"></select><input type="date" id="orderDate" style="padding:4px;border-radius:4px;border:1px solid #ccc;margin-left:8px;"><div class="amount-stat-box" id="orderTotalAmountBox" style="display:none;"><span>合计：</span><span id="orderTotalAmount">0</span></div><button class="btn btn-prefix" onclick="showPrefixManager()" style="margin-left:auto;">前缀</button><button class="btn btn-amount-prefix" onclick="showAmountPrefixManager()">金额前缀</button><button class="btn btn-amount-prefix2" onclick="showAmountSuffixManager()">金额后缀</button></div><div class="order-input-container" style="flex:1;"><div class="input-column"><div class="box-label">订单输入框</div><textarea class="source-order-input" placeholder="" oninput="convertOrderText()"></textarea></div><div class="result-column"><div class="box-label">识别结果</div><div class="result-area-new"><textarea class="result-content" id="orderResult" readonly></textarea></div></div></div><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-paste" onclick="pasteOrder()">粘贴订单</button><button class="btn btn-save-order" onclick="saveOrder()">保存下单</button><button class="btn btn-report" onclick="saveReportOrder()">上报</button><button class="btn btn-clear" onclick="clearAllInput()">清空</button><button class="btn btn-replace-sep" onclick="replaceSeparators()">换分隔</button><button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button><button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button></div></div><div class="card category-card"><div class="card-title">分类快捷选择</div><div class="btn-group">${['家禽','野兽','红波','蓝波','绿波','红双','红单','蓝双','蓝单','绿双','绿单','单数','双数','鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪','金','木','水','火','土'].map(cat => `<button class="category-btn" onclick="quickAddWithAmount('${cat}', this)">${cat}</button>`).join('')}</div></div></div>`;
+  win.innerHTML = `<div class="modal-header">订单输入<div class="window-controls"><button onclick="maximizeWindow('recognizeWin')">🗖</button><button onclick="pinWindow('recognizeWin')">📌</button><button onclick="document.getElementById('recognizeWin').remove()">×</button></div></div><div class="modal-body" style="display:flex; flex-direction:column; gap:10px;"><div class="card recognize-card" style="flex:1; display:flex; flex-direction:column;"><div class="card-title" style="display:flex; align-items:center; gap:5px;"><select id="orderUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;"></select><input type="date" id="orderDate" style="padding:4px;border-radius:4px;border:1px solid #ccc;margin-left:8px;"><div class="amount-stat-box" id="orderTotalAmountBox" style="display:none;"><span>合计：</span><span id="orderTotalAmount">0</span></div><button class="btn btn-prefix" onclick="showPrefixManager()" style="margin-left:auto;">前缀</button><button class="btn btn-amount-prefix" onclick="showAmountPrefixManager()">金额前缀</button><button class="btn btn-amount-prefix2" onclick="showAmountSuffixManager()">金额后缀</button></div><div class="order-input-container" style="flex:1;"><div class="input-column"><div class="box-label">订单输入框</div><textarea class="source-order-input" placeholder="" oninput="convertOrderText()"></textarea></div><div class="result-column"><div class="box-label">识别结果</div><div class="result-area-new"><div class="result-content" id="orderResult" style="white-space:pre-wrap;"></div></div></div></div><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-paste" onclick="pasteOrder()">粘贴订单</button><button class="btn btn-save-order" onclick="saveOrder()">保存下单</button><button class="btn btn-report" onclick="saveReportOrder()">上报</button><button class="btn btn-clear" onclick="clearAllInput()">清空</button><button class="btn btn-replace-sep" onclick="replaceSeparators()">换分隔</button><button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button><button class="btn btn-mark" onclick="markSelection()">标记</button><button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button></div></div><div class="card category-card"><div class="card-title">分类快捷选择</div><div class="btn-group">${['家禽','野兽','红波','蓝波','绿波','红双','红单','蓝双','蓝单','绿双','绿单','单数','双数','鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪','金','木','水','火','土'].map(cat => `<button class="category-btn" onclick="quickAddWithAmount('${cat}', this)">${cat}</button>`).join('')}</div></div></div>`;
   document.body.appendChild(win);
   updateSelects();
   const today = getTodayCST();
@@ -1988,7 +2029,7 @@ function showRecognizeModal() {
 
 function clearAllInput() {
   const si = document.querySelector('.source-order-input'); if (si) si.value = '';
-  const re = document.getElementById('orderResult'); if (re) re.value = '';
+  const re = document.getElementById('orderResult'); if (re) re.innerHTML = '';
   updateTotalDisplay();
 }
 
@@ -2002,7 +2043,7 @@ async function pasteOrder() {
   } catch (err) { showToast('无法访问剪贴板'); }
 }
 
-// ========== 订单记录（显示下单人、用户颜色、布局调整） ==========
+// ========== 订单记录（显示下单人、用户颜色） ==========
 async function showOrderRecord(filter = 'all') {
   try {
     const recs = await fetchApi('/api/orders' + (document.getElementById('filterDate')?.value ? `?date=${document.getElementById('filterDate').value}` : ''));
@@ -2030,7 +2071,6 @@ async function showOrderRecord(filter = 'all') {
     makeWindowDraggable('orderWin'); highestZ += 1; w.style.zIndex = highestZ;
   } catch (e) { showToast('加载失败'); }
 }
-
 async function deleteOrderRecord(id) {
   if (!(await confirm('确定删除？'))) return;
   try {
@@ -2039,7 +2079,6 @@ async function deleteOrderRecord(id) {
     showOrderRecord();
   } catch (e) { showToast('删除失败'); }
 }
-
 async function showReportOrderRecord(filter = 'all') {
   try {
     const recs = await fetchApi('/api/report-orders' + (document.getElementById('filterDate')?.value ? `?date=${document.getElementById('filterDate').value}` : ''));
@@ -2066,7 +2105,6 @@ async function showReportOrderRecord(filter = 'all') {
     makeWindowDraggable('reportWin'); highestZ += 1; w.style.zIndex = highestZ;
   } catch (e) { showToast('加载失败'); }
 }
-
 async function deleteReportOrderRecord(id) {
   if (!(await confirm('确定删除？'))) return;
   try {
@@ -2075,12 +2113,10 @@ async function deleteReportOrderRecord(id) {
     showReportOrderRecord();
   } catch (e) { showToast('删除失败'); }
 }
-
 function checkAll() { document.querySelectorAll('.order-check').forEach(cb => cb.checked = true); }
 function uncheckAll() { document.querySelectorAll('.order-check').forEach(cb => cb.checked = false); }
 function checkAllReport() { document.querySelectorAll('.report-order-check').forEach(cb => cb.checked = true); }
 function uncheckAllReport() { document.querySelectorAll('.report-order-check').forEach(cb => cb.checked = false); }
-
 async function deleteChecked() {
   const ids = []; document.querySelectorAll('.order-check:checked').forEach(cb => ids.push(Number(cb.dataset.id)));
   if (ids.length === 0) { showToast('请选择'); return; }
@@ -2091,7 +2127,6 @@ async function deleteChecked() {
     showOrderRecord();
   } catch (e) { showToast('删除失败'); }
 }
-
 async function deleteCheckedReport() {
   const ids = []; document.querySelectorAll('.report-order-check:checked').forEach(cb => ids.push(Number(cb.dataset.id)));
   if (ids.length === 0) { showToast('请选择'); return; }
@@ -2103,13 +2138,12 @@ async function deleteCheckedReport() {
   } catch (e) { showToast('删除失败'); }
 }
 
-// ========== 对奖高亮（修复） ==========
+// ========== 对奖高亮 ==========
 function getUserColor(u) {
   if (!u) return 'hsl(0,0%,50%)';
   let h = 0; for (let i = 0; i < u.length; i++) h = u.charCodeAt(i) + ((h << 5) - h);
   return `hsl(${(h % 360 + 360) % 360}, 70%, 45%)`;
 }
-
 async function applyPrizeFilter() {
   const pi = document.getElementById('prizeNumberInput');
   const uf = document.getElementById('recordUserFilter');
@@ -2167,7 +2201,6 @@ async function exportData() {
     a.click(); URL.revokeObjectURL(url);
   } catch(e) { showToast('导出失败'); }
 }
-
 async function importData() {
   const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json'; inp.style.display = 'none';
   document.body.appendChild(inp);
@@ -2191,7 +2224,6 @@ async function importData() {
   inp.addEventListener('cancel', () => { document.body.removeChild(inp); });
   inp.click();
 }
-
 async function resetTable() {
   const pwd = await prompt("输入清空密码：", "");
   if (!pwd) return;
