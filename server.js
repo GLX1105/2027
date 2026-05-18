@@ -374,7 +374,6 @@ app.post('/api/auth/activate', (req, res) => {
       }
     }
   }
-  // 查找有效卡密：遍历所有active卡密，比对哈希
   const activeCards = db.prepare('SELECT * FROM cards WHERE status = ?').all('active');
   let matchedCard = null;
   for (const c of activeCards) {
@@ -386,7 +385,6 @@ app.post('/api/auth/activate', (req, res) => {
   if (!matchedCard) {
     return res.status(400).json({ error: '激活码无效' });
   }
-  // 检查是否过期
   const cardCreated = new Date(matchedCard.created_at).getTime();
   const cardExpireMs = matchedCard.expire_days * 86400000;
   if (Date.now() > cardCreated + cardExpireMs) {
@@ -412,7 +410,6 @@ app.post('/api/auth/login', (req, res) => {
   if (user.activated === 2) {
     return res.status(403).json({ error: '账号已被禁用' });
   }
-  // 检查卡密有效期（非管理员）
   if (user.role !== 'admin' && user.activated === 1 && user.card_id) {
     const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(user.card_id);
     if (card) {
@@ -454,38 +451,50 @@ app.post('/api/cards/generate', authenticateToken, requireCardManagePermission, 
   const codeHash = bcrypt.hashSync(code, 10);
   const creator = req.user.role === 'admin' ? 'admin' : req.user.username;
   db.prepare('INSERT INTO cards (code, code_hash, status, expire_days, created_at, creator) VALUES (?, ?, ?, ?, ?, ?)').run(code, codeHash, 'active', expireDays, new Date().toISOString(), creator);
-  // 记录日志
   db.prepare('INSERT INTO card_logs (operator, action, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)').run(req.user.username, '生成', code, `有效期${expireDays}天`, new Date().toISOString());
   res.json({ success: true, code });
 });
 
 app.get('/api/cards', authenticateToken, requireCardManagePermission, (req, res) => {
+  const now = Date.now();
   let cards;
   if (req.user.role === 'admin') {
-    cards = db.prepare(`
-      SELECT cards.*, users.username 
-      FROM cards 
-      LEFT JOIN users ON cards.user_id = users.id 
-      ORDER BY cards.created_at DESC
-    `).all();
+    cards = db.prepare(`SELECT cards.*, users.username, users.activated_at FROM cards LEFT JOIN users ON cards.user_id = users.id ORDER BY cards.created_at DESC`).all();
   } else {
-    cards = db.prepare(`
-      SELECT cards.*, users.username 
-      FROM cards 
-      LEFT JOIN users ON cards.user_id = users.id 
-      WHERE cards.creator = ?
-      ORDER BY cards.created_at DESC
-    `).all(req.user.username);
+    cards = db.prepare(`SELECT cards.*, users.username, users.activated_at FROM cards LEFT JOIN users ON cards.user_id = users.id WHERE cards.creator = ? ORDER BY cards.created_at DESC`).all(req.user.username);
   }
-  // 不返回哈希值
-  const safeCards = cards.map(c => ({ id: c.id, code: c.code, status: c.status, expire_days: c.expire_days, created_at: c.created_at, creator: c.creator, username: c.username, user_id: c.user_id }));
+  const safeCards = cards.map(c => {
+    const createdTime = new Date(c.created_at).getTime();
+    const expireMs = c.expire_days * 86400000;
+    const expireTime = createdTime + expireMs;
+    const expired = now > expireTime;
+    const daysRemaining = Math.ceil((expireTime - now) / 86400000);
+    let activationStatus = '';
+    let activatedDate = '';
+    if (c.status === 'used' && c.username) {
+      activationStatus = '已激活';
+      activatedDate = c.activated_at ? new Date(c.activated_at).toLocaleDateString('zh-CN') : '';
+    }
+    return {
+      id: c.id,
+      code: c.code,
+      status: c.status,
+      expire_days: c.expire_days,
+      created_at: c.created_at,
+      creator: c.creator,
+      username: c.username || null,
+      expired: expired,
+      days_remaining: daysRemaining,
+      activation_status: activationStatus,
+      activated_date: activatedDate
+    };
+  });
   res.json(safeCards);
 });
 
 app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
-  // 权限检查：管理员可操作所有，子账户只能操作自己生成的
   if (req.user.role !== 'admin' && card.creator !== req.user.username) {
     return res.status(403).json({ error: '无权操作此卡密' });
   }
@@ -494,7 +503,7 @@ app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermissio
   res.json({ success: true });
 });
 
-app.post('/api/cards/:id/delete', authenticateToken, requireCardManagePermission, (req, res) => {
+app.delete('/api/cards/:id', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
   if (req.user.role !== 'admin' && card.creator !== req.user.username) {
@@ -505,6 +514,7 @@ app.post('/api/cards/:id/delete', authenticateToken, requireCardManagePermission
   res.json({ success: true });
 });
 
+// ========== 卡密操作日志 ==========
 app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req, res) => {
   let logs;
   if (req.user.role === 'admin') {
@@ -515,10 +525,57 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
   res.json(logs);
 });
 
+app.delete('/api/cards/logs/:id', authenticateToken, requireCardManagePermission, (req, res) => {
+  const log = db.prepare('SELECT * FROM card_logs WHERE id = ?').get(req.params.id);
+  if (!log) return res.status(404).json({ error: '日志不存在' });
+  if (req.user.role !== 'admin' && log.operator !== req.user.username) {
+    return res.status(403).json({ error: '无权操作此日志' });
+  }
+  db.prepare('DELETE FROM card_logs WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+app.post('/api/cards/logs/clear', authenticateToken, requireCardManagePermission, (req, res) => {
+  if (req.user.role === 'admin') {
+    db.prepare('DELETE FROM card_logs').run();
+  } else {
+    db.prepare('DELETE FROM card_logs WHERE operator = ?').run(req.user.username);
+  }
+  res.json({ success: true });
+});
+
 // ========== 管理员账户管理 ==========
 app.get('/api/admin/accounts', authenticateToken, requireAdmin, (req, res) => {
-  const accounts = db.prepare('SELECT id, username, activated, can_manage_cards, created_at FROM users WHERE role = ? AND username != ?').all('user', '17776192265');
-  res.json(accounts);
+  const accounts = db.prepare(`
+    SELECT u.id, u.username, u.activated, u.can_manage_cards, u.created_at, u.card_id,
+           c.code AS card_code, c.expire_days, c.created_at AS card_created_at
+    FROM users u
+    LEFT JOIN cards c ON u.card_id = c.id
+    WHERE u.role = ? AND u.username != ?
+  `).all('user', '17776192265');
+  const now = Date.now();
+  const result = accounts.map(a => {
+    let userType = '高级用户';
+    if (a.card_id) {
+      userType = '普通用户';
+    }
+    let cardExpired = false;
+    if (a.card_created_at && a.expire_days) {
+      const expireTime = new Date(a.card_created_at).getTime() + a.expire_days * 86400000;
+      cardExpired = now > expireTime;
+    }
+    return {
+      id: a.id,
+      username: a.username,
+      activated: a.activated,
+      can_manage_cards: a.can_manage_cards,
+      created_at: a.created_at,
+      user_type: userType,
+      card_code: a.card_code || null,
+      card_expired: cardExpired
+    };
+  });
+  res.json(result);
 });
 
 app.post('/api/admin/create-account', authenticateToken, requireAdmin, (req, res) => {
@@ -547,10 +604,10 @@ app.delete('/api/admin/accounts/:id', authenticateToken, requireAdmin, (req, res
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
   if (user.role === 'admin') return res.status(403).json({ error: '不能删除管理员' });
-  // 删除关联的订单和设置
   db.prepare('DELETE FROM orders WHERE user = ?').run(user.username);
   db.prepare('DELETE FROM report_orders WHERE user = ?').run(user.username);
   db.prepare('DELETE FROM user_settings WHERE user = ?').run(user.username);
+  db.prepare('DELETE FROM cards WHERE creator = ?').run(user.username);
   db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
@@ -764,10 +821,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
         const { numbers, zodiacs, amount } = parseLine(line, config);
         numbers.forEach(num => { betData[num] = (betData[num] || 0) + amount; });
         zodiacs.forEach(z => {
-          (config.zodiac[z] || []).forEach(n => {
-            const num = n.padStart(2, '0');
-            betData[num] = (betData[num] || 0) + amount;
-          });
+          (config.zodiac[z] || []).forEach(n => { const num = n.padStart(2, '0'); betData[num] = (betData[num] || 0) + amount; });
         });
       }
     }
@@ -777,27 +831,16 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
         const { numbers, zodiacs, amount } = parseLine(line, config);
         numbers.forEach(num => { reportAmountData[num] = (reportAmountData[num] || 0) + amount; });
         zodiacs.forEach(z => {
-          (config.zodiac[z] || []).forEach(n => {
-            const num = n.padStart(2, '0');
-            reportAmountData[num] = (reportAmountData[num] || 0) + amount;
-          });
+          (config.zodiac[z] || []).forEach(n => { const num = n.padStart(2, '0'); reportAmountData[num] = (reportAmountData[num] || 0) + amount; });
         });
       }
     }
     const list = [];
-    for (let i = 1; i <= 49; i++) {
-      const num = i.toString().padStart(2, '0');
-      list.push({ num, bet: betData[num] || 0 });
-    }
+    for (let i = 1; i <= 49; i++) { const num = i.toString().padStart(2, '0'); list.push({ num, bet: betData[num] || 0 }); }
     list.sort((a, b) => b.bet - a.bet);
     const totalBet = list.reduce((s, i) => s + i.bet, 0);
     const rebate = (totalBet * rebateRate / 100).toFixed(2);
-    const result = list.map((item, idx) => ({
-      num: item.num,
-      bet: item.bet,
-      risk: Math.round(totalBet - item.bet * multiple - parseFloat(rebate)),
-      rank: idx + 1
-    }));
+    const result = list.map((item, idx) => ({ num: item.num, bet: item.bet, risk: Math.round(totalBet - item.bet * multiple - parseFloat(rebate)), rank: idx + 1 }));
     res.json({ list: result, totalBet, totalRebate: rebate, reportAmountData });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
@@ -807,32 +850,18 @@ app.post('/api/frequency', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, amountMin, amountMax, zodiacAmountMin, zodiacAmountMax } = req.body;
     const config = mergeConfig(customConfig || {});
-    const nMin = parseInt(amountMin) || 1;
-    const nMax = parseInt(amountMax) || 50000;
-    const zMin = parseInt(zodiacAmountMin) || 1;
-    const zMax = parseInt(zodiacAmountMax) || 50000;
+    const nMin = parseInt(amountMin) || 1; const nMax = parseInt(amountMax) || 50000;
+    const zMin = parseInt(zodiacAmountMin) || 1; const zMax = parseInt(zodiacAmountMax) || 50000;
     let orders;
-    if (req.user.role === 'admin') {
-      orders = date ? db.prepare('SELECT * FROM orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM orders').all();
-    } else {
-      orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username);
-    }
-    const numberCount = {};
-    const zodiacCount = {};
-    const numberAmountCount = {};
-    const zodiacAmountCount = {};
+    if (req.user.role === 'admin') { orders = date ? db.prepare('SELECT * FROM orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM orders').all(); }
+    else { orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username); }
+    const numberCount = {}, zodiacCount = {}, numberAmountCount = {}, zodiacAmountCount = {};
     for (const order of orders) {
       const lines = order.content.split('\n').filter(l => l.trim());
       for (const line of lines) {
         const { numbers, zodiacs, amount } = parseLine(line, config);
-        numbers.forEach(num => {
-          numberCount[num] = (numberCount[num] || 0) + 1;
-          if (amount >= nMin && amount <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
-        });
-        zodiacs.forEach(z => {
-          zodiacCount[z] = (zodiacCount[z] || 0) + 1;
-          if (amount >= zMin && amount <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
-        });
+        numbers.forEach(num => { numberCount[num] = (numberCount[num] || 0) + 1; if (amount >= nMin && amount <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1; });
+        zodiacs.forEach(z => { zodiacCount[z] = (zodiacCount[z] || 0) + 1; if (amount >= zMin && amount <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1; });
       }
     }
     res.json({ numberCount, zodiacCount, numberAmountCount, zodiacAmountCount });
@@ -847,12 +876,8 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
     const config = mergeConfig(customConfig || {});
     const t = targetNum.toString().padStart(2, '0');
     function highlightParts(contStr) {
-      const parts = [];
-      let tmp = '';
-      for (const ch of contStr) {
-        if (ch === '-' || ch === ' ') { if (tmp) parts.push(tmp); parts.push(ch); tmp = ''; }
-        else { tmp += ch; }
-      }
+      const parts = []; let tmp = '';
+      for (const ch of contStr) { if (ch === '-' || ch === ' ') { if (tmp) parts.push(tmp); parts.push(ch); tmp = ''; } else { tmp += ch; } }
       if (tmp) parts.push(tmp);
       return parts.map(p => {
         if (p === '-' || p === ' ') return p;
@@ -863,11 +888,7 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
       }).join('');
     }
     const lines = content.split('\n');
-    const highlightedLines = lines.map(line => {
-      const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-      if (m) { return highlightParts(m[1]) + ` 各数 ${m[2]}`; }
-      else { return highlightParts(line); }
-    });
+    const highlightedLines = lines.map(line => { const m = line.match(/^(.+?)\s+各数\s+(\d+)$/); if (m) { return highlightParts(m[1]) + ` 各数 ${m[2]}`; } else { return highlightParts(line); } });
     res.json({ highlighted: highlightedLines.join('\n') });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
@@ -876,41 +897,29 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
 app.get('/api/settings', authenticateToken, (req, res) => {
   const rows = db.prepare('SELECT key, value FROM user_settings WHERE user = ?').all(req.user.username);
   const settings = {};
-  rows.forEach(row => {
-    try { settings[row.key] = JSON.parse(row.value); } catch (e) { settings[row.key] = row.value; }
-  });
+  rows.forEach(row => { try { settings[row.key] = JSON.parse(row.value); } catch (e) { settings[row.key] = row.value; } });
   res.json(settings);
 });
-
 app.post('/api/settings', authenticateToken, (req, res) => {
   const { key, value } = req.body;
   if (!key) return res.status(400).json({ error: '缺少 key' });
   const valStr = typeof value === 'string' ? value : JSON.stringify(value);
   const existing = db.prepare('SELECT id FROM user_settings WHERE user = ? AND key = ?').get(req.user.username, key);
-  if (existing) {
-    db.prepare('UPDATE user_settings SET value = ? WHERE user = ? AND key = ?').run(valStr, req.user.username, key);
-  } else {
-    db.prepare('INSERT INTO user_settings (user, key, value) VALUES (?, ?, ?)').run(req.user.username, key, valStr);
-  }
+  if (existing) { db.prepare('UPDATE user_settings SET value = ? WHERE user = ? AND key = ?').run(valStr, req.user.username, key); }
+  else { db.prepare('INSERT INTO user_settings (user, key, value) VALUES (?, ?, ?)').run(req.user.username, key, valStr); }
   res.json({ success: true });
 });
 
 // ========== 导出导入 API ==========
 app.get('/api/export', authenticateToken, (req, res) => {
   let orders, reportOrders;
-  if (req.user.role === 'admin') {
-    orders = db.prepare('SELECT * FROM orders').all();
-    reportOrders = db.prepare('SELECT * FROM report_orders').all();
-  } else {
-    orders = db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username);
-    reportOrders = db.prepare('SELECT * FROM report_orders WHERE user = ?').all(req.user.username);
-  }
+  if (req.user.role === 'admin') { orders = db.prepare('SELECT * FROM orders').all(); reportOrders = db.prepare('SELECT * FROM report_orders').all(); }
+  else { orders = db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username); reportOrders = db.prepare('SELECT * FROM report_orders WHERE user = ?').all(req.user.username); }
   const settings = db.prepare('SELECT key, value FROM user_settings WHERE user = ?').all(req.user.username);
   const config = {};
   settings.forEach(s => { try { config[s.key] = JSON.parse(s.value); } catch(e) { config[s.key] = s.value; } });
   res.json({ orders, reportOrders, config, exportTime: new Date().toISOString() });
 });
-
 app.post('/api/import', authenticateToken, (req, res) => {
   const { orders, reportOrders, config } = req.body;
   if (!orders && !reportOrders) return res.status(400).json({ error: '无有效数据' });
@@ -934,29 +943,14 @@ app.post('/api/import', authenticateToken, (req, res) => {
 
 // ========== 清空 API ==========
 app.post('/api/reset', authenticateToken, (req, res) => {
-  if (req.user.role === 'admin') {
-    db.prepare('DELETE FROM orders').run();
-    db.prepare('DELETE FROM report_orders').run();
-  } else {
-    db.prepare('DELETE FROM orders WHERE user = ?').run(req.user.username);
-    db.prepare('DELETE FROM report_orders WHERE user = ?').run(req.user.username);
-  }
+  if (req.user.role === 'admin') { db.prepare('DELETE FROM orders').run(); db.prepare('DELETE FROM report_orders').run(); }
+  else { db.prepare('DELETE FROM orders WHERE user = ?').run(req.user.username); db.prepare('DELETE FROM report_orders WHERE user = ?').run(req.user.username); }
   res.json({ success: true });
 });
 
-app.post('/api/config', authenticateToken, (req, res) => {
-  currentConfig = mergeConfig(req.body);
-  res.json({ success: true });
-});
+app.post('/api/config', authenticateToken, (req, res) => { currentConfig = mergeConfig(req.body); res.json({ success: true }); });
+app.get('/api/config', authenticateToken, (req, res) => { res.json(currentConfig); });
 
-app.get('/api/config', authenticateToken, (req, res) => {
-  res.json(currentConfig);
-});
+app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'index.html')); });
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
