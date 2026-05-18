@@ -112,69 +112,6 @@ select {
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-/* 用户信息区域 */
-.user-info-area {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    margin-left: auto;
-    position: relative;
-    cursor: pointer;
-}
-.user-info-btn {
-    background: rgba(255,255,255,0.1);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    color: #ecf0f1;
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 25px;
-    padding: 8px 18px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    transition: all 0.2s ease;
-    white-space: nowrap;
-}
-.user-info-btn:hover {
-    background: rgba(255,255,255,0.2);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-    color: #fff;
-}
-.user-type-tag {
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-weight: normal;
-    letter-spacing: 0;
-}
-.user-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-    min-width: 120px;
-    z-index: 3000;
-    display: none;
-}
-.user-dropdown.show {
-    display: block;
-}
-.user-dropdown-item {
-    padding: 10px 15px;
-    cursor: pointer;
-    color: #333;
-    font-size: 14px;
-    border-radius: 10px;
-    text-align: center;
-    transition: background 0.2s;
-}
-.user-dropdown-item:hover {
-    background: #f0f0f0;
-}
-
 .container {width:100%;max-width:1400px;margin:0 auto;padding:10px;display:flex;flex-direction:row;gap:15px;align-items:flex-start;}
 .recognize-wrap {flex:1;min-width:0;display:flex;flex-direction:column;gap:15px;}
 .risk-report-area {flex:0 0 420px;position:sticky;top:10px;}
@@ -551,16 +488,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
       <button class="btn btn-primary" id="cardMgrBtn" style="display:none;" onclick="showCardManager()">卡密管理</button>
       <button class="btn btn-primary" id="accountMgrBtn" style="display:none;" onclick="showAccountManager()">账户管理</button>
       <button class="btn btn-primary" id="changePwdBtn" style="display:none;" onclick="showChangePassword()">修改密码</button>
-      <!-- 用户信息区域 -->
-      <div class="user-info-area" id="userInfoArea" style="display:none;">
-        <button class="user-info-btn" id="userInfoBtn" onclick="toggleUserDropdown()">
-          <span id="userNameDisplay"></span> ▼
-        </button>
-        <span class="user-type-tag" id="userTypeTag"></span>
-        <div class="user-dropdown" id="userDropdown">
-          <div class="user-dropdown-item" onclick="logout()">退出登录</div>
-        </div>
-      </div>
+      <button class="btn btn-clear" onclick="logout()">退出登录</button>
     </div>
   </div>
 
@@ -963,12 +891,7 @@ document.getElementById('backToLoginFromAct').onclick = () => {
   document.getElementById('loginError').textContent = '';
 };
 
-function logout() {
-  authToken = null;
-  sessionStorage.removeItem('authToken');
-  currentUser = null;
-  location.reload();
-}
+function logout() { authToken = null; sessionStorage.removeItem('authToken'); currentUser = null; location.reload(); }
 
 function initMainSystem() {
   const isAdmin = currentUser && currentUser.role === 'admin';
@@ -978,22 +901,6 @@ function initMainSystem() {
     document.getElementById('accountMgrBtn').style.display = '';
     document.getElementById('changePwdBtn').style.display = '';
   }
-  // 用户信息区域
-  const userInfoArea = document.getElementById('userInfoArea');
-  if (currentUser) {
-    userInfoArea.style.display = '';
-    document.getElementById('userNameDisplay').textContent = currentUser.username;
-    // 从后端获取用户类型
-    fetchApi('/api/admin/accounts').then(accounts => {
-      const self = accounts.find(a => a.username === currentUser.username);
-      if (self) {
-        const tag = document.getElementById('userTypeTag');
-        tag.textContent = self.user_type === '高级用户' ? '[高级用户]' : '[普通用户]';
-        tag.style.background = self.user_type === '高级用户' ? '#f39c12' : '#95a5a6';
-        tag.style.color = '#fff';
-      }
-    }).catch(() => {});
-  }
   const today = getTodayCST();
   const fdEl = document.getElementById('filterDate');
   if (fdEl) fdEl.value = today;
@@ -1001,21 +908,6 @@ function initMainSystem() {
   loadAllSettings();
   updateSelects();
 }
-
-// ========== 用户下拉菜单 ==========
-function toggleUserDropdown() {
-  const dropdown = document.getElementById('userDropdown');
-  dropdown.classList.toggle('show');
-}
-
-// 点击其他地方关闭下拉
-document.addEventListener('click', function(e) {
-  const area = document.getElementById('userInfoArea');
-  const dropdown = document.getElementById('userDropdown');
-  if (area && dropdown && !area.contains(e.target)) {
-    dropdown.classList.remove('show');
-  }
-});
 
 // ========== 本地配置读写 ==========
 const SETTINGS_KEYS = ['replacePresets','categoryAliases','customPrefixes','customSuffixes','customAmountSuffixes','customAmountPrefixes','customConfigCategories','customDataConfigObj','users','selectedStartZodiac'];
@@ -1063,7 +955,7 @@ async function showChangePassword() {
   } catch(e) { showToast(e.message); }
 }
 
-// ========== 卡密管理 ==========
+// ========== 卡密管理（含删除、到期显示、已激活标记、操作日志删除/清空） ==========
 async function showCardManager() {
   if (!currentUser || (currentUser.role !== 'admin' && !currentUser.canManageCards)) { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
@@ -1128,7 +1020,7 @@ async function showCardManager() {
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 账户管理 ==========
+// ========== 账户管理（含用户类型标记、激活卡密显示） ==========
 async function showAccountManager() {
   if (!currentUser || currentUser.role !== 'admin') { showToast('无权限'); return; }
   if (document.getElementById('accountMgrWin')) return;
@@ -1311,8 +1203,7 @@ function _doConvert() {
   }).join('<br>');
   updateTotalDisplay();
 }
-
-// ========== 分词辅助 ==========
+    // ========== 分词辅助 ==========
 function tokenizeAndJoin(content) {
   const cfg = getAllConfigData();
   const vc = getAllValidCategories(cfg);
@@ -1887,7 +1778,7 @@ function renderAmountFrequencyCardsFromData(freqData) {
   const nt = document.getElementById('numberAmountFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
   const zt = document.getElementById('zodiacAmountFreqTable'); if(zt){zt.innerHTML='';const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';for(let r=0;r<6;r++){const l=lz[r],r2=rz[r];const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0;ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;}ztb+='</tbody>';zt.innerHTML=zth+ztb;}
 }
-      // ========== 报表控制 ==========
+    // ========== 报表控制 ==========
 function switchRiskReport() {
   const val = document.getElementById('riskReportSwitcher').value;
   if (val === 'total') { document.getElementById('riskSection').style.display = ''; document.getElementById('reportSection').style.display = 'none'; document.getElementById('viewUserSelect').style.display = 'none'; updateTableFromRecords(); }
