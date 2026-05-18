@@ -421,7 +421,7 @@ app.post('/api/cards/:id/disable', authenticateToken, requireAdmin, (req, res) =
   res.json({ success: true });
 });
 
-// ========== 订单 API（增加 orderer 字段） ==========
+// ========== 订单 API ==========
 app.get('/api/orders', authenticateToken, (req, res) => {
   const { date } = req.query;
   let rows;
@@ -643,7 +643,7 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
   }
 });
 
-// ========== 风险计算 ==========
+// ========== 风险计算（不扣减上报） ==========
 app.post('/api/calculate', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, rebateRate = 4, multiple = 47 } = req.body;
@@ -679,13 +679,11 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       for (const line of lines) {
         const { numbers, zodiacs, amount } = parseLine(line, config);
         numbers.forEach(num => {
-          betData[num] = (betData[num] || 0) - amount;
           reportAmountData[num] = (reportAmountData[num] || 0) + amount;
         });
         zodiacs.forEach(z => {
           (config.zodiac[z] || []).forEach(n => {
             const num = n.padStart(2, '0');
-            betData[num] = (betData[num] || 0) - amount;
             reportAmountData[num] = (reportAmountData[num] || 0) + amount;
           });
         });
