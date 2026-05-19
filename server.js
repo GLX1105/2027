@@ -1094,15 +1094,19 @@ app.get('/api/config', authenticateToken, (req, res) => {
   res.json(currentConfig);
 });
 
-// ========== 路由处理 ==========
+// ========== 路由处理（登录保护） ==========
+// 受保护的主系统，强制设置 Content-Type，防止显示为代码
 app.get('/app', (req, res) => {
+  res.set('Content-Type', 'text/html');
   res.sendFile(path.join(__dirname, 'app.html'));
 });
 
+// 登录页面（默认首页）
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+// 未匹配路由返回登录页
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
