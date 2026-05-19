@@ -374,7 +374,7 @@ app.post('/api/auth/activate', (req, res) => {
       }
     }
   }
-  // 查找有效卡密：遍历所有active卡密，比对哈希
+  // 查找有效卡密
   const activeCards = db.prepare('SELECT * FROM cards WHERE status = ?').all('active');
   let matchedCard = null;
   for (const c of activeCards) {
@@ -446,7 +446,7 @@ app.post('/api/auth/change-password', authenticateToken, requireAdmin, (req, res
   res.json({ success: true, message: '密码修改成功' });
 });
 
-// ========== 当前用户状态（用于前端显示有效期） ==========
+// ========== 当前用户状态 ==========
 app.get('/api/me/status', authenticateToken, (req, res) => {
   const user = db.prepare('SELECT id, username, role, activated, activated_at, card_id, can_manage_cards FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
@@ -473,7 +473,7 @@ app.get('/api/me/status', authenticateToken, (req, res) => {
     username: user.username,
     role: user.role,
     cardCode,
-    remainingDays, // 管理员/直接创建为 null
+    remainingDays,
     expired,
     isAdmin: user.role === 'admin'
   });
@@ -524,7 +524,7 @@ app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermissio
   res.json({ success: true });
 });
 
-app.post('/api/cards/:id/delete', authenticateToken, requireCardManagePermission, (req, res) => {
+app.delete('/api/cards/:id', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
   if (req.user.role !== 'admin' && card.creator !== req.user.username) {
@@ -543,6 +543,27 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
     logs = db.prepare('SELECT * FROM card_logs WHERE operator = ? ORDER BY timestamp DESC').all(req.user.username);
   }
   res.json(logs);
+});
+
+// 新增：删除单条日志
+app.delete('/api/cards/logs/:id', authenticateToken, requireCardManagePermission, (req, res) => {
+  const log = db.prepare('SELECT * FROM card_logs WHERE id = ?').get(req.params.id);
+  if (!log) return res.status(404).json({ error: '日志不存在' });
+  if (req.user.role !== 'admin' && log.operator !== req.user.username) {
+    return res.status(403).json({ error: '无权操作此日志' });
+  }
+  db.prepare('DELETE FROM card_logs WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// 新增：清空日志
+app.post('/api/cards/logs/clear', authenticateToken, requireCardManagePermission, (req, res) => {
+  if (req.user.role === 'admin') {
+    db.prepare('DELETE FROM card_logs').run();
+  } else {
+    db.prepare('DELETE FROM card_logs WHERE operator = ?').run(req.user.username);
+  }
+  res.json({ success: true });
 });
 
 // ========== 管理员账户管理 ==========
@@ -794,7 +815,7 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 风险计算 ==========
+// ========== 风险计算（修改后） ==========
 app.post('/api/calculate', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, rebateRate = 4, multiple = 47 } = req.body;
@@ -835,6 +856,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
         });
       }
     }
+    // 原始风险数据
     const list = [];
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
@@ -849,7 +871,39 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       risk: Math.round(totalBet - item.bet * multiple - parseFloat(rebate)),
       rank: idx + 1
     }));
-    res.json({ list: result, totalBet, totalRebate: rebate, reportAmountData });
+
+    // 净下注（扣除已上报金额）
+    const netList = [];
+    for (let i = 1; i <= 49; i++) {
+      const num = i.toString().padStart(2, '0');
+      const bet = betData[num] || 0;
+      const report = reportAmountData[num] || 0;
+      netList.push({
+        num,
+        bet: Math.max(bet - report, 0),
+        report: report
+      });
+    }
+    netList.sort((a, b) => b.bet - a.bet);
+    const netTotalBet = netList.reduce((s, item) => s + item.bet, 0);
+    const netRebate = (netTotalBet * rebateRate / 100).toFixed(2);
+    const netResult = netList.map((item, idx) => ({
+      num: item.num,
+      bet: item.bet,
+      report: item.report,
+      risk: Math.round(netTotalBet - item.bet * multiple - parseFloat(netRebate)),
+      rank: idx + 1
+    }));
+
+    res.json({
+      list: result,
+      totalBet,
+      totalRebate: rebate,
+      reportAmountData,
+      netList: netResult,
+      netTotalBet,
+      netTotalRebate: netRebate
+    });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
