@@ -108,9 +108,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: '未登录' });
+  if (!token) {
+    // 如果是浏览器请求 HTML 页面（Accept 包含 text/html），则重定向到登录页
+    if (req.headers.accept && req.headers.accept.includes('text/html')) {
+      return res.redirect('/');
+    }
+    return res.status(401).json({ error: '未登录' });
+  }
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: '令牌无效' });
+    if (err) {
+      // token 无效时，同样对页面请求重定向
+      if (req.headers.accept && req.headers.accept.includes('text/html')) {
+        return res.redirect('/');
+      }
+      return res.status(403).json({ error: '令牌无效' });
+    }
     req.user = user;
     next();
   });
@@ -1015,7 +1027,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// 未匹配路由返回登录页（避免直接访问其他路径）
+// 未匹配路由返回登录页
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
