@@ -386,7 +386,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 </head>
 <body>
 
-<!-- 主工作台（直接可见） -->
+<!-- 主工作台直接可见 -->
 <div id="mainContent">
   <!-- 导航栏 -->
   <div class="navbar" id="mainNavbar">
@@ -408,7 +408,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
       <span id="currentUserDisplay" onclick="showAccountInfo()"></span>
     </div>
   </div>
-    <!-- 主内容容器 -->
+  <!-- 主内容容器 -->
   <div class="container">
     <div class="recognize-wrap">
         <div class="card" style="margin-top:0;">
@@ -498,7 +498,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         </div>
     </div>
   </div>
-    <!-- 数据库弹窗（完整静态分类号码） -->
+  <!-- 数据库弹窗（完整静态分类号码） -->
   <div class="database-modal" id="databaseModal" style="display:none;">
     <div class="database-modal-box" id="databaseModalBox">
       <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
@@ -783,8 +783,8 @@ async function showAccountInfo() {
   }
 }
 
-// ========== 初始化主系统 ==========
-function initMainSystem() {
+// ========== 初始化主系统（异步） ==========
+async function initMainSystem() {
   const isAdmin = currentUser && currentUser.role === 'admin';
   const canManageCards = currentUser && (currentUser.role === 'admin' || currentUser.canManageCards);
   if (canManageCards) document.getElementById('cardMgrBtn').style.display = '';
@@ -799,8 +799,9 @@ function initMainSystem() {
   const today = getTodayCST();
   const fdEl = document.getElementById('filterDate');
   if (fdEl) fdEl.value = today;
+  
+  await loadAllSettings();
   updateTableFromRecords();
-  loadAllSettings();
   updateSelects();
 }
 
@@ -850,7 +851,7 @@ async function showChangePassword() {
   } catch(e) { showToast(e.message); }
 }
 
-// ========== 卡密管理 ==========
+// ========== 卡密管理（修复删除/禁用/生成，避免自动跳转） ==========
 async function showCardManager() {
   if (!currentUser || (currentUser.role !== 'admin' && !currentUser.canManageCards)) { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
@@ -864,26 +865,71 @@ async function showCardManager() {
     cards.forEach(c => {
       const statusColor = c.expired ? 'red' : (c.status === 'active' ? 'green' : (c.status === 'used' ? 'blue' : 'red'));
       const statusText = c.expired ? '已到期' : (c.status === 'active' ? '正常' : (c.status === 'used' ? '已激活' : '已禁用'));
-      const activationInfo = c.activation_status ? `<span style="font-size:11px;color:#666;">[${c.activation_status}] ${c.activated_date ? '激活日期:' + c.activated_date : ''}</span>` : '';
       const daysInfo = c.days_remaining !== undefined ? (c.days_remaining > 0 ? `剩余${c.days_remaining}天` : (c.days_remaining === 0 ? '今日到期' : `已过期${Math.abs(c.days_remaining)}天`)) : '';
-      html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${c.code}</span><span style="font-size:12px;color:${statusColor};">[${statusText}]</span>${c.username ? `<span style="font-size:11px;color:#666;">绑定:${c.username}</span>` : ''}${activationInfo}<span style="font-size:11px;color:#666;">有效期:${c.expire_days}天 ${daysInfo}</span><div style="margin-left:auto;display:flex;gap:5px;">${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}<button onclick="deleteCard(${c.id})" style="background:#e74c3c;color:#fff;border:none;padding:3px 8px;border-radius:3px;">删除</button><button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button></div></div>`;
+      html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${c.code}</span><span style="font-size:12px;color:${statusColor};">[${statusText}]</span>${c.username ? `<span style="font-size:11px;color:#666;">绑定:${c.username}</span>` : ''}<span style="font-size:11px;color:#666;">有效期:${c.expire_days}天 ${daysInfo}</span><div style="margin-left:auto;display:flex;gap:5px;">${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}<button onclick="deleteCard(${c.id})" style="background:#e74c3c;color:#fff;border:none;padding:3px 8px;border-radius:3px;">删除</button><button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button></div></div>`;
     });
     html += '</div></div>'; win.innerHTML = html; document.body.appendChild(win);
     makeWindowDraggable('cardMgrWin'); highestZ += 1; win.style.zIndex = highestZ;
 
+    // 生成卡密（原生 fetch）
     window.generateCard = async () => {
       const days = parseInt(document.getElementById('expireDays')?.value) || 30;
-      try { const res = await fetchApi('/api/cards/generate', { method:'POST', body: JSON.stringify({ expireDays: days }) }); showToast('激活码已生成：' + res.code); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
+      try {
+        const res = await fetch('/api/cards/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ expireDays: days })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          showToast('激活码已生成：' + data.code);
+          document.getElementById('cardMgrWin').remove();
+          showCardManager();
+        } else {
+          const err = await res.json().catch(() => ({ error: '生成失败' }));
+          showToast(err.error || '生成失败');
+        }
+      } catch(e) { showToast('网络错误'); }
     };
+
+    // 禁用卡密
     window.disableCard = async (id) => {
       if (!(await confirm('确定禁用该激活码？'))) return;
-      try { await fetchApi(`/api/cards/${id}/disable`, { method:'POST' }); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
+      try {
+        const res = await fetch(`/api/cards/${id}/disable`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          document.getElementById('cardMgrWin').remove();
+          showCardManager();
+        } else {
+          const err = await res.json().catch(() => ({ error: '禁用失败' }));
+          showToast(err.error || '禁用失败');
+        }
+      } catch(e) { showToast('网络错误'); }
     };
+
+    // 删除卡密
     window.deleteCard = async (id) => {
       if (!(await confirm('确定删除该卡密吗？此操作不可恢复。'))) return;
-      try { await fetchApi(`/api/cards/${id}`, { method:'DELETE' }); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
+      try {
+        const res = await fetch(`/api/cards/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          document.getElementById('cardMgrWin').remove();
+          showCardManager();
+        } else {
+          const data = await res.json().catch(() => ({ error: '删除失败' }));
+          showToast(data.error || '删除失败');
+        }
+      } catch(e) { showToast('网络错误，删除失败'); }
     };
+
     window.copyCardCode = (code) => { navigator.clipboard.writeText(code).then(() => showToast('已复制')).catch(() => showToast('复制失败')); };
+
     window.showCardLogs = async () => {
       try {
         const logs = await fetchApi('/api/cards/logs');
@@ -904,11 +950,27 @@ async function showCardManager() {
 
         window.deleteCardLog = async (logId) => {
           if (!(await confirm('确定删除该条日志记录吗？'))) return;
-          try { await fetchApi(`/api/cards/logs/${logId}`, { method:'DELETE' }); document.getElementById('cardLogWin').remove(); window.showCardLogs(); } catch(e) { showToast(e.message); }
+          try {
+            const res = await fetch(`/api/cards/logs/${logId}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (res.ok) {
+              document.getElementById('cardLogWin').remove();
+              window.showCardLogs();
+            } else {
+              const err = await res.json().catch(() => ({ error: '删除失败' }));
+              showToast(err.error || '删除失败');
+            }
+          } catch(e) { showToast('网络错误'); }
         };
         window.clearAllCardLogs = async () => {
           if (!(await confirm('确定清空所有操作日志吗？此操作不可恢复！'))) return;
-          try { await fetchApi('/api/cards/logs/clear', { method:'POST' }); document.getElementById('cardLogWin').remove(); window.showCardLogs(); } catch(e) { showToast(e.message); }
+          try {
+            await fetchApi('/api/cards/logs/clear', { method:'POST' });
+            document.getElementById('cardLogWin').remove();
+            window.showCardLogs();
+          } catch(e) { showToast(e.message); }
         };
       } catch(e) { showToast('加载日志失败'); }
     };
@@ -1215,7 +1277,7 @@ async function semanticReplace() {
   const cf = await confirm(`转换结果：${str}\n是否替换选中文本？`);
   if (cf) { ta.value = ta.value.substring(0, s) + str + ta.value.substring(e); convertOrderText(); }
 }
-  // ========== 数据库配置读取（从DOM） ==========
+// ========== 数据库配置读取（从DOM） ==========
 function getAllConfigData() {
   const configData = {
     zodiac:{}, shengxiaoAttr:{}, wuxing:{}, bose:{}, banbo:{}, danshuang:{}, weishu:{},
@@ -2174,7 +2236,7 @@ if (filterDateEl) {
   try {
     const data = await fetchApi('/api/me/status');
     currentUser = { username: data.username, role: data.role, canManageCards: data.canManageCards ?? false };
-    initMainSystem();
+    await initMainSystem();
   } catch(e) {
     window.location.href = '/';
   }
