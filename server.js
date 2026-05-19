@@ -446,6 +446,39 @@ app.post('/api/auth/change-password', authenticateToken, requireAdmin, (req, res
   res.json({ success: true, message: '密码修改成功' });
 });
 
+// ========== 当前用户状态（用于前端显示有效期） ==========
+app.get('/api/me/status', authenticateToken, (req, res) => {
+  const user = db.prepare('SELECT id, username, role, activated, activated_at, card_id, can_manage_cards FROM users WHERE id = ?').get(req.user.id);
+  if (!user) return res.status(404).json({ error: '用户不存在' });
+
+  let remainingDays = null;
+  let expired = false;
+  let cardCode = null;
+
+  if (user.card_id) {
+    const card = db.prepare('SELECT code, expire_days, status FROM cards WHERE id = ?').get(user.card_id);
+    if (card) {
+      cardCode = card.code;
+      if (user.activated_at) {
+        const activatedTime = new Date(user.activated_at).getTime();
+        const expireTime = activatedTime + card.expire_days * 86400000;
+        const now = Date.now();
+        remainingDays = Math.max(0, Math.ceil((expireTime - now) / 86400000));
+        expired = now > expireTime;
+      }
+    }
+  }
+
+  res.json({
+    username: user.username,
+    role: user.role,
+    cardCode,
+    remainingDays, // 管理员/直接创建为 null
+    expired,
+    isAdmin: user.role === 'admin'
+  });
+});
+
 // ========== 卡密管理（管理员和子账户） ==========
 app.post('/api/cards/generate', authenticateToken, requireCardManagePermission, (req, res) => {
   const { expireDays } = req.body;
@@ -454,7 +487,6 @@ app.post('/api/cards/generate', authenticateToken, requireCardManagePermission, 
   const codeHash = bcrypt.hashSync(code, 10);
   const creator = req.user.role === 'admin' ? 'admin' : req.user.username;
   db.prepare('INSERT INTO cards (code, code_hash, status, expire_days, created_at, creator) VALUES (?, ?, ?, ?, ?, ?)').run(code, codeHash, 'active', expireDays, new Date().toISOString(), creator);
-  // 记录日志
   db.prepare('INSERT INTO card_logs (operator, action, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)').run(req.user.username, '生成', code, `有效期${expireDays}天`, new Date().toISOString());
   res.json({ success: true, code });
 });
@@ -477,7 +509,6 @@ app.get('/api/cards', authenticateToken, requireCardManagePermission, (req, res)
       ORDER BY cards.created_at DESC
     `).all(req.user.username);
   }
-  // 不返回哈希值
   const safeCards = cards.map(c => ({ id: c.id, code: c.code, status: c.status, expire_days: c.expire_days, created_at: c.created_at, creator: c.creator, username: c.username, user_id: c.user_id }));
   res.json(safeCards);
 });
@@ -485,7 +516,6 @@ app.get('/api/cards', authenticateToken, requireCardManagePermission, (req, res)
 app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
-  // 权限检查：管理员可操作所有，子账户只能操作自己生成的
   if (req.user.role !== 'admin' && card.creator !== req.user.username) {
     return res.status(403).json({ error: '无权操作此卡密' });
   }
@@ -515,7 +545,7 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
   res.json(logs);
 });
 
-// ========== 管理员账户管理（含修改后的用户类型判断） ==========
+// ========== 管理员账户管理 ==========
 app.get('/api/admin/accounts', authenticateToken, requireAdmin, (req, res) => {
   const accounts = db.prepare(`
     SELECT 
@@ -569,7 +599,6 @@ app.delete('/api/admin/accounts/:id', authenticateToken, requireAdmin, (req, res
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
   if (user.role === 'admin') return res.status(403).json({ error: '不能删除管理员' });
-  // 删除关联的订单和设置
   db.prepare('DELETE FROM orders WHERE user = ?').run(user.username);
   db.prepare('DELETE FROM report_orders WHERE user = ?').run(user.username);
   db.prepare('DELETE FROM user_settings WHERE user = ?').run(user.username);
