@@ -515,16 +515,15 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
   res.json(logs);
 });
 
-// ========== 管理员账户管理 ==========
+// ========== 管理员账户管理（含修改后的用户类型判断） ==========
 app.get('/api/admin/accounts', authenticateToken, requireAdmin, (req, res) => {
-  // 查询所有普通用户（排除超级管理员），并关联卡密信息，区分用户类型
   const accounts = db.prepare(`
     SELECT 
       u.id, u.username, u.activated, u.can_manage_cards, u.created_at,
       c.code AS card_code, c.expire_days,
       CASE 
-        WHEN u.card_id IS NOT NULL THEN '普通用户'   -- 卡密激活
-        ELSE '高级用户'                             -- 管理员直接创建
+        WHEN u.card_id IS NULL OR u.can_manage_cards = 1 THEN '高级用户'
+        ELSE '普通用户'
       END AS user_type,
       CASE 
         WHEN c.id IS NOT NULL AND u.activated_at IS NOT NULL 
