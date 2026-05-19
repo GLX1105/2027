@@ -87,7 +87,7 @@ select {
     letter-spacing: 1px;
     text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-.navbar-actions {display:flex;gap:10px;flex-wrap:wrap;}
+.navbar-actions {display:flex;gap:10px;flex-wrap:wrap; align-items:center;}
 .navbar-actions .btn {
     background: rgba(255,255,255,0.1);
     backdrop-filter: blur(5px);
@@ -110,6 +110,15 @@ select {
 .navbar-actions .btn:active {
     transform: translateY(1px);
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* 登录账号显示（小字体红色） */
+#currentUserDisplay {
+    font-size: 12px;
+    color: #e74c3c;
+    margin-right: 8px;
+    font-weight: bold;
+    white-space: nowrap;
 }
 
 .container {width:100%;max-width:1400px;margin:0 auto;padding:10px;display:flex;flex-direction:row;gap:15px;align-items:flex-start;}
@@ -475,6 +484,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
   <div class="navbar" id="mainNavbar">
     <div class="navbar-title">港澳识别系统</div>
     <div class="navbar-actions" id="navbarActions">
+      <span id="currentUserDisplay"></span>
       <button class="btn" onclick="showRecognizeModal()">识别</button>
       <button class="btn btn-reset" onclick="resetTable()">清空</button>
       <button class="btn btn-save-order" onclick="showOrderRecord()">订单记录</button>
@@ -488,11 +498,9 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
       <button class="btn btn-primary" id="cardMgrBtn" style="display:none;" onclick="showCardManager()">卡密管理</button>
       <button class="btn btn-primary" id="accountMgrBtn" style="display:none;" onclick="showAccountManager()">账户管理</button>
       <button class="btn btn-primary" id="changePwdBtn" style="display:none;" onclick="showChangePassword()">修改密码</button>
-      <button class="btn btn-clear" onclick="logout()">退出登录</button>
     </div>
   </div>
-
-  <!-- 主内容容器 -->
+    <!-- 主内容容器 -->
   <div class="container">
     <div class="recognize-wrap">
         <div class="card" style="margin-top:0;">
@@ -582,8 +590,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         </div>
     </div>
   </div>
-
-  <!-- 数据库弹窗（完整静态分类号码） -->
+    <!-- 数据库弹窗（完整静态分类号码） -->
   <div class="database-modal" id="databaseModal" style="display:none;">
     <div class="database-modal-box" id="databaseModalBox">
       <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
@@ -900,6 +907,11 @@ function initMainSystem() {
   if (isAdmin) {
     document.getElementById('accountMgrBtn').style.display = '';
     document.getElementById('changePwdBtn').style.display = '';
+  }
+  // 显示当前登录账号（红色小字体）
+  const displayEl = document.getElementById('currentUserDisplay');
+  if (displayEl && currentUser) {
+    displayEl.textContent = currentUser.username;
   }
   const today = getTodayCST();
   const fdEl = document.getElementById('filterDate');
@@ -1417,8 +1429,7 @@ function getNumberListForCategory(cat, cfg) {
   for (const src of sources) if (src && src[cat]) nums.push(...src[cat].map(n => n.padStart(2, '0')));
   return [...new Set(nums)];
 }
-
-// ========== 配置管理界面操作（密码验证调后端） ==========
+    // ========== 配置管理界面操作（密码验证调后端） ==========
 async function verifyPasswordAction(password, action) {
   try {
     const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password, action }) });
@@ -2252,7 +2263,8 @@ async function resetTable() {
     const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password: pwd, action: 'resetData' }) });
     if (!res.valid) { await alert("密码错误"); return; }
     await fetchApi('/api/reset', { method:'POST' });
-    location.reload();
+    // 不再刷新页面，只更新表格
+    updateTableFromRecords();
   } catch(e) { showToast('清空失败'); }
 }
 
