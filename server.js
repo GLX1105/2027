@@ -517,8 +517,33 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
 
 // ========== 管理员账户管理 ==========
 app.get('/api/admin/accounts', authenticateToken, requireAdmin, (req, res) => {
-  const accounts = db.prepare('SELECT id, username, activated, can_manage_cards, created_at FROM users WHERE role = ? AND username != ?').all('user', '17776192265');
-  res.json(accounts);
+  // ===== 修改开始：联表查询卡密信息，区分用户类型 =====
+  const accounts = db.prepare(`
+    SELECT 
+      u.id, u.username, u.activated, u.can_manage_cards, u.created_at,
+      c.code AS card_code, c.expire_days,
+      CASE 
+        WHEN u.card_id IS NOT NULL THEN '高级用户'
+        ELSE '直接创建'
+      END AS user_type,
+      CASE 
+        WHEN c.id IS NOT NULL AND u.activated_at IS NOT NULL 
+        THEN (julianday('now') - julianday(u.activated_at)) >= c.expire_days
+        ELSE 0
+      END AS card_expired
+    FROM users u
+    LEFT JOIN cards c ON u.card_id = c.id
+    WHERE u.role = 'user' AND u.username != '17776192265'
+  `).all();
+  
+  // 将 card_expired 转为布尔值方便前端使用
+  const result = accounts.map(a => ({
+    ...a,
+    card_expired: !!a.card_expired
+  }));
+  
+  res.json(result);
+  // ===== 修改结束 =====
 });
 
 app.post('/api/admin/create-account', authenticateToken, requireAdmin, (req, res) => {
