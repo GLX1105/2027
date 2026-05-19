@@ -434,13 +434,11 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 </style>
 </head>
 <body>
-
 <!-- 登录遮罩 -->
 <div id="loginOverlay" class="login-overlay">
   <div class="login-card">
     <h1>🎰 港澳识别系统</h1>
     <div class="login-subtitle">智能订单识别 · 风险实时计算</div>
-
     <!-- 登录表单 -->
     <div id="loginFormView">
       <input type="text" id="loginUsername" placeholder="用户名">
@@ -455,7 +453,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         <span class="login-link" id="showRegisterLink">注册新用户</span>
       </div>
     </div>
-
     <!-- 注册表单 -->
     <div id="registerFormView" style="display:none;">
       <input type="text" id="regUsername" placeholder="用户名">
@@ -466,7 +463,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         <span class="login-link" id="backToLoginFromReg">返回登录</span>
       </div>
     </div>
-
     <!-- 激活表单 -->
     <div id="activateFormView" style="display:none;">
       <input type="text" id="actUsername" placeholder="用户名" readonly>
@@ -479,9 +475,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
     </div>
   </div>
 </div>
-<!-- 主工作台（默认隐藏） -->
 <div id="mainContent" style="display:none;">
-  <!-- 导航栏 -->
   <div class="navbar" id="mainNavbar">
     <div class="navbar-title">港澳识别系统</div>
     <div class="navbar-actions" id="navbarActions">
@@ -501,7 +495,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
       <span id="currentUserDisplay" onclick="showAccountInfo()"></span>
     </div>
   </div>
-    <!-- 主内容容器 -->
   <div class="container">
     <div class="recognize-wrap">
         <div class="card" style="margin-top:0;">
@@ -517,7 +510,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
             </div>
           </div>
         </div>
-
         <div class="card" style="margin-top:0;">
           <div class="card-title">金额次数统计</div>
           <div class="freq-container">
@@ -531,7 +523,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
             </div>
           </div>
         </div>
-                <div class="card" style="margin-top:0;">
+        <div class="card" style="margin-top:0;">
           <div class="card-title">上报控制</div>
           <div class="freq-container">
             <div class="freq-card">
@@ -545,7 +537,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
           </div>
         </div>
     </div>
-
     <div class="risk-report-area">
         <div class="card">
           <div class="card-title">
@@ -590,8 +581,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         </div>
     </div>
   </div>
-      <!-- 数据库弹窗（完整静态分类号码） -->
-  <div class="database-modal" id="databaseModal" style="display:none;">
+    <div class="database-modal" id="databaseModal" style="display:none;">
     <div class="database-modal-box" id="databaseModalBox">
       <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
       <div class="database-modal-body">
@@ -1763,14 +1753,13 @@ async function updateTableFromRecords() {
     renderRiskTable(riskData.list, riskData.totalBet, riskData.totalRebate);
     renderReportTable(riskData.list, riskData.totalBet, riskData.totalRebate);
     renderReportAmountTableFromData(riskData.reportAmountData);
+    // ===== 新增：缓存上报数据，初始化截断阈值 =====
+    window._cachedReportAmountData = riskData.reportAmountData;
+    document.getElementById('reportCapInput').value = '';
+    applyReportCap();
+    // ===== 结束 =====
     renderFrequencyCardsFromData(freqData);
     renderAmountFrequencyCardsFromData(freqData);
-
-    // === 新增：缓存上报金额数据，并重置截断阈值 ===
-    window._cachedReportAmountData = riskData.reportAmountData;
-    const capInput = document.getElementById('reportCapInput');
-    if (capInput) capInput.value = '';
-    applyReportCap(); // 重置为完整显示
   } catch(e) { console.error(e); showToast('加载数据失败：'+e.message); }
 }
 
@@ -1833,7 +1822,7 @@ function switchRiskReport() {
 function generateRiskTable() { updateTableFromRecords(); }
 function generateReportTable() { updateTableFromRecords(); }
 
-// ========== 截断阈值过滤（完全重写） ==========
+// ========== 截断阈值过滤（全新实现） ==========
 function applyReportCap() {
   const threshold = parseInt(document.getElementById('reportCapInput')?.value) || 0;
   const originalData = window._cachedReportAmountData || {};
@@ -1867,7 +1856,6 @@ function applyReportCap() {
   }
 }
 
-// ========== 复制截断信息（原有功能，无需改动） ==========
 async function copyReportCapText() {
   const info = document.getElementById('reportCapInfo');
   const txt = info.innerText || info.textContent;
