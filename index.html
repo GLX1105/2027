@@ -531,8 +531,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
             </div>
           </div>
         </div>
-
-        <div class="card" style="margin-top:0;">
+                <div class="card" style="margin-top:0;">
           <div class="card-title">上报控制</div>
           <div class="freq-container">
             <div class="freq-card">
@@ -591,7 +590,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         </div>
     </div>
   </div>
-    <!-- 数据库弹窗（完整静态分类号码） -->
+      <!-- 数据库弹窗（完整静态分类号码） -->
   <div class="database-modal" id="databaseModal" style="display:none;">
     <div class="database-modal-box" id="databaseModalBox">
       <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
@@ -1749,7 +1748,7 @@ function applyReplacePresets(text) {
   p.forEach(x => { if (x.old && x.new) r = r.split(x.old).join(x.new); });
   return r;
 }
-
+    
 // ========== 数据更新 ==========
 async function updateTableFromRecords() {
   const fd = document.getElementById('filterDate')?.value;
@@ -1766,6 +1765,12 @@ async function updateTableFromRecords() {
     renderReportAmountTableFromData(riskData.reportAmountData);
     renderFrequencyCardsFromData(freqData);
     renderAmountFrequencyCardsFromData(freqData);
+
+    // === 新增：缓存上报金额数据，并重置截断阈值 ===
+    window._cachedReportAmountData = riskData.reportAmountData;
+    const capInput = document.getElementById('reportCapInput');
+    if (capInput) capInput.value = '';
+    applyReportCap(); // 重置为完整显示
   } catch(e) { console.error(e); showToast('加载数据失败：'+e.message); }
 }
 
@@ -1827,13 +1832,49 @@ function switchRiskReport() {
 }
 function generateRiskTable() { updateTableFromRecords(); }
 function generateReportTable() { updateTableFromRecords(); }
-function applyReportCap() { generateReportTable(); }
+
+// ========== 截断阈值过滤（完全重写） ==========
+function applyReportCap() {
+  const threshold = parseInt(document.getElementById('reportCapInput')?.value) || 0;
+  const originalData = window._cachedReportAmountData || {};
+  const infoEl = document.getElementById('reportCapInfo');
+
+  if (!originalData || Object.keys(originalData).length === 0) {
+    if (infoEl) infoEl.innerHTML = '暂无上报数据';
+    renderReportAmountTableFromData({});
+    return;
+  }
+
+  const filteredData = {};
+  const hiddenList = [];
+  for (const [num, amount] of Object.entries(originalData)) {
+    if (amount >= threshold) {
+      filteredData[num] = amount;
+    } else if (amount > 0) {
+      hiddenList.push(`${num}:${amount}`);
+    }
+  }
+
+  renderReportAmountTableFromData(filteredData);
+
+  if (infoEl) {
+    if (hiddenList.length === 0) {
+      infoEl.innerHTML = threshold > 0 ? '所有号码均达到阈值' : '';
+    } else {
+      infoEl.innerHTML = `已隐藏 ${hiddenList.length} 个号码（低于 ${threshold}）：<br>` +
+                         hiddenList.join(', ');
+    }
+  }
+}
+
+// ========== 复制截断信息（原有功能，无需改动） ==========
 async function copyReportCapText() {
   const info = document.getElementById('reportCapInfo');
   const txt = info.innerText || info.textContent;
   if (!txt || txt === '无超出的号码') { showToast('没有可复制的文本'); return; }
   try { await navigator.clipboard.writeText(txt); showToast('已复制'); } catch(e) { showToast('复制失败'); }
 }
+
 function handleTableRowClick(event) {
   const td = event.target.closest('td'); if (!td) return;
   const tr = td.closest('tr'); if (!tr) return;
