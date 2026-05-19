@@ -87,7 +87,7 @@ select {
     letter-spacing: 1px;
     text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-.navbar-actions {display:flex;gap:10px;flex-wrap:wrap; align-items:center;}
+.navbar-actions {display:flex;gap:10px;flex-wrap:wrap;}
 .navbar-actions .btn {
     background: rgba(255,255,255,0.1);
     backdrop-filter: blur(5px);
@@ -110,16 +110,6 @@ select {
 .navbar-actions .btn:active {
     transform: translateY(1px);
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-/* 登录账号显示（小字体红色） */
-#currentUserDisplay {
-    font-size: 12px;
-    color: #e74c3c;
-    margin-right: 8px;
-    font-weight: bold;
-    white-space: nowrap;
-    cursor: pointer;
 }
 
 .container {width:100%;max-width:1400px;margin:0 auto;padding:10px;display:flex;flex-direction:row;gap:15px;align-items:flex-start;}
@@ -498,10 +488,11 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
       <button class="btn btn-primary" id="cardMgrBtn" style="display:none;" onclick="showCardManager()">卡密管理</button>
       <button class="btn btn-primary" id="accountMgrBtn" style="display:none;" onclick="showAccountManager()">账户管理</button>
       <button class="btn btn-primary" id="changePwdBtn" style="display:none;" onclick="showChangePassword()">修改密码</button>
-      <span id="currentUserDisplay" onclick="showAccountInfo()"></span>
+      <button class="btn btn-clear" onclick="logout()">退出登录</button>
     </div>
   </div>
-      <!-- 主内容容器 -->
+
+  <!-- 主内容容器 -->
   <div class="container">
     <div class="recognize-wrap">
         <div class="card" style="margin-top:0;">
@@ -591,7 +582,8 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         </div>
     </div>
   </div>
-      <!-- 数据库弹窗（完整静态分类号码） -->
+
+  <!-- 数据库弹窗（完整静态分类号码） -->
   <div class="database-modal" id="databaseModal" style="display:none;">
     <div class="database-modal-box" id="databaseModalBox">
       <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
@@ -816,11 +808,11 @@ function showToast(msg) {
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2000);
 }
 
-// ========== 自定义对话框（支持自定义按钮文字） ==========
-function showCustomDialog({ title = '提示', message = '', type = 'alert', defaultValue = '', placeholder = '', confirmText = '确定', cancelText = '取消' }) {
+// ========== 自定义对话框 ==========
+function showCustomDialog({ title = '提示', message = '', type = 'alert', defaultValue = '', placeholder = '' }) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay';
-    overlay.innerHTML = `<div class="custom-dialog-box"><div class="custom-dialog-title">${title}</div><div class="custom-dialog-message">${message.replace(/\n/g, '<br>')}</div>${type==='prompt'?`<input class="custom-dialog-input" type="text" value="${defaultValue}" placeholder="${placeholder}" id="custom-dialog-input">`:''}<div class="custom-dialog-buttons">${type==='confirm'||type==='prompt'?`<button class="custom-dialog-btn cancel" id="custom-dialog-cancel">${cancelText}</button>`:''}<button class="custom-dialog-btn confirm" id="custom-dialog-confirm">${confirmText}</button></div></div>`;
+    overlay.innerHTML = `<div class="custom-dialog-box"><div class="custom-dialog-title">${title}</div><div class="custom-dialog-message">${message}</div>${type==='prompt'?`<input class="custom-dialog-input" type="text" value="${defaultValue}" placeholder="${placeholder}" id="custom-dialog-input">`:''}<div class="custom-dialog-buttons">${type==='confirm'||type==='prompt'?'<button class="custom-dialog-btn cancel" id="custom-dialog-cancel">取消</button>':''}<button class="custom-dialog-btn confirm" id="custom-dialog-confirm">确定</button></div></div>`;
     document.body.appendChild(overlay);
     const confirmBtn = overlay.querySelector('#custom-dialog-confirm'), cancelBtn = overlay.querySelector('#custom-dialog-cancel'), inputEl = overlay.querySelector('#custom-dialog-input');
     const close = (result) => { document.body.removeChild(overlay); resolve(result); };
@@ -901,42 +893,6 @@ document.getElementById('backToLoginFromAct').onclick = () => {
 
 function logout() { authToken = null; sessionStorage.removeItem('authToken'); currentUser = null; location.reload(); }
 
-// ========== 显示账号信息（有效期 + 退出） ==========
-async function showAccountInfo() {
-  if (!currentUser) return;
-  try {
-    const status = await fetchApi('/api/me/status');
-    let message = `当前账号：${status.username}`;
-    if (status.isAdmin) {
-      message += '\n角色：管理员\n有效期：永久有效';
-    } else {
-      const roleText = currentUser.canManageCards ? '高级用户' : '普通用户';
-      message += `\n角色：${roleText}`;
-      if (status.remainingDays !== null) {
-        if (status.expired) {
-          message += '\n状态：已过期';
-        } else {
-          message += `\n剩余有效天数：${status.remainingDays} 天`;
-        }
-      } else {
-        message += '\n有效期：永久有效（直接创建）';
-      }
-    }
-    const result = await showCustomDialog({
-      title: '账号信息',
-      message: message,
-      type: 'confirm',
-      confirmText: '退出登录',
-      cancelText: '关闭'
-    });
-    if (result) {
-      logout();
-    }
-  } catch (e) {
-    showToast('获取账号信息失败');
-  }
-}
-
 function initMainSystem() {
   const isAdmin = currentUser && currentUser.role === 'admin';
   const canManageCards = currentUser && (currentUser.role === 'admin' || currentUser.canManageCards);
@@ -944,10 +900,6 @@ function initMainSystem() {
   if (isAdmin) {
     document.getElementById('accountMgrBtn').style.display = '';
     document.getElementById('changePwdBtn').style.display = '';
-  }
-  const displayEl = document.getElementById('currentUserDisplay');
-  if (displayEl && currentUser) {
-    displayEl.textContent = currentUser.username;
   }
   const today = getTodayCST();
   const fdEl = document.getElementById('filterDate');
@@ -1003,7 +955,7 @@ async function showChangePassword() {
   } catch(e) { showToast(e.message); }
 }
 
-// ========== 卡密管理 ==========
+// ========== 卡密管理（含删除、到期显示、已激活标记、操作日志删除/清空） ==========
 async function showCardManager() {
   if (!currentUser || (currentUser.role !== 'admin' && !currentUser.canManageCards)) { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
@@ -1068,7 +1020,7 @@ async function showCardManager() {
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 账户管理 ==========
+// ========== 账户管理（含用户类型标记、激活卡密显示） ==========
 async function showAccountManager() {
   if (!currentUser || currentUser.role !== 'admin') { showToast('无权限'); return; }
   if (document.getElementById('accountMgrWin')) return;
@@ -1143,7 +1095,7 @@ async function showAccountManager() {
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 标记按钮 ==========
+// ========== 标记按钮（多行合并成一行） ==========
 function markSelection() {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
@@ -1156,7 +1108,7 @@ function markSelection() {
   convertOrderText();
 }
 
-// ========== 识别函数 ==========
+// ========== 识别函数（实时联动 + 无效行红色） ==========
 let convertTimer = null;
 function convertOrderText() {
   if (convertTimer) clearTimeout(convertTimer);
@@ -1251,7 +1203,7 @@ function _doConvert() {
   }).join('<br>');
   updateTotalDisplay();
 }
-
+    // ========== 分词辅助 ==========
 function tokenizeAndJoin(content) {
   const cfg = getAllConfigData();
   const vc = getAllValidCategories(cfg);
@@ -1341,6 +1293,7 @@ function replaceSeparators() {
   convertOrderText();
 }
 
+// ========== 语义转换 ==========
 async function semanticReplace() {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
@@ -1465,7 +1418,7 @@ function getNumberListForCategory(cat, cfg) {
   return [...new Set(nums)];
 }
 
-// ========== 配置管理界面操作 ==========
+// ========== 配置管理界面操作（密码验证调后端） ==========
 async function verifyPasswordAction(password, action) {
   try {
     const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password, action }) });
@@ -1735,6 +1688,7 @@ async function deleteReplacePreset(i) {
   renderPresetList();
 }
 
+// ========== 辅助函数 ==========
 function applyCategoryAliases(text) {
   const a = getCategoryAliases();
   if (!a.length) return text;
@@ -1749,8 +1703,8 @@ function applyReplacePresets(text) {
   p.forEach(x => { if (x.old && x.new) r = r.split(x.old).join(x.new); });
   return r;
 }
-    
-// ========== 数据更新（修复后） ==========
+
+// ========== 数据更新（从后端获取） ==========
 async function updateTableFromRecords() {
   const fd = document.getElementById('filterDate')?.value;
   const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
@@ -1761,33 +1715,15 @@ async function updateTableFromRecords() {
       fetchApi('/api/calculate', { method:'POST', body: JSON.stringify({ date: fd, config, rebateRate, multiple }) }),
       fetchApi('/api/frequency', { method:'POST', body: JSON.stringify({ date: fd, config, amountMin: document.getElementById('numAmountMin')?.value||1, amountMax: document.getElementById('numAmountMax')?.value||50000, zodiacAmountMin: document.getElementById('zodiacAmountMin')?.value||1, zodiacAmountMax: document.getElementById('zodiacAmountMax')?.value||50000 }) })
     ]);
-    
-    // 渲染总风险/用户视图（使用原始下注数据）
     renderRiskTable(riskData.list, riskData.totalBet, riskData.totalRebate);
-    
-    // 缓存净下注数据，供上报视图使用
-    window._netList = riskData.netList || riskData.list.map(item => ({...item, report: 0}));
-    window._netTotalBet = riskData.netTotalBet || riskData.totalBet;
-    window._netTotalRebate = riskData.netTotalRebate || riskData.totalRebate;
-    
-    // 渲染上报视图（使用净下注数据，含已上报列）
-    renderReportTable(window._netList, window._netTotalBet, window._netTotalRebate);
-    
-    // 上报号码金额表格（原始已上报数据）
+    renderReportTable(riskData.list, riskData.totalBet, riskData.totalRebate);
     renderReportAmountTableFromData(riskData.reportAmountData);
-    
-    // 缓存上报金额数据，重置截断阈值
-    window._cachedReportAmountData = riskData.reportAmountData || {};
-    const capInput = document.getElementById('reportCapInput');
-    if (capInput) capInput.value = '';
-    applyReportCap();
-    
-    // 频率统计
     renderFrequencyCardsFromData(freqData);
     renderAmountFrequencyCardsFromData(freqData);
   } catch(e) { console.error(e); showToast('加载数据失败：'+e.message); }
 }
 
+// ========== 渲染函数 ==========
 const redNumbers = ['01','02','07','08','12','13','18','19','23','24','29','30','34','35','40','45','46'];
 const blueNumbers = ['03','04','09','10','14','15','20','25','26','31','36','37','41','42','47','48'];
 const zodiacOrder = ['马','蛇','龙','兔','虎','牛','鼠','猪','狗','鸡','猴','羊'];
@@ -1811,21 +1747,9 @@ function renderRiskTable(list, totalBet, totalRebate) {
 
 function renderReportTable(list, totalBet, totalRebate) {
   const tbody = document.getElementById('reportTableBody'); if (!tbody) return;
-  // 检查list中是否有report字段
-  const hasReport = list.length > 0 && list[0].hasOwnProperty('report');
-  // 更新表头
-  const thead = document.getElementById('reportTable')?.querySelector('thead tr');
-  if (thead) {
-    if (hasReport) {
-      thead.innerHTML = '<th>号码</th><th>下注</th><th>已上报</th><th>风险</th><th>ID</th><th>排名</th>';
-    } else {
-      thead.innerHTML = '<th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th>';
-    }
-  }
   tbody.innerHTML = list.map(item => {
     const cls = redNumbers.includes(item.num)?'red-text':(blueNumbers.includes(item.num)?'blue-text':'green-text');
-    const reportCol = hasReport ? `<td>${item.report || 0}</td>` : '';
-    return `<tr class="${cls}"><td>${item.num}${currentZodiacMap[item.num]||''}</td><td>${item.bet}</td>${reportCol}<td>${item.risk}</td><td>${item.num}</td><td>${item.rank}</td></tr>`;
+    return `<tr class="${cls}"><td>${item.num}${currentZodiacMap[item.num]||''}</td><td>${item.bet}</td><td>${item.risk}</td><td>${item.num}</td><td>${item.rank}</td></tr>`;
   }).join('');
   document.getElementById('reportTotalBet').textContent = totalBet;
   document.getElementById('reportTotalRebate').textContent = totalRebate;
@@ -1854,7 +1778,7 @@ function renderAmountFrequencyCardsFromData(freqData) {
   const nt = document.getElementById('numberAmountFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
   const zt = document.getElementById('zodiacAmountFreqTable'); if(zt){zt.innerHTML='';const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';for(let r=0;r<6;r++){const l=lz[r],r2=rz[r];const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0;ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;}ztb+='</tbody>';zt.innerHTML=zth+ztb;}
 }
-
+    // ========== 报表控制 ==========
 function switchRiskReport() {
   const val = document.getElementById('riskReportSwitcher').value;
   if (val === 'total') { document.getElementById('riskSection').style.display = ''; document.getElementById('reportSection').style.display = 'none'; document.getElementById('viewUserSelect').style.display = 'none'; updateTableFromRecords(); }
@@ -1863,48 +1787,13 @@ function switchRiskReport() {
 }
 function generateRiskTable() { updateTableFromRecords(); }
 function generateReportTable() { updateTableFromRecords(); }
-
-// ========== 截断阈值过滤（全新实现） ==========
-function applyReportCap() {
-  const threshold = parseInt(document.getElementById('reportCapInput')?.value) || 0;
-  const originalData = window._cachedReportAmountData || {};
-  const infoEl = document.getElementById('reportCapInfo');
-
-  if (!originalData || Object.keys(originalData).length === 0) {
-    if (infoEl) infoEl.innerHTML = '暂无上报数据';
-    renderReportAmountTableFromData({});
-    return;
-  }
-
-  const filteredData = {};
-  const hiddenList = [];
-  for (const [num, amount] of Object.entries(originalData)) {
-    if (amount >= threshold) {
-      filteredData[num] = amount;
-    } else if (amount > 0) {
-      hiddenList.push(`${num}:${amount}`);
-    }
-  }
-
-  renderReportAmountTableFromData(filteredData);
-
-  if (infoEl) {
-    if (hiddenList.length === 0) {
-      infoEl.innerHTML = threshold > 0 ? '所有号码均达到阈值' : '';
-    } else {
-      infoEl.innerHTML = `已隐藏 ${hiddenList.length} 个号码（低于 ${threshold}）：<br>` +
-                         hiddenList.join(', ');
-    }
-  }
-}
-
+function applyReportCap() { generateReportTable(); }
 async function copyReportCapText() {
   const info = document.getElementById('reportCapInfo');
   const txt = info.innerText || info.textContent;
   if (!txt || txt === '无超出的号码') { showToast('没有可复制的文本'); return; }
   try { await navigator.clipboard.writeText(txt); showToast('已复制'); } catch(e) { showToast('复制失败'); }
 }
-
 function handleTableRowClick(event) {
   const td = event.target.closest('td'); if (!td) return;
   const tr = td.closest('tr'); if (!tr) return;
@@ -1935,6 +1824,7 @@ async function changeStartZodiac() {
   } catch(e) { showToast('验证失败'); select.value = savedZodiac; }
 }
 
+// ========== 订单操作（含下单人） ==========
 async function saveOrder() {
   const orderer = document.getElementById('orderUserSelect')?.value;
   if (!orderer) { showToast('请选择下单人'); return; }
@@ -2009,8 +1899,10 @@ function computeCurrentOrderTotal() {
   return total;
 }
 
+// ========== 用户管理 ==========
 function getUsers() { return localSettings.users || []; }
 async function saveUsers(users) { localSettings.users = users; await saveSetting('users', users); }
+
 function showUserManager() {
   if (document.getElementById('userManagerWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'userManagerWin';
@@ -2048,6 +1940,7 @@ async function deleteUserAction(name) {
   updateTableFromRecords();
   showToast('用户已删除');
 }
+
 function updateSelects() {
   const users = getUsers();
   const orderSel = document.getElementById('orderUserSelect');
@@ -2062,6 +1955,7 @@ function updateSelects() {
   }
 }
 
+// ========== 浮动窗口 ==========
 let highestZ = 2000;
 function makeWindowDraggable(winId) {
   const win = document.getElementById(winId); if (!win) return;
@@ -2170,6 +2064,7 @@ async function pasteOrder() {
   } catch (err) { showToast('无法访问剪贴板'); }
 }
 
+// ========== 订单记录（显示下单人、用户颜色） ==========
 async function showOrderRecord(filter = 'all') {
   try {
     const recs = await fetchApi('/api/orders' + (document.getElementById('filterDate')?.value ? `?date=${document.getElementById('filterDate').value}` : ''));
@@ -2264,6 +2159,7 @@ async function deleteCheckedReport() {
   } catch (e) { showToast('删除失败'); }
 }
 
+// ========== 对奖高亮 ==========
 function getUserColor(u) {
   if (!u) return 'hsl(0,0%,50%)';
   let h = 0; for (let i = 0; i < u.length; i++) h = u.charCodeAt(i) + ((h << 5) - h);
@@ -2315,6 +2211,7 @@ async function applyPrizeFilter() {
   cont.innerHTML = itemsHtml.join('');
 }
 
+// ========== 导出导入 ==========
 async function exportData() {
   try {
     const data = await fetchApi('/api/export');
@@ -2355,10 +2252,11 @@ async function resetTable() {
     const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password: pwd, action: 'resetData' }) });
     if (!res.valid) { await alert("密码错误"); return; }
     await fetchApi('/api/reset', { method:'POST' });
-    updateTableFromRecords();
+    location.reload();
   } catch(e) { showToast('清空失败'); }
 }
 
+// ========== 截图 ==========
 async function screenshotTable(tid) {
   const tbl = document.getElementById(tid);
   if (!tbl) { showToast('表格不存在'); return; }
@@ -2375,6 +2273,7 @@ async function screenshotTable(tid) {
   } catch(e) { showToast('截图失败'); }
 }
 
+// ========== 初始化 ==========
 document.getElementById('rebateRate')?.addEventListener('input', updateTableFromRecords);
 document.getElementById('multipleVal')?.addEventListener('input', updateTableFromRecords);
 document.getElementById('reportRebateRate')?.addEventListener('input', updateTableFromRecords);
