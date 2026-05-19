@@ -102,25 +102,15 @@ for (const c of cardsWithoutHash) {
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 // ========== 认证中间件 ==========
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (!token) {
-    if (req.headers.accept && req.headers.accept.includes('text/html')) {
-      return res.redirect('/');
-    }
-    return res.status(401).json({ error: '未登录' });
-  }
+  if (!token) return res.status(401).json({ error: '未登录' });
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      if (req.headers.accept && req.headers.accept.includes('text/html')) {
-        return res.redirect('/');
-      }
-      return res.status(403).json({ error: '令牌无效' });
-    }
+    if (err) return res.status(403).json({ error: '令牌无效' });
     req.user = user;
     next();
   });
@@ -483,7 +473,7 @@ app.get('/api/me/status', authenticateToken, (req, res) => {
     username: user.username,
     role: user.role,
     cardCode,
-    remainingDays,
+    remainingDays, // 管理员/直接创建为 null
     expired,
     isAdmin: user.role === 'admin'
   });
@@ -519,39 +509,10 @@ app.get('/api/cards', authenticateToken, requireCardManagePermission, (req, res)
       ORDER BY cards.created_at DESC
     `).all(req.user.username);
   }
-  // 计算过期状态、剩余天数等
-  const safeCards = cards.map(c => {
-    const now = Date.now();
-    const createdTime = new Date(c.created_at).getTime();
-    const expireDuration = c.expire_days * 86400000;
-    const expired = (c.status === 'active' && now > createdTime + expireDuration) || c.status === 'expired';
-    const daysRemaining = expired
-      ? -Math.ceil((now - createdTime - expireDuration) / 86400000)
-      : Math.ceil((createdTime + expireDuration - now) / 86400000);
-
-    let activation_status = '';
-    if (c.status === 'used') activation_status = '已激活';
-    else if (c.status === 'expired' || expired) activation_status = '已到期';
-    else if (c.status === 'active') activation_status = '正常';
-
-    return {
-      id: c.id,
-      code: c.code,
-      status: c.status,
-      expire_days: c.expire_days,
-      created_at: c.created_at,
-      creator: c.creator,
-      username: c.username,
-      user_id: c.user_id,
-      expired,
-      days_remaining: daysRemaining,
-      activation_status
-    };
-  });
+  const safeCards = cards.map(c => ({ id: c.id, code: c.code, status: c.status, expire_days: c.expire_days, created_at: c.created_at, creator: c.creator, username: c.username, user_id: c.user_id }));
   res.json(safeCards);
 });
 
-// 禁用卡密
 app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
@@ -559,23 +520,21 @@ app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermissio
     return res.status(403).json({ error: '无权操作此卡密' });
   }
   db.prepare('UPDATE cards SET status = ? WHERE id = ?').run('disabled', req.params.id);
-  db.prepare('INSERT INTO card_logs (operator, action, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)').run(req.user.username, '禁用', card.code, '禁用卡密', new Date().toISOString());
+  db.prepare('INSERT INTO card_logs (operator, action, target, timestamp) VALUES (?, ?, ?, ?)').run(req.user.username, '禁用', card.code, new Date().toISOString());
   res.json({ success: true });
 });
 
-// 删除卡密（修复路由方法和路径）
-app.delete('/api/cards/:id', authenticateToken, requireCardManagePermission, (req, res) => {
+app.post('/api/cards/:id/delete', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
   if (req.user.role !== 'admin' && card.creator !== req.user.username) {
     return res.status(403).json({ error: '无权操作此卡密' });
   }
   db.prepare('DELETE FROM cards WHERE id = ?').run(req.params.id);
-  db.prepare('INSERT INTO card_logs (operator, action, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)').run(req.user.username, '删除', card.code, '删除卡密', new Date().toISOString());
+  db.prepare('INSERT INTO card_logs (operator, action, target, timestamp) VALUES (?, ?, ?, ?)').run(req.user.username, '删除', card.code, new Date().toISOString());
   res.json({ success: true });
 });
 
-// 卡密操作日志
 app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req, res) => {
   let logs;
   if (req.user.role === 'admin') {
@@ -584,23 +543,6 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
     logs = db.prepare('SELECT * FROM card_logs WHERE operator = ? ORDER BY timestamp DESC').all(req.user.username);
   }
   res.json(logs);
-});
-
-// 删除单条卡密日志
-app.delete('/api/cards/logs/:id', authenticateToken, requireCardManagePermission, (req, res) => {
-  const log = db.prepare('SELECT * FROM card_logs WHERE id = ?').get(req.params.id);
-  if (!log) return res.status(404).json({ error: '日志不存在' });
-  if (req.user.role !== 'admin' && log.operator !== req.user.username) {
-    return res.status(403).json({ error: '无权删除此日志' });
-  }
-  db.prepare('DELETE FROM card_logs WHERE id = ?').run(req.params.id);
-  res.json({ success: true });
-});
-
-// 清空所有日志（仅管理员）
-app.post('/api/cards/logs/clear', authenticateToken, requireAdmin, (req, res) => {
-  db.prepare('DELETE FROM card_logs').run();
-  res.json({ success: true });
 });
 
 // ========== 管理员账户管理 ==========
@@ -1062,20 +1004,8 @@ app.get('/api/config', authenticateToken, (req, res) => {
   res.json(currentConfig);
 });
 
-// ========== 路由处理（登录保护） ==========
-// 受保护的主系统（无需鉴权中间件，由前端自己验证 token）
-app.get('/app', (req, res) => {
-  res.sendFile(path.join(__dirname, 'app.html'));
-});
-
-// 登录页面（默认首页）
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-// 未匹配路由返回登录页
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
