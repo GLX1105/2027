@@ -434,11 +434,13 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
 </style>
 </head>
 <body>
+
 <!-- 登录遮罩 -->
 <div id="loginOverlay" class="login-overlay">
   <div class="login-card">
     <h1>🎰 港澳识别系统</h1>
     <div class="login-subtitle">智能订单识别 · 风险实时计算</div>
+
     <!-- 登录表单 -->
     <div id="loginFormView">
       <input type="text" id="loginUsername" placeholder="用户名">
@@ -453,6 +455,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         <span class="login-link" id="showRegisterLink">注册新用户</span>
       </div>
     </div>
+
     <!-- 注册表单 -->
     <div id="registerFormView" style="display:none;">
       <input type="text" id="regUsername" placeholder="用户名">
@@ -463,6 +466,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         <span class="login-link" id="backToLoginFromReg">返回登录</span>
       </div>
     </div>
+
     <!-- 激活表单 -->
     <div id="activateFormView" style="display:none;">
       <input type="text" id="actUsername" placeholder="用户名" readonly>
@@ -475,7 +479,9 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
     </div>
   </div>
 </div>
+<!-- 主工作台（默认隐藏） -->
 <div id="mainContent" style="display:none;">
+  <!-- 导航栏 -->
   <div class="navbar" id="mainNavbar">
     <div class="navbar-title">港澳识别系统</div>
     <div class="navbar-actions" id="navbarActions">
@@ -495,6 +501,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
       <span id="currentUserDisplay" onclick="showAccountInfo()"></span>
     </div>
   </div>
+      <!-- 主内容容器 -->
   <div class="container">
     <div class="recognize-wrap">
         <div class="card" style="margin-top:0;">
@@ -510,6 +517,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
             </div>
           </div>
         </div>
+
         <div class="card" style="margin-top:0;">
           <div class="card-title">金额次数统计</div>
           <div class="freq-container">
@@ -523,6 +531,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
             </div>
           </div>
         </div>
+
         <div class="card" style="margin-top:0;">
           <div class="card-title">上报控制</div>
           <div class="freq-container">
@@ -537,6 +546,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
           </div>
         </div>
     </div>
+
     <div class="risk-report-area">
         <div class="card">
           <div class="card-title">
@@ -581,7 +591,8 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         </div>
     </div>
   </div>
-    <div class="database-modal" id="databaseModal" style="display:none;">
+      <!-- 数据库弹窗（完整静态分类号码） -->
+  <div class="database-modal" id="databaseModal" style="display:none;">
     <div class="database-modal-box" id="databaseModalBox">
       <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
       <div class="database-modal-body">
@@ -1739,7 +1750,7 @@ function applyReplacePresets(text) {
   return r;
 }
     
-// ========== 数据更新 ==========
+// ========== 数据更新（修复后） ==========
 async function updateTableFromRecords() {
   const fd = document.getElementById('filterDate')?.value;
   const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
@@ -1750,14 +1761,28 @@ async function updateTableFromRecords() {
       fetchApi('/api/calculate', { method:'POST', body: JSON.stringify({ date: fd, config, rebateRate, multiple }) }),
       fetchApi('/api/frequency', { method:'POST', body: JSON.stringify({ date: fd, config, amountMin: document.getElementById('numAmountMin')?.value||1, amountMax: document.getElementById('numAmountMax')?.value||50000, zodiacAmountMin: document.getElementById('zodiacAmountMin')?.value||1, zodiacAmountMax: document.getElementById('zodiacAmountMax')?.value||50000 }) })
     ]);
+    
+    // 渲染总风险/用户视图（使用原始下注数据）
     renderRiskTable(riskData.list, riskData.totalBet, riskData.totalRebate);
-    renderReportTable(riskData.list, riskData.totalBet, riskData.totalRebate);
+    
+    // 缓存净下注数据，供上报视图使用
+    window._netList = riskData.netList || riskData.list.map(item => ({...item, report: 0}));
+    window._netTotalBet = riskData.netTotalBet || riskData.totalBet;
+    window._netTotalRebate = riskData.netTotalRebate || riskData.totalRebate;
+    
+    // 渲染上报视图（使用净下注数据，含已上报列）
+    renderReportTable(window._netList, window._netTotalBet, window._netTotalRebate);
+    
+    // 上报号码金额表格（原始已上报数据）
     renderReportAmountTableFromData(riskData.reportAmountData);
-    // ===== 新增：缓存上报数据，初始化截断阈值 =====
-    window._cachedReportAmountData = riskData.reportAmountData;
-    document.getElementById('reportCapInput').value = '';
+    
+    // 缓存上报金额数据，重置截断阈值
+    window._cachedReportAmountData = riskData.reportAmountData || {};
+    const capInput = document.getElementById('reportCapInput');
+    if (capInput) capInput.value = '';
     applyReportCap();
-    // ===== 结束 =====
+    
+    // 频率统计
     renderFrequencyCardsFromData(freqData);
     renderAmountFrequencyCardsFromData(freqData);
   } catch(e) { console.error(e); showToast('加载数据失败：'+e.message); }
@@ -1773,6 +1798,7 @@ function buildZodiacMap(startZodiac) {
   for (let i = 1; i <= 49; i++) map[i.toString().padStart(2,'0')] = zodiacOrder[(start + i - 1) % 12];
   return map;
 }
+
 function renderRiskTable(list, totalBet, totalRebate) {
   const tbody = document.getElementById('tableBody'); if (!tbody) return;
   tbody.innerHTML = list.map(item => {
@@ -1782,15 +1808,29 @@ function renderRiskTable(list, totalBet, totalRebate) {
   document.getElementById('totalBet').textContent = totalBet;
   document.getElementById('totalRebate').textContent = totalRebate;
 }
+
 function renderReportTable(list, totalBet, totalRebate) {
   const tbody = document.getElementById('reportTableBody'); if (!tbody) return;
+  // 检查list中是否有report字段
+  const hasReport = list.length > 0 && list[0].hasOwnProperty('report');
+  // 更新表头
+  const thead = document.getElementById('reportTable')?.querySelector('thead tr');
+  if (thead) {
+    if (hasReport) {
+      thead.innerHTML = '<th>号码</th><th>下注</th><th>已上报</th><th>风险</th><th>ID</th><th>排名</th>';
+    } else {
+      thead.innerHTML = '<th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th>';
+    }
+  }
   tbody.innerHTML = list.map(item => {
     const cls = redNumbers.includes(item.num)?'red-text':(blueNumbers.includes(item.num)?'blue-text':'green-text');
-    return `<tr class="${cls}"><td>${item.num}${currentZodiacMap[item.num]||''}</td><td>${item.bet}</td><td>${item.risk}</td><td>${item.num}</td><td>${item.rank}</td></tr>`;
+    const reportCol = hasReport ? `<td>${item.report || 0}</td>` : '';
+    return `<tr class="${cls}"><td>${item.num}${currentZodiacMap[item.num]||''}</td><td>${item.bet}</td>${reportCol}<td>${item.risk}</td><td>${item.num}</td><td>${item.rank}</td></tr>`;
   }).join('');
   document.getElementById('reportTotalBet').textContent = totalBet;
   document.getElementById('reportTotalRebate').textContent = totalRebate;
 }
+
 function renderReportAmountTableFromData(reportAmountData) {
   const tbl = document.getElementById('reportAmountTable'); if (!tbl) return; tbl.innerHTML = '';
   const cols = [...Array(5)].map((_,c) => Array.from({length:c===4?9:10},(_,r) => (c*10+r+1).toString().padStart(2,'0')));
@@ -1802,11 +1842,13 @@ function renderReportAmountTableFromData(reportAmountData) {
   const box=document.getElementById('reportAmountTotalBox'), span=document.getElementById('reportAmountTotalValue');
   if(total>0){span.textContent=total;box.style.display='inline-flex';}else{box.style.display='none';}
 }
+
 function renderFrequencyCardsFromData(freqData) {
   const numberCount = freqData.numberCount||{}, zodiacCount = freqData.zodiacCount||{};
   const nt = document.getElementById('numberFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
   const zt = document.getElementById('zodiacFreqTable'); if(zt){zt.innerHTML='';const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';for(let r=0;r<6;r++){const l=lz[r],r2=rz[r];const lc=zodiacCount[l]||0,rc=zodiacCount[r2]||0;ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;}ztb+='</tbody>';zt.innerHTML=zth+ztb;}
 }
+
 function renderAmountFrequencyCardsFromData(freqData) {
   const numberAmountCount = freqData.numberAmountCount||{}, zodiacAmountCount = freqData.zodiacAmountCount||{};
   const nt = document.getElementById('numberAmountFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
