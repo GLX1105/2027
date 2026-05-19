@@ -1018,7 +1018,7 @@ app.get('/api/config', authenticateToken, (req, res) => {
 
 // ========== 路由处理（登录保护） ==========
 // 受保护的主系统
-app.get('/app', authenticateToken, (req, res) => {
+app.get('/app', (req, res) => {
   res.sendFile(path.join(__dirname, 'app.html'));
 });
 
