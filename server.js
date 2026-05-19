@@ -374,7 +374,7 @@ app.post('/api/auth/activate', (req, res) => {
       }
     }
   }
-  // 查找有效卡密
+  // 查找有效卡密：遍历所有active卡密，比对哈希
   const activeCards = db.prepare('SELECT * FROM cards WHERE status = ?').all('active');
   let matchedCard = null;
   for (const c of activeCards) {
@@ -446,39 +446,6 @@ app.post('/api/auth/change-password', authenticateToken, requireAdmin, (req, res
   res.json({ success: true, message: '密码修改成功' });
 });
 
-// ========== 当前用户状态 ==========
-app.get('/api/me/status', authenticateToken, (req, res) => {
-  const user = db.prepare('SELECT id, username, role, activated, activated_at, card_id, can_manage_cards FROM users WHERE id = ?').get(req.user.id);
-  if (!user) return res.status(404).json({ error: '用户不存在' });
-
-  let remainingDays = null;
-  let expired = false;
-  let cardCode = null;
-
-  if (user.card_id) {
-    const card = db.prepare('SELECT code, expire_days, status FROM cards WHERE id = ?').get(user.card_id);
-    if (card) {
-      cardCode = card.code;
-      if (user.activated_at) {
-        const activatedTime = new Date(user.activated_at).getTime();
-        const expireTime = activatedTime + card.expire_days * 86400000;
-        const now = Date.now();
-        remainingDays = Math.max(0, Math.ceil((expireTime - now) / 86400000));
-        expired = now > expireTime;
-      }
-    }
-  }
-
-  res.json({
-    username: user.username,
-    role: user.role,
-    cardCode,
-    remainingDays,
-    expired,
-    isAdmin: user.role === 'admin'
-  });
-});
-
 // ========== 卡密管理（管理员和子账户） ==========
 app.post('/api/cards/generate', authenticateToken, requireCardManagePermission, (req, res) => {
   const { expireDays } = req.body;
@@ -487,6 +454,7 @@ app.post('/api/cards/generate', authenticateToken, requireCardManagePermission, 
   const codeHash = bcrypt.hashSync(code, 10);
   const creator = req.user.role === 'admin' ? 'admin' : req.user.username;
   db.prepare('INSERT INTO cards (code, code_hash, status, expire_days, created_at, creator) VALUES (?, ?, ?, ?, ?, ?)').run(code, codeHash, 'active', expireDays, new Date().toISOString(), creator);
+  // 记录日志
   db.prepare('INSERT INTO card_logs (operator, action, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)').run(req.user.username, '生成', code, `有效期${expireDays}天`, new Date().toISOString());
   res.json({ success: true, code });
 });
@@ -509,6 +477,7 @@ app.get('/api/cards', authenticateToken, requireCardManagePermission, (req, res)
       ORDER BY cards.created_at DESC
     `).all(req.user.username);
   }
+  // 不返回哈希值
   const safeCards = cards.map(c => ({ id: c.id, code: c.code, status: c.status, expire_days: c.expire_days, created_at: c.created_at, creator: c.creator, username: c.username, user_id: c.user_id }));
   res.json(safeCards);
 });
@@ -516,6 +485,7 @@ app.get('/api/cards', authenticateToken, requireCardManagePermission, (req, res)
 app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
+  // 权限检查：管理员可操作所有，子账户只能操作自己生成的
   if (req.user.role !== 'admin' && card.creator !== req.user.username) {
     return res.status(403).json({ error: '无权操作此卡密' });
   }
@@ -524,7 +494,7 @@ app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermissio
   res.json({ success: true });
 });
 
-app.delete('/api/cards/:id', authenticateToken, requireCardManagePermission, (req, res) => {
+app.post('/api/cards/:id/delete', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
   if (req.user.role !== 'admin' && card.creator !== req.user.username) {
@@ -545,53 +515,10 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
   res.json(logs);
 });
 
-// 新增：删除单条日志
-app.delete('/api/cards/logs/:id', authenticateToken, requireCardManagePermission, (req, res) => {
-  const log = db.prepare('SELECT * FROM card_logs WHERE id = ?').get(req.params.id);
-  if (!log) return res.status(404).json({ error: '日志不存在' });
-  if (req.user.role !== 'admin' && log.operator !== req.user.username) {
-    return res.status(403).json({ error: '无权操作此日志' });
-  }
-  db.prepare('DELETE FROM card_logs WHERE id = ?').run(req.params.id);
-  res.json({ success: true });
-});
-
-// 新增：清空日志
-app.post('/api/cards/logs/clear', authenticateToken, requireCardManagePermission, (req, res) => {
-  if (req.user.role === 'admin') {
-    db.prepare('DELETE FROM card_logs').run();
-  } else {
-    db.prepare('DELETE FROM card_logs WHERE operator = ?').run(req.user.username);
-  }
-  res.json({ success: true });
-});
-
 // ========== 管理员账户管理 ==========
 app.get('/api/admin/accounts', authenticateToken, requireAdmin, (req, res) => {
-  const accounts = db.prepare(`
-    SELECT 
-      u.id, u.username, u.activated, u.can_manage_cards, u.created_at,
-      c.code AS card_code, c.expire_days,
-      CASE 
-        WHEN u.card_id IS NULL OR u.can_manage_cards = 1 THEN '高级用户'
-        ELSE '普通用户'
-      END AS user_type,
-      CASE 
-        WHEN c.id IS NOT NULL AND u.activated_at IS NOT NULL 
-        THEN (julianday('now') - julianday(u.activated_at)) >= c.expire_days
-        ELSE 0
-      END AS card_expired
-    FROM users u
-    LEFT JOIN cards c ON u.card_id = c.id
-    WHERE u.role = 'user' AND u.username != '17776192265'
-  `).all();
-
-  const result = accounts.map(a => ({
-    ...a,
-    card_expired: !!a.card_expired
-  }));
-
-  res.json(result);
+  const accounts = db.prepare('SELECT id, username, activated, can_manage_cards, created_at FROM users WHERE role = ? AND username != ?').all('user', '17776192265');
+  res.json(accounts);
 });
 
 app.post('/api/admin/create-account', authenticateToken, requireAdmin, (req, res) => {
@@ -620,6 +547,7 @@ app.delete('/api/admin/accounts/:id', authenticateToken, requireAdmin, (req, res
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
   if (user.role === 'admin') return res.status(403).json({ error: '不能删除管理员' });
+  // 删除关联的订单和设置
   db.prepare('DELETE FROM orders WHERE user = ?').run(user.username);
   db.prepare('DELETE FROM report_orders WHERE user = ?').run(user.username);
   db.prepare('DELETE FROM user_settings WHERE user = ?').run(user.username);
@@ -815,7 +743,7 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 风险计算（修改后） ==========
+// ========== 风险计算 ==========
 app.post('/api/calculate', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, rebateRate = 4, multiple = 47 } = req.body;
@@ -856,7 +784,6 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
         });
       }
     }
-    // 原始风险数据
     const list = [];
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
@@ -871,39 +798,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       risk: Math.round(totalBet - item.bet * multiple - parseFloat(rebate)),
       rank: idx + 1
     }));
-
-    // 净下注（扣除已上报金额）
-    const netList = [];
-    for (let i = 1; i <= 49; i++) {
-      const num = i.toString().padStart(2, '0');
-      const bet = betData[num] || 0;
-      const report = reportAmountData[num] || 0;
-      netList.push({
-        num,
-        bet: Math.max(bet - report, 0),
-        report: report
-      });
-    }
-    netList.sort((a, b) => b.bet - a.bet);
-    const netTotalBet = netList.reduce((s, item) => s + item.bet, 0);
-    const netRebate = (netTotalBet * rebateRate / 100).toFixed(2);
-    const netResult = netList.map((item, idx) => ({
-      num: item.num,
-      bet: item.bet,
-      report: item.report,
-      risk: Math.round(netTotalBet - item.bet * multiple - parseFloat(netRebate)),
-      rank: idx + 1
-    }));
-
-    res.json({
-      list: result,
-      totalBet,
-      totalRebate: rebate,
-      reportAmountData,
-      netList: netResult,
-      netTotalBet,
-      netTotalRebate: netRebate
-    });
+    res.json({ list: result, totalBet, totalRebate: rebate, reportAmountData });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
