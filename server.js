@@ -109,7 +109,6 @@ function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) {
-    // 如果是浏览器请求 HTML 页面（Accept 包含 text/html），则重定向到登录页
     if (req.headers.accept && req.headers.accept.includes('text/html')) {
       return res.redirect('/');
     }
@@ -117,7 +116,6 @@ function authenticateToken(req, res, next) {
   }
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
-      // token 无效时，同样对页面请求重定向
       if (req.headers.accept && req.headers.accept.includes('text/html')) {
         return res.redirect('/');
       }
@@ -521,10 +519,39 @@ app.get('/api/cards', authenticateToken, requireCardManagePermission, (req, res)
       ORDER BY cards.created_at DESC
     `).all(req.user.username);
   }
-  const safeCards = cards.map(c => ({ id: c.id, code: c.code, status: c.status, expire_days: c.expire_days, created_at: c.created_at, creator: c.creator, username: c.username, user_id: c.user_id }));
+  // 计算过期状态、剩余天数等
+  const safeCards = cards.map(c => {
+    const now = Date.now();
+    const createdTime = new Date(c.created_at).getTime();
+    const expireDuration = c.expire_days * 86400000;
+    const expired = (c.status === 'active' && now > createdTime + expireDuration) || c.status === 'expired';
+    const daysRemaining = expired
+      ? -Math.ceil((now - createdTime - expireDuration) / 86400000)
+      : Math.ceil((createdTime + expireDuration - now) / 86400000);
+
+    let activation_status = '';
+    if (c.status === 'used') activation_status = '已激活';
+    else if (c.status === 'expired' || expired) activation_status = '已到期';
+    else if (c.status === 'active') activation_status = '正常';
+
+    return {
+      id: c.id,
+      code: c.code,
+      status: c.status,
+      expire_days: c.expire_days,
+      created_at: c.created_at,
+      creator: c.creator,
+      username: c.username,
+      user_id: c.user_id,
+      expired,
+      days_remaining: daysRemaining,
+      activation_status
+    };
+  });
   res.json(safeCards);
 });
 
+// 禁用卡密
 app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
@@ -532,21 +559,23 @@ app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermissio
     return res.status(403).json({ error: '无权操作此卡密' });
   }
   db.prepare('UPDATE cards SET status = ? WHERE id = ?').run('disabled', req.params.id);
-  db.prepare('INSERT INTO card_logs (operator, action, target, timestamp) VALUES (?, ?, ?, ?)').run(req.user.username, '禁用', card.code, new Date().toISOString());
+  db.prepare('INSERT INTO card_logs (operator, action, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)').run(req.user.username, '禁用', card.code, '禁用卡密', new Date().toISOString());
   res.json({ success: true });
 });
 
-app.post('/api/cards/:id/delete', authenticateToken, requireCardManagePermission, (req, res) => {
+// 删除卡密（修复路由方法和路径）
+app.delete('/api/cards/:id', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
   if (req.user.role !== 'admin' && card.creator !== req.user.username) {
     return res.status(403).json({ error: '无权操作此卡密' });
   }
   db.prepare('DELETE FROM cards WHERE id = ?').run(req.params.id);
-  db.prepare('INSERT INTO card_logs (operator, action, target, timestamp) VALUES (?, ?, ?, ?)').run(req.user.username, '删除', card.code, new Date().toISOString());
+  db.prepare('INSERT INTO card_logs (operator, action, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)').run(req.user.username, '删除', card.code, '删除卡密', new Date().toISOString());
   res.json({ success: true });
 });
 
+// 卡密操作日志
 app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req, res) => {
   let logs;
   if (req.user.role === 'admin') {
@@ -555,6 +584,23 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
     logs = db.prepare('SELECT * FROM card_logs WHERE operator = ? ORDER BY timestamp DESC').all(req.user.username);
   }
   res.json(logs);
+});
+
+// 删除单条卡密日志
+app.delete('/api/cards/logs/:id', authenticateToken, requireCardManagePermission, (req, res) => {
+  const log = db.prepare('SELECT * FROM card_logs WHERE id = ?').get(req.params.id);
+  if (!log) return res.status(404).json({ error: '日志不存在' });
+  if (req.user.role !== 'admin' && log.operator !== req.user.username) {
+    return res.status(403).json({ error: '无权删除此日志' });
+  }
+  db.prepare('DELETE FROM card_logs WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// 清空所有日志（仅管理员）
+app.post('/api/cards/logs/clear', authenticateToken, requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM card_logs').run();
+  res.json({ success: true });
 });
 
 // ========== 管理员账户管理 ==========
@@ -1017,7 +1063,7 @@ app.get('/api/config', authenticateToken, (req, res) => {
 });
 
 // ========== 路由处理（登录保护） ==========
-// 受保护的主系统
+// 受保护的主系统（无需鉴权中间件，由前端自己验证 token）
 app.get('/app', (req, res) => {
   res.sendFile(path.join(__dirname, 'app.html'));
 });
