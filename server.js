@@ -102,7 +102,7 @@ for (const c of cardsWithoutHash) {
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ========== 认证中间件 ==========
 function authenticateToken(req, res, next) {
@@ -473,7 +473,7 @@ app.get('/api/me/status', authenticateToken, (req, res) => {
     username: user.username,
     role: user.role,
     cardCode,
-    remainingDays, // 管理员/直接创建为 null
+    remainingDays,
     expired,
     isAdmin: user.role === 'admin'
   });
@@ -1004,8 +1004,20 @@ app.get('/api/config', authenticateToken, (req, res) => {
   res.json(currentConfig);
 });
 
+// ========== 路由处理（登录保护） ==========
+// 受保护的主系统
+app.get('/app', authenticateToken, (req, res) => {
+  res.sendFile(path.join(__dirname, 'app.html'));
+});
+
+// 登录页面（默认首页）
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// 未匹配路由返回登录页（避免直接访问其他路径）
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 app.listen(PORT, () => {
