@@ -1251,33 +1251,7 @@ function replaceSeparators() {
   convertOrderText();
 }
 
-async function semanticReplace() {
-  const ta = document.querySelector('.source-order-input');
-  if (!ta) return;
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  if (s === e) { showToast('请先选择文本'); return; }
-  const sel = ta.value.substring(s, e);
-  const cfg = getAllConfigData();
-  const vc = getAllValidCategories(cfg);
-  const tokens = sel.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
-  const matched = tokens.filter(t => vc.has(t));
-  if (!matched.length) { showToast('未识别有效分类'); return; }
-  let sets = matched.map(cat => {
-    let nums = [];
-    if (cfg.shengxiaoAttr[cat]) { cfg.shengxiaoAttr[cat].forEach(z => { if (cfg.zodiac[z]) nums.push(...cfg.zodiac[z].map(n => n.toString().padStart(2, '0'))); }); }
-    const dir = cfg.wuxing[cat] || cfg.bose[cat] || cfg.banbo[cat] || cfg.danshuang[cat] || cfg.weishu[cat] || cfg.daxiaodanshuang[cat] || cfg.daxiao[cat] || cfg.heshu[cat] || cfg.toushu[cat] || cfg.menshu[cat] || cfg.duanwei[cat] || cfg.hedahexiao[cat] || cfg.weidaweixiao[cat] || cfg.hewei[cat] || cfg.heshudanshuang[cat] || cfg.toushuDanshuang[cat];
-    if (dir) nums.push(...dir.map(n => n.toString().padStart(2, '0')));
-    if (cfg.zodiac[cat]) nums.push(...cfg.zodiac[cat].map(n => n.toString().padStart(2, '0')));
-    return new Set(nums);
-  });
-  let inter = sets[0];
-  for (let i = 1; i < sets.length; i++) inter = new Set([...inter].filter(x => sets[i].has(x)));
-  const res = [...inter].sort((a, b) => parseInt(a) - parseInt(b));
-  if (!res.length) { showToast('无共同号码'); return; }
-  const str = res.join('-');
-  const cf = await confirm(`转换结果：${str}\n是否替换选中文本？`);
-  if (cf) { ta.value = ta.value.substring(0, s) + str + ta.value.substring(e); convertOrderText(); }
-}
+
 </script>
 async function semanticReplace() {
   const ta = document.querySelector('.source-order-input');
