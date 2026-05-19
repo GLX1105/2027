@@ -109,12 +109,13 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ========== 内存缓存（风险与频率计算结果） ==========
-const calculationCache = new Map(); // key: `${userRole}_${date}_${rebateRate}_${multiple}`, value: { list, totalBet, totalRebate, reportAmountData }
+const calculationCache = new Map();
+
 function getCacheKey(user, date, rebateRate, multiple) {
   return `${user}_${date}_${rebateRate}_${multiple}`;
 }
+
 function invalidateCacheForDate(date) {
-  // 清除所有包含该日期的缓存键
   for (const key of calculationCache.keys()) {
     if (key.includes(date)) calculationCache.delete(key);
   }
@@ -689,7 +690,6 @@ app.post('/api/orders', authenticateToken, (req, res) => {
   const user = req.user.username;
   const timestamp = new Date().toISOString();
   db.prepare('INSERT INTO orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)').run(content, user, orderer || '', date, totalAmount || 0, timestamp);
-  // 清除该日期的计算结果缓存
   invalidateCacheForDate(date);
   res.json({ success: true });
 });
@@ -716,11 +716,8 @@ app.post('/api/orders/batch-delete', authenticateToken, (req, res) => {
     }
   }
   const del = db.prepare('DELETE FROM orders WHERE id = ?');
-  const transaction = db.transaction(() => {
-    ids.forEach(id => del.run(id));
-  });
+  const transaction = db.transaction(() => { ids.forEach(id => del.run(id)); });
   transaction();
-  // 清除相关日期缓存
   const dates = [...new Set(orders.map(o => o.date).filter(d => d))];
   dates.forEach(d => invalidateCacheForDate(d));
   res.json({ success: true });
@@ -768,9 +765,7 @@ app.post('/api/report-orders/batch-delete', authenticateToken, (req, res) => {
     }
   }
   const del = db.prepare('DELETE FROM report_orders WHERE id = ?');
-  const transaction = db.transaction(() => {
-    ids.forEach(id => del.run(id));
-  });
+  const transaction = db.transaction(() => { ids.forEach(id => del.run(id)); });
   transaction();
   const dates = [...new Set(orders.map(o => o.date).filter(d => d))];
   dates.forEach(d => invalidateCacheForDate(d));
@@ -1073,7 +1068,6 @@ app.post('/api/import', authenticateToken, (req, res) => {
     }
   });
   transaction();
-  // 清除所有缓存
   calculationCache.clear();
   res.json({ success: true });
 });
