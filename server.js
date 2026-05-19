@@ -85,10 +85,6 @@ try { db.exec('ALTER TABLE cards ADD COLUMN creator TEXT DEFAULT \'admin\''); } 
 try { db.exec('ALTER TABLE orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
 try { db.exec('ALTER TABLE report_orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
 
-// 添加索引以加速按日期查询
-try { db.exec('CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(date)'); } catch(e) {}
-try { db.exec('CREATE INDEX IF NOT EXISTS idx_report_orders_date ON report_orders(date)'); } catch(e) {}
-
 // ========== 自动创建管理员账户 ==========
 const adminUser = db.prepare('SELECT * FROM users WHERE username = ?').get('17776192265');
 if (!adminUser) {
@@ -107,19 +103,6 @@ for (const c of cardsWithoutHash) {
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-
-// ========== 内存缓存（风险与频率计算结果） ==========
-const calculationCache = new Map();
-
-function getCacheKey(user, date, rebateRate, multiple) {
-  return `${user}_${date}_${rebateRate}_${multiple}`;
-}
-
-function invalidateCacheForDate(date) {
-  for (const key of calculationCache.keys()) {
-    if (key.includes(date)) calculationCache.delete(key);
-  }
-}
 
 // ========== 认证中间件 ==========
 function authenticateToken(req, res, next) {
@@ -401,6 +384,7 @@ app.post('/api/auth/activate', (req, res) => {
       }
     }
   }
+  // 查找有效卡密：遍历所有active卡密，比对哈希
   const activeCards = db.prepare('SELECT * FROM cards WHERE status = ?').all('active');
   let matchedCard = null;
   for (const c of activeCards) {
@@ -412,6 +396,7 @@ app.post('/api/auth/activate', (req, res) => {
   if (!matchedCard) {
     return res.status(400).json({ error: '激活码无效' });
   }
+  // 检查是否过期
   const cardCreated = new Date(matchedCard.created_at).getTime();
   const cardExpireMs = matchedCard.expire_days * 86400000;
   if (Date.now() > cardCreated + cardExpireMs) {
@@ -437,6 +422,7 @@ app.post('/api/auth/login', (req, res) => {
   if (user.activated === 2) {
     return res.status(403).json({ error: '账号已被禁用' });
   }
+  // 检查卡密有效期（非管理员）
   if (user.role !== 'admin' && user.activated === 1 && user.card_id) {
     const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(user.card_id);
     if (card) {
@@ -470,7 +456,7 @@ app.post('/api/auth/change-password', authenticateToken, requireAdmin, (req, res
   res.json({ success: true, message: '密码修改成功' });
 });
 
-// ========== 当前用户状态 ==========
+// ========== 当前用户状态（用于前端显示有效期） ==========
 app.get('/api/me/status', authenticateToken, (req, res) => {
   const user = db.prepare('SELECT id, username, role, activated, activated_at, card_id, can_manage_cards FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
@@ -503,7 +489,7 @@ app.get('/api/me/status', authenticateToken, (req, res) => {
   });
 });
 
-// ========== 卡密管理（优化过期计算） ==========
+// ========== 卡密管理（管理员和子账户） ==========
 app.post('/api/cards/generate', authenticateToken, requireCardManagePermission, (req, res) => {
   const { expireDays } = req.body;
   if (!expireDays || expireDays < 1) return res.status(400).json({ error: '有效期至少1天' });
@@ -519,52 +505,53 @@ app.get('/api/cards', authenticateToken, requireCardManagePermission, (req, res)
   let cards;
   if (req.user.role === 'admin') {
     cards = db.prepare(`
-      SELECT cards.*, users.username,
-        CASE
-          WHEN cards.status = 'used' THEN '已激活'
-          WHEN cards.status = 'expired' OR (cards.status = 'active' AND datetime('now') > datetime(cards.created_at, '+' || cards.expire_days || ' days'))
-            THEN '已到期'
-          ELSE '正常'
-        END AS activation_status,
-        julianday(cards.created_at, '+' || cards.expire_days || ' days') - julianday('now') AS days_remaining
-      FROM cards
-      LEFT JOIN users ON cards.user_id = users.id
+      SELECT cards.*, users.username 
+      FROM cards 
+      LEFT JOIN users ON cards.user_id = users.id 
       ORDER BY cards.created_at DESC
     `).all();
   } else {
     cards = db.prepare(`
-      SELECT cards.*, users.username,
-        CASE
-          WHEN cards.status = 'used' THEN '已激活'
-          WHEN cards.status = 'expired' OR (cards.status = 'active' AND datetime('now') > datetime(cards.created_at, '+' || cards.expire_days || ' days'))
-            THEN '已到期'
-          ELSE '正常'
-        END AS activation_status,
-        julianday(cards.created_at, '+' || cards.expire_days || ' days') - julianday('now') AS days_remaining
-      FROM cards
-      LEFT JOIN users ON cards.user_id = users.id
+      SELECT cards.*, users.username 
+      FROM cards 
+      LEFT JOIN users ON cards.user_id = users.id 
       WHERE cards.creator = ?
       ORDER BY cards.created_at DESC
     `).all(req.user.username);
   }
+  // 计算过期状态、剩余天数等
+  const safeCards = cards.map(c => {
+    const now = Date.now();
+    const createdTime = new Date(c.created_at).getTime();
+    const expireDuration = c.expire_days * 86400000;
+    const expired = (c.status === 'active' && now > createdTime + expireDuration) || c.status === 'expired';
+    const daysRemaining = expired
+      ? -Math.ceil((now - createdTime - expireDuration) / 86400000)
+      : Math.ceil((createdTime + expireDuration - now) / 86400000);
 
-  const safeCards = cards.map(c => ({
-    id: c.id,
-    code: c.code,
-    status: c.status,
-    expire_days: c.expire_days,
-    created_at: c.created_at,
-    creator: c.creator,
-    username: c.username,
-    user_id: c.user_id,
-    activation_status: c.activation_status,
-    days_remaining: c.days_remaining ? Math.ceil(c.days_remaining) : null,
-    expired: c.days_remaining !== null && c.days_remaining < 0
-  }));
+    let activation_status = '';
+    if (c.status === 'used') activation_status = '已激活';
+    else if (c.status === 'expired' || expired) activation_status = '已到期';
+    else if (c.status === 'active') activation_status = '正常';
 
+    return {
+      id: c.id,
+      code: c.code,
+      status: c.status,
+      expire_days: c.expire_days,
+      created_at: c.created_at,
+      creator: c.creator,
+      username: c.username,
+      user_id: c.user_id,
+      expired,
+      days_remaining: daysRemaining,
+      activation_status
+    };
+  });
   res.json(safeCards);
 });
 
+// 禁用卡密
 app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
@@ -576,6 +563,7 @@ app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermissio
   res.json({ success: true });
 });
 
+// 删除卡密（修复路由方法和路径）
 app.delete('/api/cards/:id', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
@@ -587,6 +575,7 @@ app.delete('/api/cards/:id', authenticateToken, requireCardManagePermission, (re
   res.json({ success: true });
 });
 
+// 卡密操作日志
 app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req, res) => {
   let logs;
   if (req.user.role === 'admin') {
@@ -597,6 +586,7 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
   res.json(logs);
 });
 
+// 删除单条卡密日志
 app.delete('/api/cards/logs/:id', authenticateToken, requireCardManagePermission, (req, res) => {
   const log = db.prepare('SELECT * FROM card_logs WHERE id = ?').get(req.params.id);
   if (!log) return res.status(404).json({ error: '日志不存在' });
@@ -607,6 +597,7 @@ app.delete('/api/cards/logs/:id', authenticateToken, requireCardManagePermission
   res.json({ success: true });
 });
 
+// 清空所有日志（仅管理员）
 app.post('/api/cards/logs/clear', authenticateToken, requireAdmin, (req, res) => {
   db.prepare('DELETE FROM card_logs').run();
   res.json({ success: true });
@@ -690,18 +681,16 @@ app.post('/api/orders', authenticateToken, (req, res) => {
   const user = req.user.username;
   const timestamp = new Date().toISOString();
   db.prepare('INSERT INTO orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)').run(content, user, orderer || '', date, totalAmount || 0, timestamp);
-  invalidateCacheForDate(date);
   res.json({ success: true });
 });
 
 app.delete('/api/orders/:id', authenticateToken, (req, res) => {
-  const order = db.prepare('SELECT user, date FROM orders WHERE id = ?').get(req.params.id);
+  const order = db.prepare('SELECT user FROM orders WHERE id = ?').get(req.params.id);
   if (!order) return res.status(404).json({ error: '订单不存在' });
   if (req.user.role !== 'admin' && order.user !== req.user.username) {
     return res.status(403).json({ error: '无权删除' });
   }
   db.prepare('DELETE FROM orders WHERE id = ?').run(req.params.id);
-  if (order.date) invalidateCacheForDate(order.date);
   res.json({ success: true });
 });
 
@@ -709,7 +698,7 @@ app.post('/api/orders/batch-delete', authenticateToken, (req, res) => {
   const { ids } = req.body;
   if (!ids || !ids.length) return res.status(400).json({ error: '请选择订单' });
   const placeholders = ids.map(() => '?').join(',');
-  const orders = db.prepare(`SELECT id, user, date FROM orders WHERE id IN (${placeholders})`).all(...ids);
+  const orders = db.prepare(`SELECT id, user FROM orders WHERE id IN (${placeholders})`).all(...ids);
   for (const order of orders) {
     if (req.user.role !== 'admin' && order.user !== req.user.username) {
       return res.status(403).json({ error: '无权删除' });
@@ -718,8 +707,6 @@ app.post('/api/orders/batch-delete', authenticateToken, (req, res) => {
   const del = db.prepare('DELETE FROM orders WHERE id = ?');
   const transaction = db.transaction(() => { ids.forEach(id => del.run(id)); });
   transaction();
-  const dates = [...new Set(orders.map(o => o.date).filter(d => d))];
-  dates.forEach(d => invalidateCacheForDate(d));
   res.json({ success: true });
 });
 
@@ -739,18 +726,16 @@ app.post('/api/report-orders', authenticateToken, (req, res) => {
   const user = req.user.username;
   const timestamp = new Date().toISOString();
   db.prepare('INSERT INTO report_orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)').run(content, user, orderer || '', date, totalAmount || 0, timestamp);
-  invalidateCacheForDate(date);
   res.json({ success: true });
 });
 
 app.delete('/api/report-orders/:id', authenticateToken, (req, res) => {
-  const order = db.prepare('SELECT user, date FROM report_orders WHERE id = ?').get(req.params.id);
+  const order = db.prepare('SELECT user FROM report_orders WHERE id = ?').get(req.params.id);
   if (!order) return res.status(404).json({ error: '订单不存在' });
   if (req.user.role !== 'admin' && order.user !== req.user.username) {
     return res.status(403).json({ error: '无权删除' });
   }
   db.prepare('DELETE FROM report_orders WHERE id = ?').run(req.params.id);
-  if (order.date) invalidateCacheForDate(order.date);
   res.json({ success: true });
 });
 
@@ -758,7 +743,7 @@ app.post('/api/report-orders/batch-delete', authenticateToken, (req, res) => {
   const { ids } = req.body;
   if (!ids || !ids.length) return res.status(400).json({ error: '请选择订单' });
   const placeholders = ids.map(() => '?').join(',');
-  const orders = db.prepare(`SELECT id, user, date FROM report_orders WHERE id IN (${placeholders})`).all(...ids);
+  const orders = db.prepare(`SELECT id, user FROM report_orders WHERE id IN (${placeholders})`).all(...ids);
   for (const order of orders) {
     if (req.user.role !== 'admin' && order.user !== req.user.username) {
       return res.status(403).json({ error: '无权删除' });
@@ -767,8 +752,6 @@ app.post('/api/report-orders/batch-delete', authenticateToken, (req, res) => {
   const del = db.prepare('DELETE FROM report_orders WHERE id = ?');
   const transaction = db.transaction(() => { ids.forEach(id => del.run(id)); });
   transaction();
-  const dates = [...new Set(orders.map(o => o.date).filter(d => d))];
-  dates.forEach(d => invalidateCacheForDate(d));
   res.json({ success: true });
 });
 
@@ -869,16 +852,11 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 风险计算（带缓存） ==========
+// ========== 风险计算 ==========
 app.post('/api/calculate', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, rebateRate = 4, multiple = 47 } = req.body;
     const config = mergeConfig(customConfig || {});
-    const cacheKey = getCacheKey(req.user.role === 'admin' ? 'admin' : req.user.username, date || 'all', rebateRate, multiple);
-    if (calculationCache.has(cacheKey)) {
-      return res.json(calculationCache.get(cacheKey));
-    }
-
     let orders, reportOrders;
     if (req.user.role === 'admin') {
       orders = date ? db.prepare('SELECT * FROM orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM orders').all();
@@ -929,21 +907,15 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       risk: Math.round(totalBet - item.bet * multiple - parseFloat(rebate)),
       rank: idx + 1
     }));
-    const responseData = { list: result, totalBet, totalRebate: rebate, reportAmountData };
-    calculationCache.set(cacheKey, responseData);
-    res.json(responseData);
+    res.json({ list: result, totalBet, totalRebate: rebate, reportAmountData });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 频率统计接口（带缓存） ==========
+// ========== 频率统计接口 ==========
 app.post('/api/frequency', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, amountMin, amountMax, zodiacAmountMin, zodiacAmountMax } = req.body;
     const config = mergeConfig(customConfig || {});
-    const cacheKey = getCacheKey(req.user.role === 'admin' ? 'admin' : req.user.username, date || 'all', 0, 0) + '_freq';
-    if (calculationCache.has(cacheKey)) {
-      return res.json(calculationCache.get(cacheKey));
-    }
     const nMin = parseInt(amountMin) || 1;
     const nMax = parseInt(amountMax) || 50000;
     const zMin = parseInt(zodiacAmountMin) || 1;
@@ -972,9 +944,7 @@ app.post('/api/frequency', authenticateToken, (req, res) => {
         });
       }
     }
-    const responseData = { numberCount, zodiacCount, numberAmountCount, zodiacAmountCount };
-    calculationCache.set(cacheKey, responseData);
-    res.json(responseData);
+    res.json({ numberCount, zodiacCount, numberAmountCount, zodiacAmountCount });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
@@ -1068,7 +1038,6 @@ app.post('/api/import', authenticateToken, (req, res) => {
     }
   });
   transaction();
-  calculationCache.clear();
   res.json({ success: true });
 });
 
@@ -1081,7 +1050,6 @@ app.post('/api/reset', authenticateToken, (req, res) => {
     db.prepare('DELETE FROM orders WHERE user = ?').run(req.user.username);
     db.prepare('DELETE FROM report_orders WHERE user = ?').run(req.user.username);
   }
-  calculationCache.clear();
   res.json({ success: true });
 });
 
@@ -1095,9 +1063,8 @@ app.get('/api/config', authenticateToken, (req, res) => {
 });
 
 // ========== 路由处理（登录保护） ==========
-// 受保护的主系统，强制设置 Content-Type，防止显示为代码
+// 受保护的主系统（无需鉴权中间件，由前端自己验证 token）
 app.get('/app', (req, res) => {
-  res.set('Content-Type', 'text/html');
   res.sendFile(path.join(__dirname, 'app.html'));
 });
 
