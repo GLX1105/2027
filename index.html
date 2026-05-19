@@ -990,17 +990,32 @@ function initMainSystem() {
   if (currentUser) {
     userInfoArea.style.display = '';
     document.getElementById('userNameDisplay').textContent = currentUser.username;
-    // 从后端获取用户类型
-    fetchApi('/api/admin/accounts').then(accounts => {
-      const self = accounts.find(a => a.username === currentUser.username);
-      if (self) {
-        const tag = document.getElementById('userTypeTag');
-        tag.textContent = self.user_type === '高级用户' ? '[高级用户]' : '[普通用户]';
-        tag.style.background = self.user_type === '高级用户' ? '#f39c12' : '#95a5a6';
-        tag.style.color = '#fff';
-      }
-    }).catch(() => {});
+    // 管理员才调用账户接口获取用户类型
+    if (isAdmin) {
+      fetchApi('/api/admin/accounts').then(accounts => {
+        const self = accounts.find(a => a.username === currentUser.username);
+        if (self) {
+          const tag = document.getElementById('userTypeTag');
+          tag.textContent = self.user_type === '高级用户' ? '[高级用户]' : '[普通用户]';
+          tag.style.background = self.user_type === '高级用户' ? '#f39c12' : '#95a5a6';
+          tag.style.color = '#fff';
+        }
+      }).catch(() => {});
+    } else {
+      // 普通用户直接显示默认标记
+      const tag = document.getElementById('userTypeTag');
+      tag.textContent = '[普通用户]';
+      tag.style.background = '#95a5a6';
+      tag.style.color = '#fff';
+    }
   }
+  const today = getTodayCST();
+  const fdEl = document.getElementById('filterDate');
+  if (fdEl) fdEl.value = today;
+  updateTableFromRecords();
+  loadAllSettings();
+  updateSelects();
+}
   const today = getTodayCST();
   const fdEl = document.getElementById('filterDate');
   if (fdEl) fdEl.value = today;
