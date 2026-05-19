@@ -855,7 +855,7 @@ async function showChangePassword() {
   } catch(e) { showToast(e.message); }
 }
 
-// ========== 卡密管理（修复删除/禁用/生成，避免自动跳转） ==========
+// ========== 卡密管理（原生 fetch 版本，避免自动跳转） ==========
 async function showCardManager() {
   if (!currentUser || (currentUser.role !== 'admin' && !currentUser.canManageCards)) { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
@@ -1069,7 +1069,7 @@ function markSelection() {
   convertOrderText();
 }
 
-// ========== 识别函数（防抖 150ms + 预编译正则） ==========
+// ========== 识别函数（防抖 150ms，保留配置缓存，正则稳健写法） ==========
 const HARD_AMP_LIST = ['各','各号','号','个','=','各数','每数','每号','个号','每个号','各码','各号码'];
 const AMP_ORIGINAL = '(?:' + HARD_AMP_LIST.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
 const IGN = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼'];
@@ -1092,7 +1092,13 @@ function _doConvert() {
   const cusAmp = getCustomAmountPrefixes();
   const allAmpList = [...HARD_AMP_LIST, ...cusAmp];
   allAmpList.sort((a,b) => b.length - a.length);
-  const ampRegex = new RegExp(`(${AMP_ORIGINAL}\\d+[${(()=>{const baseSuf='元块咪米斤#،。\\s'; const cusAmtSuf=getCustomAmountSuffixes(); return [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');})()}]*'`, 'g');
+  const baseSuf = '元块咪米斤#،。\\s';
+  const cusAmtSuf = getCustomAmountSuffixes();
+  const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');
+  // 安全转义正则特殊字符
+  const escapedAmtChars = allAmtChars.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const AMP_ORIGINAL_ESCAPED = AMP_ORIGINAL; // 已在上面转义过
+  const ampRegex = new RegExp(`(${AMP_ORIGINAL_ESCAPED}\\d+[${escapedAmtChars}]*)`, 'g');
   const cusPre = getCustomPrefixes();
   const allPre = [...IGN, ...cusPre];
   const cfg = getAllConfigData();
@@ -1141,11 +1147,11 @@ function _doConvert() {
       });
       if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) resultLines.push({ text: `${jo} 各数 0`, valid: false }); }
     } else {
-      const pat = new RegExp(`^(.+?)${AMP_ORIGINAL}(\\d+)$`);
+      const pat = new RegExp(`^(.+?)${AMP_ORIGINAL_ESCAPED}(\\d+)$`);
       const m = cl.match(pat);
       if (m) { const jo = tokenizeAndJoin(m[1].trim()); const amt = parseInt(m[2]); if (jo) resultLines.push({ text: `${jo} 各数 ${amt}`, valid: jo.length > 0 && amt > 0 }); }
       else {
-        const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})(\\d+)$`);
+        const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL_ESCAPED})(\\d+)$`);
         const sm = cl.match(sp);
         if (sm) { let num = sm[1].trim(); if (parseInt(num) >= 1 && parseInt(num) <= 49) { num = num.length === 1 ? `0${num}` : num; const amt = parseInt(sm[2]); resultLines.push({ text: `${num} 各数 ${amt}`, valid: amt > 0 }); } }
         else { const jo = tokenizeAndJoin(cl); if (jo) resultLines.push({ text: `${jo} 各数 0`, valid: false }); }
@@ -1245,6 +1251,34 @@ function replaceSeparators() {
   convertOrderText();
 }
 
+async function semanticReplace() {
+  const ta = document.querySelector('.source-order-input');
+  if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  if (s === e) { showToast('请先选择文本'); return; }
+  const sel = ta.value.substring(s, e);
+  const cfg = getAllConfigData();
+  const vc = getAllValidCategories(cfg);
+  const tokens = sel.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
+  const matched = tokens.filter(t => vc.has(t));
+  if (!matched.length) { showToast('未识别有效分类'); return; }
+  let sets = matched.map(cat => {
+    let nums = [];
+    if (cfg.shengxiaoAttr[cat]) { cfg.shengxiaoAttr[cat].forEach(z => { if (cfg.zodiac[z]) nums.push(...cfg.zodiac[z].map(n => n.toString().padStart(2, '0'))); }); }
+    const dir = cfg.wuxing[cat] || cfg.bose[cat] || cfg.banbo[cat] || cfg.danshuang[cat] || cfg.weishu[cat] || cfg.daxiaodanshuang[cat] || cfg.daxiao[cat] || cfg.heshu[cat] || cfg.toushu[cat] || cfg.menshu[cat] || cfg.duanwei[cat] || cfg.hedahexiao[cat] || cfg.weidaweixiao[cat] || cfg.hewei[cat] || cfg.heshudanshuang[cat] || cfg.toushuDanshuang[cat];
+    if (dir) nums.push(...dir.map(n => n.toString().padStart(2, '0')));
+    if (cfg.zodiac[cat]) nums.push(...cfg.zodiac[cat].map(n => n.toString().padStart(2, '0')));
+    return new Set(nums);
+  });
+  let inter = sets[0];
+  for (let i = 1; i < sets.length; i++) inter = new Set([...inter].filter(x => sets[i].has(x)));
+  const res = [...inter].sort((a, b) => parseInt(a) - parseInt(b));
+  if (!res.length) { showToast('无共同号码'); return; }
+  const str = res.join('-');
+  const cf = await confirm(`转换结果：${str}\n是否替换选中文本？`);
+  if (cf) { ta.value = ta.value.substring(0, s) + str + ta.value.substring(e); convertOrderText(); }
+}
+</script>
 async function semanticReplace() {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
