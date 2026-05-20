@@ -87,7 +87,7 @@ select {
     letter-spacing: 1px;
     text-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-.navbar-actions {display:flex;gap:10px;flex-wrap:wrap;}
+.navbar-actions {display:flex;gap:10px;flex-wrap:wrap; align-items:center;}
 .navbar-actions .btn {
     background: rgba(255,255,255,0.1);
     backdrop-filter: blur(5px);
@@ -110,6 +110,15 @@ select {
 .navbar-actions .btn:active {
     transform: translateY(1px);
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+#currentUserDisplay {
+    font-size: 12px;
+    color: #e74c3c;
+    margin-right: 8px;
+    font-weight: bold;
+    white-space: nowrap;
+    cursor: pointer;
 }
 
 .container {width:100%;max-width:1400px;margin:0 auto;padding:10px;display:flex;flex-direction:row;gap:15px;align-items:flex-start;}
@@ -430,8 +439,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
   <div class="login-card">
     <h1>🎰 港澳识别系统</h1>
     <div class="login-subtitle">智能订单识别 · 风险实时计算</div>
-
-    <!-- 登录表单 -->
     <div id="loginFormView">
       <input type="text" id="loginUsername" placeholder="用户名">
       <input type="password" id="loginPassword" placeholder="密码">
@@ -445,8 +452,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         <span class="login-link" id="showRegisterLink">注册新用户</span>
       </div>
     </div>
-
-    <!-- 注册表单 -->
     <div id="registerFormView" style="display:none;">
       <input type="text" id="regUsername" placeholder="用户名">
       <input type="password" id="regPassword" placeholder="密码">
@@ -456,8 +461,6 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
         <span class="login-link" id="backToLoginFromReg">返回登录</span>
       </div>
     </div>
-
-    <!-- 激活表单 -->
     <div id="activateFormView" style="display:none;">
       <input type="text" id="actUsername" placeholder="用户名" readonly>
       <input type="text" id="actCode" placeholder="激活码">
@@ -469,9 +472,9 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
     </div>
   </div>
 </div>
+
 <!-- 主工作台（默认隐藏） -->
 <div id="mainContent" style="display:none;">
-  <!-- 导航栏 -->
   <div class="navbar" id="mainNavbar">
     <div class="navbar-title">港澳识别系统</div>
     <div class="navbar-actions" id="navbarActions">
@@ -488,11 +491,10 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
       <button class="btn btn-primary" id="cardMgrBtn" style="display:none;" onclick="showCardManager()">卡密管理</button>
       <button class="btn btn-primary" id="accountMgrBtn" style="display:none;" onclick="showAccountManager()">账户管理</button>
       <button class="btn btn-primary" id="changePwdBtn" style="display:none;" onclick="showChangePassword()">修改密码</button>
-      <button class="btn btn-clear" onclick="logout()">退出登录</button>
+      <span id="currentUserDisplay" onclick="showAccountInfo()"></span>
     </div>
   </div>
 
-  <!-- 主内容容器 -->
   <div class="container">
     <div class="recognize-wrap">
         <div class="card" style="margin-top:0;">
@@ -583,7 +585,7 @@ tr.selected-row {background-color: #dceeff !important; font-weight: bold; box-sh
     </div>
   </div>
 
-  <!-- 数据库弹窗（完整静态分类号码） -->
+  <!-- 数据库弹窗 -->
   <div class="database-modal" id="databaseModal" style="display:none;">
     <div class="database-modal-box" id="databaseModalBox">
       <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button onclick="pinWindow('databaseModalBox')" title="置顶">📌</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
@@ -808,11 +810,11 @@ function showToast(msg) {
   setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2000);
 }
 
-// ========== 自定义对话框 ==========
-function showCustomDialog({ title = '提示', message = '', type = 'alert', defaultValue = '', placeholder = '' }) {
+// ========== 自定义对话框（支持自定义按钮文字） ==========
+function showCustomDialog({ title = '提示', message = '', type = 'alert', defaultValue = '', placeholder = '', confirmText = '确定', cancelText = '取消' }) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay';
-    overlay.innerHTML = `<div class="custom-dialog-box"><div class="custom-dialog-title">${title}</div><div class="custom-dialog-message">${message}</div>${type==='prompt'?`<input class="custom-dialog-input" type="text" value="${defaultValue}" placeholder="${placeholder}" id="custom-dialog-input">`:''}<div class="custom-dialog-buttons">${type==='confirm'||type==='prompt'?'<button class="custom-dialog-btn cancel" id="custom-dialog-cancel">取消</button>':''}<button class="custom-dialog-btn confirm" id="custom-dialog-confirm">确定</button></div></div>`;
+    overlay.innerHTML = `<div class="custom-dialog-box"><div class="custom-dialog-title">${title}</div><div class="custom-dialog-message">${message.replace(/\n/g, '<br>')}</div>${type==='prompt'?`<input class="custom-dialog-input" type="text" value="${defaultValue}" placeholder="${placeholder}" id="custom-dialog-input">`:''}<div class="custom-dialog-buttons">${type==='confirm'||type==='prompt'?`<button class="custom-dialog-btn cancel" id="custom-dialog-cancel">${cancelText}</button>`:''}<button class="custom-dialog-btn confirm" id="custom-dialog-confirm">${confirmText}</button></div></div>`;
     document.body.appendChild(overlay);
     const confirmBtn = overlay.querySelector('#custom-dialog-confirm'), cancelBtn = overlay.querySelector('#custom-dialog-cancel'), inputEl = overlay.querySelector('#custom-dialog-input');
     const close = (result) => { document.body.removeChild(overlay); resolve(result); };
@@ -893,7 +895,29 @@ document.getElementById('backToLoginFromAct').onclick = () => {
 
 function logout() { authToken = null; sessionStorage.removeItem('authToken'); currentUser = null; location.reload(); }
 
-function initMainSystem() {
+// ========== 显示账号信息 ==========
+async function showAccountInfo() {
+  if (!currentUser) return;
+  try {
+    const status = await fetchApi('/api/me/status');
+    let message = `当前账号：${status.username}`;
+    if (status.isAdmin) {
+      message += '\n角色：管理员\n有效期：永久有效';
+    } else {
+      const roleText = currentUser.canManageCards ? '高级用户' : '普通用户';
+      message += `\n角色：${roleText}`;
+      if (status.remainingDays !== null) {
+        if (status.expired) { message += '\n状态：已过期'; }
+        else { message += `\n剩余有效天数：${status.remainingDays} 天`; }
+      } else { message += '\n有效期：永久有效（直接创建）'; }
+    }
+    const result = await showCustomDialog({ title: '账号信息', message: message, type: 'confirm', confirmText: '退出登录', cancelText: '关闭' });
+    if (result) { logout(); }
+  } catch (e) { showToast('获取账号信息失败'); }
+}
+
+// ========== 初始化主系统（异步，不等待数据请求） ==========
+async function initMainSystem() {
   const isAdmin = currentUser && currentUser.role === 'admin';
   const canManageCards = currentUser && (currentUser.role === 'admin' || currentUser.canManageCards);
   if (canManageCards) document.getElementById('cardMgrBtn').style.display = '';
@@ -901,12 +925,15 @@ function initMainSystem() {
     document.getElementById('accountMgrBtn').style.display = '';
     document.getElementById('changePwdBtn').style.display = '';
   }
+  const displayEl = document.getElementById('currentUserDisplay');
+  if (displayEl && currentUser) { displayEl.textContent = currentUser.username; }
   const today = getTodayCST();
   const fdEl = document.getElementById('filterDate');
   if (fdEl) fdEl.value = today;
-  updateTableFromRecords();
-  loadAllSettings();
+  
+  await loadAllSettings();
   updateSelects();
+  updateTableFromRecords(); // 异步执行，不阻塞界面
 }
 
 // ========== 本地配置读写 ==========
@@ -955,7 +982,7 @@ async function showChangePassword() {
   } catch(e) { showToast(e.message); }
 }
 
-// ========== 卡密管理（含删除、到期显示、已激活标记、操作日志删除/清空） ==========
+// ========== 卡密管理（原生 fetch，避免自动跳转） ==========
 async function showCardManager() {
   if (!currentUser || (currentUser.role !== 'admin' && !currentUser.canManageCards)) { showToast('无权限'); return; }
   if (document.getElementById('cardMgrWin')) return;
@@ -969,26 +996,42 @@ async function showCardManager() {
     cards.forEach(c => {
       const statusColor = c.expired ? 'red' : (c.status === 'active' ? 'green' : (c.status === 'used' ? 'blue' : 'red'));
       const statusText = c.expired ? '已到期' : (c.status === 'active' ? '正常' : (c.status === 'used' ? '已激活' : '已禁用'));
-      const activationInfo = c.activation_status ? `<span style="font-size:11px;color:#666;">[${c.activation_status}] ${c.activated_date ? '激活日期:' + c.activated_date : ''}</span>` : '';
-      const daysInfo = c.days_remaining !== undefined ? (c.days_remaining > 0 ? `剩余${c.days_remaining}天` : (c.days_remaining === 0 ? '今日到期' : `已过期${Math.abs(c.days_remaining)}天`)) : '';
-      html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${c.code}</span><span style="font-size:12px;color:${statusColor};">[${statusText}]</span>${c.username ? `<span style="font-size:11px;color:#666;">绑定:${c.username}</span>` : ''}${activationInfo}<span style="font-size:11px;color:#666;">有效期:${c.expire_days}天 ${daysInfo}</span><div style="margin-left:auto;display:flex;gap:5px;">${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}<button onclick="deleteCard(${c.id})" style="background:#e74c3c;color:#fff;border:none;padding:3px 8px;border-radius:3px;">删除</button><button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button></div></div>`;
+      const daysInfo = c.days_remaining != null ? (c.days_remaining > 0 ? `剩余${c.days_remaining}天` : (c.days_remaining === 0 ? '今日到期' : `已过期${Math.abs(c.days_remaining)}天`)) : '';
+      html += `<div style="border:1px solid #eee;padding:8px;margin:4px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${c.code}</span><span style="font-size:12px;color:${statusColor};">[${statusText}]</span>${c.username ? `<span style="font-size:11px;color:#666;">绑定:${c.username}</span>` : ''}<span style="font-size:11px;color:#666;">有效期:${c.expire_days}天 ${daysInfo}</span><div style="margin-left:auto;display:flex;gap:5px;">${c.status==='active'?`<button onclick="disableCard(${c.id})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}<button onclick="deleteCard(${c.id})" style="background:#e74c3c;color:#fff;border:none;padding:3px 8px;border-radius:3px;">删除</button><button onclick="copyCardCode('${c.code}')" style="background:#007bff;color:#fff;border:none;padding:3px 8px;border-radius:3px;">复制</button></div></div>`;
     });
     html += '</div></div>'; win.innerHTML = html; document.body.appendChild(win);
     makeWindowDraggable('cardMgrWin'); highestZ += 1; win.style.zIndex = highestZ;
 
+    // 生成卡密
     window.generateCard = async () => {
       const days = parseInt(document.getElementById('expireDays')?.value) || 30;
-      try { const res = await fetchApi('/api/cards/generate', { method:'POST', body: JSON.stringify({ expireDays: days }) }); showToast('激活码已生成：' + res.code); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
+      try {
+        const res = await fetch('/api/cards/generate', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${authToken}`}, body:JSON.stringify({expireDays:days}) });
+        if (res.ok) { const data = await res.json(); showToast('激活码已生成：' + data.code); document.getElementById('cardMgrWin').remove(); showCardManager(); }
+        else { const err = await res.json().catch(()=>({error:'生成失败'})); showToast(err.error || '生成失败'); }
+      } catch(e) { showToast('网络错误'); }
     };
+    // 禁用卡密
     window.disableCard = async (id) => {
       if (!(await confirm('确定禁用该激活码？'))) return;
-      try { await fetchApi(`/api/cards/${id}/disable`, { method:'POST' }); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
+      try {
+        const res = await fetch(`/api/cards/${id}/disable`, { method:'POST', headers:{'Authorization':`Bearer ${authToken}`} });
+        if (res.ok) { document.getElementById('cardMgrWin').remove(); showCardManager(); }
+        else { const err = await res.json().catch(()=>({error:'禁用失败'})); showToast(err.error || '禁用失败'); }
+      } catch(e) { showToast('网络错误'); }
     };
+    // 删除卡密
     window.deleteCard = async (id) => {
       if (!(await confirm('确定删除该卡密吗？此操作不可恢复。'))) return;
-      try { await fetchApi(`/api/cards/${id}`, { method:'DELETE' }); document.getElementById('cardMgrWin').remove(); showCardManager(); } catch(e) { showToast(e.message); }
+      try {
+        const res = await fetch(`/api/cards/${id}`, { method:'DELETE', headers:{'Authorization':`Bearer ${authToken}`} });
+        if (res.ok) { document.getElementById('cardMgrWin').remove(); showCardManager(); }
+        else { const data = await res.json().catch(()=>({error:'删除失败'})); showToast(data.error || '删除失败'); }
+      } catch(e) { showToast('网络错误，删除失败'); }
     };
     window.copyCardCode = (code) => { navigator.clipboard.writeText(code).then(() => showToast('已复制')).catch(() => showToast('复制失败')); };
+
+    // 操作日志
     window.showCardLogs = async () => {
       try {
         const logs = await fetchApi('/api/cards/logs');
@@ -1009,18 +1052,25 @@ async function showCardManager() {
 
         window.deleteCardLog = async (logId) => {
           if (!(await confirm('确定删除该条日志记录吗？'))) return;
-          try { await fetchApi(`/api/cards/logs/${logId}`, { method:'DELETE' }); document.getElementById('cardLogWin').remove(); window.showCardLogs(); } catch(e) { showToast(e.message); }
+          try {
+            const res = await fetch(`/api/cards/logs/${logId}`, { method:'DELETE', headers:{'Authorization':`Bearer ${authToken}`} });
+            if (res.ok) { document.getElementById('cardLogWin').remove(); window.showCardLogs(); }
+            else { const err = await res.json().catch(()=>({error:'删除失败'})); showToast(err.error || '删除失败'); }
+          } catch(e) { showToast('网络错误'); }
         };
         window.clearAllCardLogs = async () => {
           if (!(await confirm('确定清空所有操作日志吗？此操作不可恢复！'))) return;
-          try { await fetchApi('/api/cards/logs/clear', { method:'POST' }); document.getElementById('cardLogWin').remove(); window.showCardLogs(); } catch(e) { showToast(e.message); }
+          try {
+            await fetchApi('/api/cards/logs/clear', { method:'POST' });
+            document.getElementById('cardLogWin').remove(); window.showCardLogs();
+          } catch(e) { showToast(e.message); }
         };
       } catch(e) { showToast('加载日志失败'); }
     };
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 账户管理（含用户类型标记、激活卡密显示） ==========
+// ========== 账户管理 ==========
 async function showAccountManager() {
   if (!currentUser || currentUser.role !== 'admin') { showToast('无权限'); return; }
   if (document.getElementById('accountMgrWin')) return;
@@ -1095,7 +1145,7 @@ async function showAccountManager() {
   } catch(e) { showToast('无权限或出错'); }
 }
 
-// ========== 标记按钮（多行合并成一行） ==========
+// ========== 标记按钮 ==========
 function markSelection() {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
@@ -1108,13 +1158,15 @@ function markSelection() {
   convertOrderText();
 }
 
-// ========== 识别函数（实时联动 + 无效行红色） ==========
+// ========== 识别函数（防抖 150ms，保留配置缓存，正则稳健写法） ==========
+const HARD_AMP_LIST = ['各','各号','号','个','=','各数','每数','每号','个号','每个号','各码','各号码'];
+const AMP_ORIGINAL = '(?:' + HARD_AMP_LIST.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
+const IGN = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼'];
+
 let convertTimer = null;
 function convertOrderText() {
   if (convertTimer) clearTimeout(convertTimer);
-  convertTimer = setTimeout(() => {
-    _doConvert();
-  }, 300);
+  convertTimer = setTimeout(_doConvert, 150);
 }
 
 function _doConvert() {
@@ -1126,28 +1178,27 @@ function _doConvert() {
   if (!text) { resultEl.innerHTML = ''; updateTotalDisplay(); return; }
   const lines = text.split('\n');
   const resultLines = [];
-  const HARD_AMP_LIST = ['各','各号','号','个','=','各数','每数','每号','个号','每个号','各码','各号码'];
   const cusAmp = getCustomAmountPrefixes();
   const allAmpList = [...HARD_AMP_LIST, ...cusAmp];
   allAmpList.sort((a,b) => b.length - a.length);
-  const AMP_ORIGINAL = '(?:' + allAmpList.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
-  const IGN = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼'];
-  const cusPre = getCustomPrefixes();
-  const allPre = [...IGN, ...cusPre];
   const baseSuf = '元块咪米斤#،。\\s';
   const cusAmtSuf = getCustomAmountSuffixes();
   const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');
-  const AMTS = `[${allAmtChars}]*`;
-  function cn2n(s) { const m={'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000}; let sum=0,tmp=0; for(let c of s) { const v=m[c]; if(v===10||v===100||v===1000) { if(tmp===0)tmp=1; tmp*=v; sum+=tmp; tmp=0; } else if(v!==undefined) { if(tmp>0){sum+=tmp;tmp=0;} tmp=v; } } sum+=tmp; return sum; }
-  const SIMPLE_PAIR = /^(\d{1,2})[^\d\s]+(\d+)$/;
+  // 安全转义正则特殊字符
+  const escapedAmtChars = allAmtChars.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const AMP_ORIGINAL_ESCAPED = AMP_ORIGINAL;
+  const ampRegex = new RegExp(`(${AMP_ORIGINAL_ESCAPED}\\d+[${escapedAmtChars}]*)`, 'g');
+  const cusPre = getCustomPrefixes();
+  const allPre = [...IGN, ...cusPre];
   const cfg = getAllConfigData();
   const vc = getAllValidCategories(cfg);
-  const ZODIAC_SET = new Set(Object.keys(cfg.zodiac));
+
+  function cn2n(s) { const m={'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000}; let sum=0,tmp=0; for(let c of s) { const v=m[c]; if(v===10||v===100||v===1000) { if(tmp===0)tmp=1; tmp*=v; sum+=tmp; tmp=0; } else if(v!==undefined) { if(tmp>0){sum+=tmp;tmp=0;} tmp=v; } } sum+=tmp; return sum; }
 
   lines.forEach(line => {
     line = line.trim();
     if (!line) return;
-    const pairMatch = line.match(SIMPLE_PAIR);
+    const pairMatch = line.match(/^(\d{1,2})[^\d\s]+(\d+)$/);
     if (pairMatch) {
       let num = pairMatch[1]; const amount = pairMatch[2];
       if (num.length === 1) num = '0' + num;
@@ -1168,8 +1219,7 @@ function _doConvert() {
       }
       if (!isValidPrefix) cl = cl.substring(leadingChinese.length).trim();
     }
-    const op = new RegExp(`(${AMP_ORIGINAL}\\d+${AMTS})`, 'g');
-    const om = cl.match(op);
+    const om = cl.match(ampRegex);
     if (om && om.length > 0) {
       let rl = cl;
       om.forEach(om => {
@@ -1186,24 +1236,21 @@ function _doConvert() {
       });
       if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) resultLines.push({ text: `${jo} 各数 0`, valid: false }); }
     } else {
-      const pat = new RegExp(`^(.+?)${AMP_ORIGINAL}(\\d+)$`);
+      const pat = new RegExp(`^(.+?)${AMP_ORIGINAL_ESCAPED}(\\d+)$`);
       const m = cl.match(pat);
       if (m) { const jo = tokenizeAndJoin(m[1].trim()); const amt = parseInt(m[2]); if (jo) resultLines.push({ text: `${jo} 各数 ${amt}`, valid: jo.length > 0 && amt > 0 }); }
       else {
-        const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})(\\d+)$`);
+        const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL_ESCAPED})(\\d+)$`);
         const sm = cl.match(sp);
         if (sm) { let num = sm[1].trim(); if (parseInt(num) >= 1 && parseInt(num) <= 49) { num = num.length === 1 ? `0${num}` : num; const amt = parseInt(sm[2]); resultLines.push({ text: `${num} 各数 ${amt}`, valid: amt > 0 }); } }
         else { const jo = tokenizeAndJoin(cl); if (jo) resultLines.push({ text: `${jo} 各数 0`, valid: false }); }
       }
     }
   });
-  resultEl.innerHTML = resultLines.map(r => {
-    const color = r.valid ? '' : ' style="color:red;"';
-    return `<span${color}>${r.text}</span>`;
-  }).join('<br>');
+  resultEl.innerHTML = resultLines.map(r => `<span${r.valid ? '' : ' style="color:red;"'}>${r.text}</span>`).join('<br>');
   updateTotalDisplay();
 }
-    // ========== 分词辅助 ==========
+
 function tokenizeAndJoin(content) {
   const cfg = getAllConfigData();
   const vc = getAllValidCategories(cfg);
@@ -1292,9 +1339,7 @@ function replaceSeparators() {
   ta.value = ta.value.substring(0, s) + replaced + ta.value.substring(e);
   convertOrderText();
 }
-
-// ========== 语义转换 ==========
-async function semanticReplace() {
+    async function semanticReplace() {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
   const s = ta.selectionStart, e = ta.selectionEnd;
@@ -1322,8 +1367,16 @@ async function semanticReplace() {
   if (cf) { ta.value = ta.value.substring(0, s) + str + ta.value.substring(e); convertOrderText(); }
 }
 
-// ========== 数据库配置读取（从DOM） ==========
+// ========== 数据库配置读取（带缓存优化） ==========
+let cachedConfigData = null;
+let cachedConfigInputs = '';
 function getAllConfigData() {
+  let currentInputs = '';
+  document.querySelectorAll('.config-input').forEach(el => { currentInputs += el.value + '|'; });
+  if (cachedConfigData && currentInputs === cachedConfigInputs) {
+    return cachedConfigData;
+  }
+  
   const configData = {
     zodiac:{}, shengxiaoAttr:{}, wuxing:{}, bose:{}, banbo:{}, danshuang:{}, weishu:{},
     daxiaodanshuang:{}, daxiao:{}, heshu:{}, toushu:{}, menshu:{}, duanwei:{},
@@ -1384,6 +1437,8 @@ function getAllConfigData() {
       configData.weishu[cat.label] = [...nums];
     }
   });
+  cachedConfigData = configData;
+  cachedConfigInputs = currentInputs;
   return configData;
 }
 
@@ -1418,24 +1473,18 @@ function getNumberListForCategory(cat, cfg) {
   return [...new Set(nums)];
 }
 
-// ========== 配置管理界面操作（密码验证调后端） ==========
+// ========== 配置管理界面操作 ==========
 async function verifyPasswordAction(password, action) {
-  try {
-    const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password, action }) });
-    return res.valid;
-  } catch(e) { return false; }
+  try { const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password, action }) }); return res.valid; } catch(e) { return false; }
 }
-
 function lockAllInputs() { document.querySelectorAll('.config-input').forEach(el => el.disabled = true); }
 function unlockAllInputs() { document.querySelectorAll('.config-input').forEach(el => el.disabled = false); }
 function initDataConfig() { lockAllInputs(); renderCustomConfigContainer(); }
-
 async function enableEditConfig() {
   const pwd = await prompt("输入修改密码：");
   if (!pwd) return;
   const valid = await verifyPasswordAction(pwd, 'editConfig');
-  if (valid) { unlockAllInputs(); showToast("解锁成功"); }
-  else { showToast("密码错误"); }
+  if (valid) { unlockAllInputs(); showToast("解锁成功"); } else { showToast("密码错误"); }
 }
 async function saveDataConfig() {
   const pwd = await prompt("输入保存密码：");
@@ -1443,10 +1492,7 @@ async function saveDataConfig() {
   const valid = await verifyPasswordAction(pwd, 'editConfig');
   if (!valid) { showToast("密码错误"); return; }
   const newConfig = {};
-  document.querySelectorAll('.config-input').forEach(el => {
-    const id = el.id.replace('config_', '');
-    if (!id.startsWith('custom_')) newConfig[id] = el.value.trim();
-  });
+  document.querySelectorAll('.config-input').forEach(el => { const id = el.id.replace('config_', ''); if (!id.startsWith('custom_')) newConfig[id] = el.value.trim(); });
   localSettings.customDataConfigObj = newConfig;
   await saveSetting('customDataConfigObj', newConfig);
   const cats = loadCustomCategories();
@@ -1454,6 +1500,7 @@ async function saveDataConfig() {
   await saveSetting('customConfigCategories', cats);
   lockAllInputs();
   showToast("保存成功");
+  cachedConfigData = null;
 }
 async function resetDataConfig() {
   const pwd = await prompt("输入密码：");
@@ -1488,6 +1535,7 @@ async function addCustomCategory() {
   saveCustomCategories(cats);
   renderCustomConfigContainer();
   showToast('自定义分类已添加，请点击"保存"按钮存储配置');
+  cachedConfigData = null;
 }
 async function deleteCustomCategory() {
   const cats = loadCustomCategories();
@@ -1501,8 +1549,9 @@ async function deleteCustomCategory() {
   saveCustomCategories(cats);
   renderCustomConfigContainer();
   showToast('自定义分类已删除，请点击"保存"按钮使更改生效');
+  cachedConfigData = null;
 }
-function deleteCustomCategoryByIndex(index) { const cats = loadCustomCategories(); cats.splice(index, 1); saveCustomCategories(cats); renderCustomConfigContainer(); }
+function deleteCustomCategoryByIndex(index) { const cats = loadCustomCategories(); cats.splice(index, 1); saveCustomCategories(cats); renderCustomConfigContainer(); cachedConfigData = null; }
 
 // ========== 前缀管理 ==========
 function showPrefixManager() {
@@ -1688,7 +1737,6 @@ async function deleteReplacePreset(i) {
   renderPresetList();
 }
 
-// ========== 辅助函数 ==========
 function applyCategoryAliases(text) {
   const a = getCategoryAliases();
   if (!a.length) return text;
@@ -1704,26 +1752,56 @@ function applyReplacePresets(text) {
   return r;
 }
 
-// ========== 数据更新（从后端获取） ==========
+// ========== 数据更新（异步不阻塞） ==========
 async function updateTableFromRecords() {
   const fd = document.getElementById('filterDate')?.value;
   const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
   const multiple = parseFloat(document.getElementById('multipleVal')?.value) || 47;
   try {
     const config = getAllConfigData();
-    const [riskData, freqData] = await Promise.all([
-      fetchApi('/api/calculate', { method:'POST', body: JSON.stringify({ date: fd, config, rebateRate, multiple }) }),
-      fetchApi('/api/frequency', { method:'POST', body: JSON.stringify({ date: fd, config, amountMin: document.getElementById('numAmountMin')?.value||1, amountMax: document.getElementById('numAmountMax')?.value||50000, zodiacAmountMin: document.getElementById('zodiacAmountMin')?.value||1, zodiacAmountMax: document.getElementById('zodiacAmountMax')?.value||50000 }) })
-    ]);
-    renderRiskTable(riskData.list, riskData.totalBet, riskData.totalRebate);
-    renderReportTable(riskData.list, riskData.totalBet, riskData.totalRebate);
-    renderReportAmountTableFromData(riskData.reportAmountData);
-    renderFrequencyCardsFromData(freqData);
-    renderAmountFrequencyCardsFromData(freqData);
+    // 风险计算
+    fetchApi('/api/calculate', { method:'POST', body: JSON.stringify({ date: fd, config, rebateRate, multiple }) })
+      .then(data => {
+        renderRiskTable(data.list, data.totalBet, data.totalRebate);
+        renderReportTable(data.list, data.totalBet, data.totalRebate);
+        renderReportAmountTableFromData(data.reportAmountData);
+        // 更新截断阈值输入框的默认值为最大净上报金额
+        updateReportCapDefault(data.reportAmountData);
+      })
+      .catch(e => console.error('计算失败', e));
+    // 频率统计
+    fetchApi('/api/frequency', { method:'POST', body: JSON.stringify({
+      date: fd, config,
+      amountMin: document.getElementById('numAmountMin')?.value||1,
+      amountMax: document.getElementById('numAmountMax')?.value||50000,
+      zodiacAmountMin: document.getElementById('zodiacAmountMin')?.value||1,
+      zodiacAmountMax: document.getElementById('zodiacAmountMax')?.value||50000
+    }) })
+      .then(data => {
+        renderFrequencyCardsFromData(data);
+        renderAmountFrequencyCardsFromData(data);
+      })
+      .catch(e => console.error('频率统计失败', e));
   } catch(e) { console.error(e); showToast('加载数据失败：'+e.message); }
 }
 
-// ========== 渲染函数 ==========
+// 更新截断阈值输入框的默认值
+function updateReportCapDefault(reportAmountData) {
+  const capInput = document.getElementById('reportCapInput');
+  if (!capInput || !reportAmountData) return;
+  let maxVal = 0;
+  for (let i = 1; i <= 49; i++) {
+    const num = i.toString().padStart(2, '0');
+    const val = reportAmountData[num] || 0;
+    if (val > maxVal) maxVal = val;
+  }
+  capInput.placeholder = maxVal;
+  // 如果当前没有手动输入值，则自动填充
+  if (!capInput.value) {
+    capInput.value = '';
+  }
+}
+
 const redNumbers = ['01','02','07','08','12','13','18','19','23','24','29','30','34','35','40','45','46'];
 const blueNumbers = ['03','04','09','10','14','15','20','25','26','31','36','37','41','42','47','48'];
 const zodiacOrder = ['马','蛇','龙','兔','虎','牛','鼠','猪','狗','鸡','猴','羊'];
@@ -1734,7 +1812,6 @@ function buildZodiacMap(startZodiac) {
   for (let i = 1; i <= 49; i++) map[i.toString().padStart(2,'0')] = zodiacOrder[(start + i - 1) % 12];
   return map;
 }
-
 function renderRiskTable(list, totalBet, totalRebate) {
   const tbody = document.getElementById('tableBody'); if (!tbody) return;
   tbody.innerHTML = list.map(item => {
@@ -1744,56 +1821,168 @@ function renderRiskTable(list, totalBet, totalRebate) {
   document.getElementById('totalBet').textContent = totalBet;
   document.getElementById('totalRebate').textContent = totalRebate;
 }
-
 function renderReportTable(list, totalBet, totalRebate) {
   const tbody = document.getElementById('reportTableBody'); if (!tbody) return;
-  tbody.innerHTML = list.map(item => {
+  // 获取截断阈值
+  const cap = parseFloat(document.getElementById('reportCapInput')?.value) || 0;
+  // 使用净上报金额数据（从缓存中获取）
+  const reportData = window._lastReportAmountData || {};
+  // 构建显示数据：封顶处理
+  const displayList = list.map(item => {
+    const rawBet = reportData[item.num] || 0;
+    let displayBet = rawBet;
+    if (cap > 0 && rawBet > cap) {
+      displayBet = cap;
+    }
+    return { ...item, rawBet, displayBet };
+  });
+  // 按原始净上报金额排序
+  displayList.sort((a, b) => b.rawBet - a.rawBet);
+  // 重新计算总下注（封顶后的总和）
+  const totalReportBet = displayList.reduce((s, i) => s + i.displayBet, 0);
+  const reportRebate = (totalReportBet * parseFloat(document.getElementById('reportRebateRate')?.value || 4) / 100).toFixed(2);
+  const reportMultiple = parseFloat(document.getElementById('reportMultipleVal')?.value || 47);
+  
+  tbody.innerHTML = displayList.map((item, idx) => {
     const cls = redNumbers.includes(item.num)?'red-text':(blueNumbers.includes(item.num)?'blue-text':'green-text');
-    return `<tr class="${cls}"><td>${item.num}${currentZodiacMap[item.num]||''}</td><td>${item.bet}</td><td>${item.risk}</td><td>${item.num}</td><td>${item.rank}</td></tr>`;
+    const risk = Math.round(totalReportBet - item.displayBet * reportMultiple - parseFloat(reportRebate));
+    return `<tr class="${cls}"><td>${item.num}${currentZodiacMap[item.num]||''}</td><td>${item.displayBet}</td><td>${risk}</td><td>${item.num}</td><td>${idx + 1}</td></tr>`;
   }).join('');
-  document.getElementById('reportTotalBet').textContent = totalBet;
-  document.getElementById('reportTotalRebate').textContent = totalRebate;
+  document.getElementById('reportTotalBet').textContent = totalReportBet;
+  document.getElementById('reportTotalRebate').textContent = reportRebate;
 }
-
 function renderReportAmountTableFromData(reportAmountData) {
+  // 保存净上报数据供后续使用
+  window._lastReportAmountData = reportAmountData || {};
   const tbl = document.getElementById('reportAmountTable'); if (!tbl) return; tbl.innerHTML = '';
   const cols = [...Array(5)].map((_,c) => Array.from({length:c===4?9:10},(_,r) => (c*10+r+1).toString().padStart(2,'0')));
   let th = '<thead><tr>'; for(let c=0;c<5;c++) th+='<th>号码</th><th>金额</th>'; th+='</tr></thead>';
   let tb = '<tbody>';
-  for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const a=reportAmountData?.[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${a||''}</td>`; } else { tb+='<td></td><td></td>'; } } tb+='</tr>'; }
+  const data = reportAmountData || {};
+  const cap = parseFloat(document.getElementById('reportCapInput')?.value) || 0;
+  let total = 0;
+  for(let r=0;r<10;r++){
+    tb+='<tr>';
+    for(let c=0;c<5;c++){
+      const n=cols[c][r]||'';
+      if(n){
+        let val = data[n] || 0;
+        if (cap > 0 && val > cap) val = cap;
+        total += val;
+        const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text');
+        tb+=`<td class="${cls}">${n}</td><td class="black-text">${val||''}</td>`;
+      } else {
+        tb+='<td></td><td></td>';
+      }
+    }
+    tb+='</tr>';
+  }
   tb+='</tbody>'; tbl.innerHTML = th+tb;
-  let total = 0; if (reportAmountData) for (const n in reportAmountData) total += reportAmountData[n]||0;
   const box=document.getElementById('reportAmountTotalBox'), span=document.getElementById('reportAmountTotalValue');
   if(total>0){span.textContent=total;box.style.display='inline-flex';}else{box.style.display='none';}
 }
-
 function renderFrequencyCardsFromData(freqData) {
   const numberCount = freqData.numberCount||{}, zodiacCount = freqData.zodiacCount||{};
   const nt = document.getElementById('numberFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
   const zt = document.getElementById('zodiacFreqTable'); if(zt){zt.innerHTML='';const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';for(let r=0;r<6;r++){const l=lz[r],r2=rz[r];const lc=zodiacCount[l]||0,rc=zodiacCount[r2]||0;ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;}ztb+='</tbody>';zt.innerHTML=zth+ztb;}
 }
-
 function renderAmountFrequencyCardsFromData(freqData) {
   const numberAmountCount = freqData.numberAmountCount||{}, zodiacAmountCount = freqData.zodiacAmountCount||{};
   const nt = document.getElementById('numberAmountFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
   const zt = document.getElementById('zodiacAmountFreqTable'); if(zt){zt.innerHTML='';const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';for(let r=0;r<6;r++){const l=lz[r],r2=rz[r];const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0;ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;}ztb+='</tbody>';zt.innerHTML=zth+ztb;}
 }
-    // ========== 报表控制 ==========
-function switchRiskReport() {
+    function switchRiskReport() {
   const val = document.getElementById('riskReportSwitcher').value;
-  if (val === 'total') { document.getElementById('riskSection').style.display = ''; document.getElementById('reportSection').style.display = 'none'; document.getElementById('viewUserSelect').style.display = 'none'; updateTableFromRecords(); }
-  else if (val === 'user') { document.getElementById('riskSection').style.display = ''; document.getElementById('reportSection').style.display = 'none'; document.getElementById('viewUserSelect').style.display = 'inline-block'; updateTableFromRecords(); }
-  else if (val === 'report') { document.getElementById('riskSection').style.display = 'none'; document.getElementById('reportSection').style.display = ''; updateTableFromRecords(); }
+  if (val === 'total') {
+    document.getElementById('riskSection').style.display = '';
+    document.getElementById('reportSection').style.display = 'none';
+    document.getElementById('viewUserSelect').style.display = 'none';
+    updateTableFromRecords();
+  } else if (val === 'user') {
+    document.getElementById('riskSection').style.display = '';
+    document.getElementById('reportSection').style.display = 'none';
+    document.getElementById('viewUserSelect').style.display = 'inline-block';
+    updateTableFromRecords();
+  } else if (val === 'report') {
+    document.getElementById('riskSection').style.display = 'none';
+    document.getElementById('reportSection').style.display = '';
+    updateTableFromRecords();
+  }
 }
 function generateRiskTable() { updateTableFromRecords(); }
 function generateReportTable() { updateTableFromRecords(); }
-function applyReportCap() { generateReportTable(); }
+
+// ========== 截断阈值应用（封顶逻辑 + 文本生成） ==========
+function applyReportCap() {
+  const capInput = document.getElementById('reportCapInput');
+  const cap = parseFloat(capInput?.value) || 0;
+  const reportData = window._lastReportAmountData || {};
+  
+  // 重新渲染上报号码金额表格（带封顶）
+  renderReportAmountTableFromData(reportData);
+  
+  // 重新渲染上报风险表格（带封顶）
+  if (document.getElementById('reportSection').style.display !== 'none') {
+    const list = [];
+    for (let i = 1; i <= 49; i++) {
+      const num = i.toString().padStart(2, '0');
+      const rawBet = reportData[num] || 0;
+      list.push({ num, bet: rawBet });
+    }
+    list.sort((a, b) => b.bet - a.bet);
+    const totalBet = list.reduce((s, i) => s + i.bet, 0);
+    const rebateRate = parseFloat(document.getElementById('reportRebateRate')?.value) || 4;
+    const multiple = parseFloat(document.getElementById('reportMultipleVal')?.value) || 47;
+    const rebate = (totalBet * rebateRate / 100).toFixed(2);
+    renderReportTable(list, totalBet, rebate);
+  }
+  
+  // 生成 reportCapInfo 文本
+  const infoEl = document.getElementById('reportCapInfo');
+  if (!infoEl) return;
+  
+  if (cap <= 0) {
+    infoEl.textContent = '';
+    return;
+  }
+  
+  // 计算每个号码的差值（原始净上报金额 - 阈值），只保留差值 > 0 的
+  const diffs = [];
+  for (let i = 1; i <= 49; i++) {
+    const num = i.toString().padStart(2, '0');
+    const rawBet = reportData[num] || 0;
+    const diff = rawBet - cap;
+    if (diff > 0) {
+      diffs.push({ num, diff });
+    }
+  }
+  
+  if (diffs.length === 0) {
+    infoEl.textContent = '无超出的号码';
+    return;
+  }
+  
+  // 按差值从小到大排列
+  diffs.sort((a, b) => a.diff - b.diff);
+  
+  let text = '';
+  let totalDiff = 0;
+  diffs.forEach(item => {
+    text += `${item.num}各${item.diff}米\n`;
+    totalDiff += item.diff;
+  });
+  text += `合计${totalDiff}米`;
+  
+  infoEl.textContent = text;
+}
+
 async function copyReportCapText() {
   const info = document.getElementById('reportCapInfo');
-  const txt = info.innerText || info.textContent;
+  const txt = info?.textContent || '';
   if (!txt || txt === '无超出的号码') { showToast('没有可复制的文本'); return; }
   try { await navigator.clipboard.writeText(txt); showToast('已复制'); } catch(e) { showToast('复制失败'); }
 }
+
 function handleTableRowClick(event) {
   const td = event.target.closest('td'); if (!td) return;
   const tr = td.closest('tr'); if (!tr) return;
@@ -1801,12 +1990,14 @@ function handleTableRowClick(event) {
   tbody.querySelectorAll('tr').forEach(r => r.classList.remove('selected-row'));
   tr.classList.add('selected-row');
 }
+
 function getTodayCST() {
   const now = new Date(); const offset = 8 * 60;
   const localTime = now.getTime() + (now.getTimezoneOffset() + offset) * 60000;
   const cstDate = new Date(localTime);
   return `${cstDate.getFullYear()}-${String(cstDate.getMonth()+1).padStart(2,'0')}-${String(cstDate.getDate()).padStart(2,'0')}`;
 }
+
 async function changeStartZodiac() {
   const select = document.getElementById('startZodiacSelect');
   const newZodiac = select.value;
@@ -1824,7 +2015,7 @@ async function changeStartZodiac() {
   } catch(e) { showToast('验证失败'); select.value = savedZodiac; }
 }
 
-// ========== 订单操作（含下单人） ==========
+// ========== 订单操作 ==========
 async function saveOrder() {
   const orderer = document.getElementById('orderUserSelect')?.value;
   if (!orderer) { showToast('请选择下单人'); return; }
@@ -1848,6 +2039,7 @@ async function saveOrder() {
     updateTableFromRecords();
   } catch(e) { showToast('保存失败：'+e.message); }
 }
+
 async function saveReportOrder() {
   const orderer = document.getElementById('orderUserSelect')?.value;
   if (!orderer) { showToast('请选择下单人'); return; }
@@ -1871,12 +2063,14 @@ async function saveReportOrder() {
     updateTableFromRecords();
   } catch(e) { showToast('上报失败：'+e.message); }
 }
+
 function clearOrderInputs() {
   const si = document.querySelector('.source-order-input'); if(si) si.value = '';
   const re = document.getElementById('orderResult'); if(re) re.innerHTML = '';
   updateTotalDisplay();
   document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
 }
+
 function computeCurrentOrderTotal() {
   const re = document.getElementById('orderResult');
   if (!re) return 0;
@@ -1902,7 +2096,6 @@ function computeCurrentOrderTotal() {
 // ========== 用户管理 ==========
 function getUsers() { return localSettings.users || []; }
 async function saveUsers(users) { localSettings.users = users; await saveSetting('users', users); }
-
 function showUserManager() {
   if (document.getElementById('userManagerWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'userManagerWin';
@@ -1940,7 +2133,6 @@ async function deleteUserAction(name) {
   updateTableFromRecords();
   showToast('用户已删除');
 }
-
 function updateSelects() {
   const users = getUsers();
   const orderSel = document.getElementById('orderUserSelect');
@@ -1955,7 +2147,7 @@ function updateSelects() {
   }
 }
 
-// ========== 浮动窗口 ==========
+// ========== 浮动窗口管理 ==========
 let highestZ = 2000;
 function makeWindowDraggable(winId) {
   const win = document.getElementById(winId); if (!win) return;
@@ -2014,6 +2206,7 @@ function pinWindow(winId) {
   showToast('窗口已置顶');
 }
 
+// ========== 数据库弹窗 ==========
 async function showDatabase() {
   const pwd = await prompt("请输入数据库密码：", "");
   if (!pwd) return;
@@ -2033,6 +2226,7 @@ function hideDatabase() {
   if (modal) modal.style.display = 'none';
 }
 
+// ========== 识别窗口 ==========
 function showRecognizeModal() {
   if (document.getElementById('recognizeWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recognizeWin';
@@ -2064,7 +2258,7 @@ async function pasteOrder() {
   } catch (err) { showToast('无法访问剪贴板'); }
 }
 
-// ========== 订单记录（显示下单人、用户颜色） ==========
+// ========== 订单记录弹窗 ==========
 async function showOrderRecord(filter = 'all') {
   try {
     const recs = await fetchApi('/api/orders' + (document.getElementById('filterDate')?.value ? `?date=${document.getElementById('filterDate').value}` : ''));
@@ -2100,6 +2294,8 @@ async function deleteOrderRecord(id) {
     showOrderRecord();
   } catch (e) { showToast('删除失败'); }
 }
+
+// ========== 上报记录弹窗 ==========
 async function showReportOrderRecord(filter = 'all') {
   try {
     const recs = await fetchApi('/api/report-orders' + (document.getElementById('filterDate')?.value ? `?date=${document.getElementById('filterDate').value}` : ''));
@@ -2134,10 +2330,12 @@ async function deleteReportOrderRecord(id) {
     showReportOrderRecord();
   } catch (e) { showToast('删除失败'); }
 }
+
 function checkAll() { document.querySelectorAll('.order-check').forEach(cb => cb.checked = true); }
 function uncheckAll() { document.querySelectorAll('.order-check').forEach(cb => cb.checked = false); }
 function checkAllReport() { document.querySelectorAll('.report-order-check').forEach(cb => cb.checked = true); }
 function uncheckAllReport() { document.querySelectorAll('.report-order-check').forEach(cb => cb.checked = false); }
+
 async function deleteChecked() {
   const ids = []; document.querySelectorAll('.order-check:checked').forEach(cb => ids.push(Number(cb.dataset.id)));
   if (ids.length === 0) { showToast('请选择'); return; }
@@ -2245,6 +2443,8 @@ async function importData() {
   inp.addEventListener('cancel', () => { document.body.removeChild(inp); });
   inp.click();
 }
+
+// ========== 清空 ==========
 async function resetTable() {
   const pwd = await prompt("输入清空密码：", "");
   if (!pwd) return;
@@ -2252,11 +2452,10 @@ async function resetTable() {
     const res = await fetchApi('/api/auth/verify-password', { method:'POST', body: JSON.stringify({ password: pwd, action: 'resetData' }) });
     if (!res.valid) { await alert("密码错误"); return; }
     await fetchApi('/api/reset', { method:'POST' });
-    location.reload();
+    updateTableFromRecords();
   } catch(e) { showToast('清空失败'); }
 }
-
-// ========== 截图 ==========
+    // ========== 截图 ==========
 async function screenshotTable(tid) {
   const tbl = document.getElementById(tid);
   if (!tbl) { showToast('表格不存在'); return; }
@@ -2273,7 +2472,7 @@ async function screenshotTable(tid) {
   } catch(e) { showToast('截图失败'); }
 }
 
-// ========== 初始化 ==========
+// ========== 事件监听 ==========
 document.getElementById('rebateRate')?.addEventListener('input', updateTableFromRecords);
 document.getElementById('multipleVal')?.addEventListener('input', updateTableFromRecords);
 document.getElementById('reportRebateRate')?.addEventListener('input', updateTableFromRecords);
@@ -2290,6 +2489,7 @@ if (filterDateEl) {
   filterDateEl.addEventListener('input', updateTableFromRecords);
 }
 
+// ========== 初始化 ==========
 window.onload = async () => {
   try {
     const savedUsername = localStorage.getItem('savedUsername');
