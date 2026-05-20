@@ -106,7 +106,8 @@ for (const c of cardsWithoutHash) {
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+// 静态文件目录改为根目录（安全风险！）
+app.use(express.static(__dirname));
 
 // ========== 内存缓存（风险与频率计算结果） ==========
 const calculationCache = new Map();
@@ -882,9 +883,9 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM report_orders WHERE user = ?').all(req.user.username);
     }
 
-    const betData = {};          // 总下注金额
-    const reportDeductData = {}; // 上报扣减金额
-    const reportAmountData = {}; // 净上报金额 (用于上报表格)
+    const betData = {};
+    const reportDeductData = {};
+    const reportAmountData = {};
 
     for (const order of orders) {
       const lines = order.content.split('\n').filter(l => l.trim());
@@ -914,13 +915,11 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       }
     }
 
-    // 计算净上报金额 = 总下注 - 上报扣减
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
       reportAmountData[num] = (betData[num] || 0) - (reportDeductData[num] || 0);
     }
 
-    // 总风险表（不变）
     const list = [];
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
@@ -940,7 +939,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       list: result,
       totalBet,
       totalRebate: rebate,
-      reportAmountData   // 净上报金额，用于上报风险表和上报金额表格
+      reportAmountData
     };
 
     calculationCache.set(cacheKey, responseData);
@@ -1109,7 +1108,7 @@ app.get('/api/config', authenticateToken, (req, res) => {
 
 // ========== 路由处理：所有非 API 请求返回 index.html ==========
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
