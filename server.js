@@ -863,7 +863,7 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 风险计算（返回 totalList, userList, reportAmountData） ==========
+// ========== 风险计算（修改：返回 totalList, userList, reportAmountData 等） ==========
 app.post('/api/calculate', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, rebateRate = 4, multiple = 47, orderer } = req.body;
@@ -897,7 +897,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
     const betData = {};
     // 上报扣除数据（所有上报订单）
     const reportDeductData = {};
-    // 原始上报金额（用于上报号码金额表）
+    // 原始上报金额（用于上报号码金额表，不受封顶影响）
     const reportOrdersAmountData = {};
 
     for (const order of orders) {
@@ -993,7 +993,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 频率统计接口（生肖拆分到号码统计） ==========
+// ========== 频率统计接口（修改：生肖拆分到号码统计中） ==========
 app.post('/api/frequency', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, amountMin, amountMax, zodiacAmountMin, zodiacAmountMax } = req.body;
@@ -1020,14 +1020,16 @@ app.post('/api/frequency', authenticateToken, (req, res) => {
       const lines = order.content.split('\n').filter(l => l.trim());
       for (const line of lines) {
         const { numbers, zodiacs, amount } = parseLine(line, config);
+        // 号码次数和金额次数：直接计入号码，并将生肖拆分为号码
         numbers.forEach(num => {
           numberCount[num] = (numberCount[num] || 0) + 1;
           if (amount >= nMin && amount <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
         });
         zodiacs.forEach(z => {
+          // 生肖次数统计保持不变
           zodiacCount[z] = (zodiacCount[z] || 0) + 1;
           if (amount >= zMin && amount <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
-          // 生肖拆分为号码，计入号码次数和号码金额次数
+          // 将生肖拆分为号码，计入号码次数和号码金额次数
           const zNums = config.zodiac[z] || [];
           zNums.forEach(num => {
             const paddedNum = num.padStart(2, '0');
