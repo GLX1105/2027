@@ -76,20 +76,18 @@ db.exec(`
     detail TEXT DEFAULT '',
     timestamp TEXT NOT NULL
   );
-
-  -- 全局配置表（用于存储公共配置，如用户列表、数据库配置等）
-  CREATE TABLE IF NOT EXISTS global_settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
 `);
 
-// 兼容旧字段
+// 为已有表添加可能缺失的字段
 try { db.exec('ALTER TABLE users ADD COLUMN can_manage_cards INTEGER DEFAULT 0'); } catch(e) {}
 try { db.exec('ALTER TABLE cards ADD COLUMN code_hash TEXT DEFAULT \'\''); } catch(e) {}
 try { db.exec('ALTER TABLE cards ADD COLUMN creator TEXT DEFAULT \'admin\''); } catch(e) {}
 try { db.exec('ALTER TABLE orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
 try { db.exec('ALTER TABLE report_orders ADD COLUMN orderer TEXT DEFAULT \'\''); } catch(e) {}
+
+// 添加索引以加速按日期查询
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_orders_date ON orders(date)'); } catch(e) {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_report_orders_date ON report_orders(date)'); } catch(e) {}
 
 // ========== 自动创建管理员账户 ==========
 const adminUser = db.prepare('SELECT * FROM users WHERE username = ?').get('17776192265');
@@ -99,7 +97,7 @@ if (!adminUser) {
   console.log('管理员账户已创建: 17776192265');
 }
 
-// 修补已有卡密的哈希值
+// 修补已有卡密的哈希值（迁移）
 const cardsWithoutHash = db.prepare('SELECT id, code FROM cards WHERE code_hash = \'\' OR code_hash IS NULL').all();
 for (const c of cardsWithoutHash) {
   const hash = bcrypt.hashSync(c.code, 10);
@@ -110,13 +108,30 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
 
+// ========== 内存缓存（风险与频率计算结果） ==========
+const calculationCache = new Map();
+
+function getCacheKey(user, date, rebateRate, multiple, orderer) {
+  return `${user}_${date}_${rebateRate}_${multiple}_${orderer || ''}`;
+}
+
+function invalidateCacheForDate(date) {
+  for (const key of calculationCache.keys()) {
+    if (key.includes(date)) calculationCache.delete(key);
+  }
+}
+
 // ========== 认证中间件 ==========
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: '未登录' });
+  if (!token) {
+    return res.status(401).json({ error: '未登录' });
+  }
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: '令牌无效' });
+    if (err) {
+      return res.status(403).json({ error: '令牌无效' });
+    }
     req.user = user;
     next();
   });
@@ -136,7 +151,7 @@ function requireCardManagePermission(req, res, next) {
   next();
 }
 
-// ========== 激活码生成 ==========
+// ========== 激活码生成工具 ==========
 function generateActivationCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   const segments = [];
@@ -262,14 +277,12 @@ for (let i = 0; i <= 9; i++) {
   }
 }
 
+let currentConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+
 function mergeConfig(custom) {
-  if (!custom) return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  if (!custom) return currentConfig;
   const merged = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
   if (custom.weishu) merged.weishu = { ...DEFAULT_CONFIG.weishu, ...custom.weishu };
-  // 允许覆盖其他分类（自定义分类）
-  for (const key in custom) {
-    if (key !== 'weishu' && merged[key]) merged[key] = custom[key];
-  }
   return merged;
 }
 
@@ -359,10 +372,11 @@ app.post('/api/auth/verify-password', authenticateToken, (req, res) => {
 app.post('/api/auth/register', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: '请填写完整信息' });
-  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
-  if (existing) return res.status(400).json({ error: '用户名已存在' });
-  const hash = bcrypt.hashSync(password, 10);
-  db.prepare('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)').run(username, hash, new Date().toISOString());
+  const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  if (existingUser) return res.status(400).json({ error: '用户名已存在' });
+  const passwordHash = bcrypt.hashSync(password, 10);
+  const timestamp = new Date().toISOString();
+  db.prepare('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)').run(username, passwordHash, timestamp);
   res.json({ success: true, message: '注册成功，请使用激活码激活' });
 });
 
@@ -389,7 +403,9 @@ app.post('/api/auth/activate', (req, res) => {
       break;
     }
   }
-  if (!matchedCard) return res.status(400).json({ error: '激活码无效' });
+  if (!matchedCard) {
+    return res.status(400).json({ error: '激活码无效' });
+  }
   const cardCreated = new Date(matchedCard.created_at).getTime();
   const cardExpireMs = matchedCard.expire_days * 86400000;
   if (Date.now() > cardCreated + cardExpireMs) {
@@ -434,6 +450,7 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ token, username: user.username, role: user.role, canManageCards: user.can_manage_cards });
 });
 
+// ========== 修改密码（仅管理员） ==========
 app.post('/api/auth/change-password', authenticateToken, requireAdmin, (req, res) => {
   const { oldPassword, newPassword } = req.body;
   if (!oldPassword || !newPassword) return res.status(400).json({ error: '请填写完整信息' });
@@ -444,33 +461,43 @@ app.post('/api/auth/change-password', authenticateToken, requireAdmin, (req, res
   }
   const newHash = bcrypt.hashSync(newPassword, 10);
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, req.user.id);
-  res.json({ success: true });
+  res.json({ success: true, message: '密码修改成功' });
 });
 
+// ========== 当前用户状态 ==========
 app.get('/api/me/status', authenticateToken, (req, res) => {
   const user = db.prepare('SELECT id, username, role, activated, activated_at, card_id, can_manage_cards FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
-  let remainingDays = null, expired = false;
+
+  let remainingDays = null;
+  let expired = false;
+  let cardCode = null;
+
   if (user.card_id) {
-    const card = db.prepare('SELECT code, expire_days FROM cards WHERE id = ?').get(user.card_id);
-    if (card && user.activated_at) {
-      const activatedTime = new Date(user.activated_at).getTime();
-      const expireTime = activatedTime + card.expire_days * 86400000;
-      const now = Date.now();
-      remainingDays = Math.max(0, Math.ceil((expireTime - now) / 86400000));
-      expired = now > expireTime;
+    const card = db.prepare('SELECT code, expire_days, status FROM cards WHERE id = ?').get(user.card_id);
+    if (card) {
+      cardCode = card.code;
+      if (user.activated_at) {
+        const activatedTime = new Date(user.activated_at).getTime();
+        const expireTime = activatedTime + card.expire_days * 86400000;
+        const now = Date.now();
+        remainingDays = Math.max(0, Math.ceil((expireTime - now) / 86400000));
+        expired = now > expireTime;
+      }
     }
   }
+
   res.json({
     username: user.username,
     role: user.role,
+    cardCode,
     remainingDays,
     expired,
     isAdmin: user.role === 'admin'
   });
 });
 
-// ========== 卡密管理 ==========
+// ========== 卡密管理（优化过期计算） ==========
 app.post('/api/cards/generate', authenticateToken, requireCardManagePermission, (req, res) => {
   const { expireDays } = req.body;
   if (!expireDays || expireDays < 1) return res.status(400).json({ error: '有效期至少1天' });
@@ -485,29 +512,72 @@ app.post('/api/cards/generate', authenticateToken, requireCardManagePermission, 
 app.get('/api/cards', authenticateToken, requireCardManagePermission, (req, res) => {
   let cards;
   if (req.user.role === 'admin') {
-    cards = db.prepare('SELECT cards.*, users.username FROM cards LEFT JOIN users ON cards.user_id = users.id ORDER BY cards.created_at DESC').all();
+    cards = db.prepare(`
+      SELECT cards.*, users.username,
+        CASE
+          WHEN cards.status = 'used' THEN '已激活'
+          WHEN cards.status = 'expired' OR (cards.status = 'active' AND datetime('now') > datetime(cards.created_at, '+' || cards.expire_days || ' days'))
+            THEN '已到期'
+          ELSE '正常'
+        END AS activation_status,
+        julianday(cards.created_at, '+' || cards.expire_days || ' days') - julianday('now') AS days_remaining
+      FROM cards
+      LEFT JOIN users ON cards.user_id = users.id
+      ORDER BY cards.created_at DESC
+    `).all();
   } else {
-    cards = db.prepare('SELECT cards.*, users.username FROM cards LEFT JOIN users ON cards.user_id = users.id WHERE cards.creator = ? ORDER BY cards.created_at DESC').all(req.user.username);
+    cards = db.prepare(`
+      SELECT cards.*, users.username,
+        CASE
+          WHEN cards.status = 'used' THEN '已激活'
+          WHEN cards.status = 'expired' OR (cards.status = 'active' AND datetime('now') > datetime(cards.created_at, '+' || cards.expire_days || ' days'))
+            THEN '已到期'
+          ELSE '正常'
+        END AS activation_status,
+        julianday(cards.created_at, '+' || cards.expire_days || ' days') - julianday('now') AS days_remaining
+      FROM cards
+      LEFT JOIN users ON cards.user_id = users.id
+      WHERE cards.creator = ?
+      ORDER BY cards.created_at DESC
+    `).all(req.user.username);
   }
-  const safeCards = cards.map(c => ({ id: c.id, code: c.code, status: c.status, expire_days: c.expire_days, created_at: c.created_at, creator: c.creator, username: c.username, user_id: c.user_id }));
+
+  const safeCards = cards.map(c => ({
+    id: c.id,
+    code: c.code,
+    status: c.status,
+    expire_days: c.expire_days,
+    created_at: c.created_at,
+    creator: c.creator,
+    username: c.username,
+    user_id: c.user_id,
+    activation_status: c.activation_status,
+    days_remaining: c.days_remaining ? Math.ceil(c.days_remaining) : null,
+    expired: c.days_remaining !== null && c.days_remaining < 0
+  }));
+
   res.json(safeCards);
 });
 
 app.post('/api/cards/:id/disable', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
-  if (req.user.role !== 'admin' && card.creator !== req.user.username) return res.status(403).json({ error: '无权操作此卡密' });
+  if (req.user.role !== 'admin' && card.creator !== req.user.username) {
+    return res.status(403).json({ error: '无权操作此卡密' });
+  }
   db.prepare('UPDATE cards SET status = ? WHERE id = ?').run('disabled', req.params.id);
-  db.prepare('INSERT INTO card_logs (operator, action, target, timestamp) VALUES (?, ?, ?, ?)').run(req.user.username, '禁用', card.code, new Date().toISOString());
+  db.prepare('INSERT INTO card_logs (operator, action, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)').run(req.user.username, '禁用', card.code, '禁用卡密', new Date().toISOString());
   res.json({ success: true });
 });
 
 app.delete('/api/cards/:id', authenticateToken, requireCardManagePermission, (req, res) => {
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(req.params.id);
   if (!card) return res.status(404).json({ error: '卡密不存在' });
-  if (req.user.role !== 'admin' && card.creator !== req.user.username) return res.status(403).json({ error: '无权操作此卡密' });
+  if (req.user.role !== 'admin' && card.creator !== req.user.username) {
+    return res.status(403).json({ error: '无权操作此卡密' });
+  }
   db.prepare('DELETE FROM cards WHERE id = ?').run(req.params.id);
-  db.prepare('INSERT INTO card_logs (operator, action, target, timestamp) VALUES (?, ?, ?, ?)').run(req.user.username, '删除', card.code, new Date().toISOString());
+  db.prepare('INSERT INTO card_logs (operator, action, target, detail, timestamp) VALUES (?, ?, ?, ?, ?)').run(req.user.username, '删除', card.code, '删除卡密', new Date().toISOString());
   res.json({ success: true });
 });
 
@@ -522,49 +592,67 @@ app.get('/api/cards/logs', authenticateToken, requireCardManagePermission, (req,
 });
 
 app.delete('/api/cards/logs/:id', authenticateToken, requireCardManagePermission, (req, res) => {
+  const log = db.prepare('SELECT * FROM card_logs WHERE id = ?').get(req.params.id);
+  if (!log) return res.status(404).json({ error: '日志不存在' });
+  if (req.user.role !== 'admin' && log.operator !== req.user.username) {
+    return res.status(403).json({ error: '无权删除此日志' });
+  }
   db.prepare('DELETE FROM card_logs WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
-app.post('/api/cards/logs/clear', authenticateToken, requireCardManagePermission, (req, res) => {
-  if (req.user.role === 'admin') {
-    db.prepare('DELETE FROM card_logs').run();
-  } else {
-    db.prepare('DELETE FROM card_logs WHERE operator = ?').run(req.user.username);
-  }
+app.post('/api/cards/logs/clear', authenticateToken, requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM card_logs').run();
   res.json({ success: true });
 });
 
 // ========== 管理员账户管理 ==========
 app.get('/api/admin/accounts', authenticateToken, requireAdmin, (req, res) => {
   const accounts = db.prepare(`
-    SELECT u.id, u.username, u.activated, u.can_manage_cards, u.created_at,
-           c.code AS card_code, c.expire_days,
-           CASE WHEN u.card_id IS NULL OR u.can_manage_cards = 1 THEN '高级用户' ELSE '普通用户' END AS user_type,
-           CASE WHEN c.id IS NOT NULL AND u.activated_at IS NOT NULL
-                THEN (julianday('now') - julianday(u.activated_at)) >= c.expire_days ELSE 0 END AS card_expired
-    FROM users u LEFT JOIN cards c ON u.card_id = c.id
+    SELECT 
+      u.id, u.username, u.activated, u.can_manage_cards, u.created_at,
+      c.code AS card_code, c.expire_days,
+      CASE 
+        WHEN u.card_id IS NULL OR u.can_manage_cards = 1 THEN '高级用户'
+        ELSE '普通用户'
+      END AS user_type,
+      CASE 
+        WHEN c.id IS NOT NULL AND u.activated_at IS NOT NULL 
+        THEN (julianday('now') - julianday(u.activated_at)) >= c.expire_days
+        ELSE 0
+      END AS card_expired
+    FROM users u
+    LEFT JOIN cards c ON u.card_id = c.id
     WHERE u.role = 'user' AND u.username != '17776192265'
   `).all();
-  res.json(accounts.map(a => ({ ...a, card_expired: !!a.card_expired })));
+
+  const result = accounts.map(a => ({
+    ...a,
+    card_expired: !!a.card_expired
+  }));
+
+  res.json(result);
 });
 
 app.post('/api/admin/create-account', authenticateToken, requireAdmin, (req, res) => {
   const { username, password, canManageCards } = req.body;
   if (!username || !password) return res.status(400).json({ error: '请填写用户名和密码' });
-  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) return res.status(400).json({ error: '用户名已存在' });
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  if (existing) return res.status(400).json({ error: '用户名已存在' });
   const hash = bcrypt.hashSync(password, 10);
   db.prepare('INSERT INTO users (username, password_hash, role, activated, can_manage_cards, created_at) VALUES (?, ?, ?, 1, ?, ?)').run(username, hash, 'user', canManageCards ? 1 : 0, new Date().toISOString());
-  res.json({ success: true });
+  res.json({ success: true, message: '创建成功' });
 });
 
 app.post('/api/admin/accounts/:id/toggle-status', authenticateToken, requireAdmin, (req, res) => {
-  db.prepare('UPDATE users SET activated = ? WHERE id = ?').run(req.body.activated, req.params.id);
+  const { activated } = req.body;
+  db.prepare('UPDATE users SET activated = ? WHERE id = ?').run(activated, req.params.id);
   res.json({ success: true });
 });
 
 app.post('/api/admin/accounts/:id/toggle-card-perm', authenticateToken, requireAdmin, (req, res) => {
-  db.prepare('UPDATE users SET can_manage_cards = ? WHERE id = ?').run(req.body.canManageCards, req.params.id);
+  const { canManageCards } = req.body;
+  db.prepare('UPDATE users SET can_manage_cards = ? WHERE id = ?').run(canManageCards, req.params.id);
   res.json({ success: true });
 });
 
@@ -596,14 +684,18 @@ app.post('/api/orders', authenticateToken, (req, res) => {
   const user = req.user.username;
   const timestamp = new Date().toISOString();
   db.prepare('INSERT INTO orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)').run(content, user, orderer || '', date, totalAmount || 0, timestamp);
+  invalidateCacheForDate(date);
   res.json({ success: true });
 });
 
 app.delete('/api/orders/:id', authenticateToken, (req, res) => {
-  const order = db.prepare('SELECT user FROM orders WHERE id = ?').get(req.params.id);
+  const order = db.prepare('SELECT user, date FROM orders WHERE id = ?').get(req.params.id);
   if (!order) return res.status(404).json({ error: '订单不存在' });
-  if (req.user.role !== 'admin' && order.user !== req.user.username) return res.status(403).json({ error: '无权删除' });
+  if (req.user.role !== 'admin' && order.user !== req.user.username) {
+    return res.status(403).json({ error: '无权删除' });
+  }
   db.prepare('DELETE FROM orders WHERE id = ?').run(req.params.id);
+  if (order.date) invalidateCacheForDate(order.date);
   res.json({ success: true });
 });
 
@@ -611,11 +703,17 @@ app.post('/api/orders/batch-delete', authenticateToken, (req, res) => {
   const { ids } = req.body;
   if (!ids || !ids.length) return res.status(400).json({ error: '请选择订单' });
   const placeholders = ids.map(() => '?').join(',');
-  const orders = db.prepare(`SELECT id, user FROM orders WHERE id IN (${placeholders})`).all(...ids);
-  for (const o of orders) if (req.user.role !== 'admin' && o.user !== req.user.username) return res.status(403).json({ error: '无权删除' });
+  const orders = db.prepare(`SELECT id, user, date FROM orders WHERE id IN (${placeholders})`).all(...ids);
+  for (const order of orders) {
+    if (req.user.role !== 'admin' && order.user !== req.user.username) {
+      return res.status(403).json({ error: '无权删除' });
+    }
+  }
   const del = db.prepare('DELETE FROM orders WHERE id = ?');
-  const transaction = db.transaction(() => ids.forEach(id => del.run(id)));
+  const transaction = db.transaction(() => { ids.forEach(id => del.run(id)); });
   transaction();
+  const dates = [...new Set(orders.map(o => o.date).filter(d => d))];
+  dates.forEach(d => invalidateCacheForDate(d));
   res.json({ success: true });
 });
 
@@ -635,14 +733,18 @@ app.post('/api/report-orders', authenticateToken, (req, res) => {
   const user = req.user.username;
   const timestamp = new Date().toISOString();
   db.prepare('INSERT INTO report_orders (content, user, orderer, date, totalAmount, timestamp) VALUES (?, ?, ?, ?, ?, ?)').run(content, user, orderer || '', date, totalAmount || 0, timestamp);
+  invalidateCacheForDate(date);
   res.json({ success: true });
 });
 
 app.delete('/api/report-orders/:id', authenticateToken, (req, res) => {
-  const order = db.prepare('SELECT user FROM report_orders WHERE id = ?').get(req.params.id);
+  const order = db.prepare('SELECT user, date FROM report_orders WHERE id = ?').get(req.params.id);
   if (!order) return res.status(404).json({ error: '订单不存在' });
-  if (req.user.role !== 'admin' && order.user !== req.user.username) return res.status(403).json({ error: '无权删除' });
+  if (req.user.role !== 'admin' && order.user !== req.user.username) {
+    return res.status(403).json({ error: '无权删除' });
+  }
   db.prepare('DELETE FROM report_orders WHERE id = ?').run(req.params.id);
+  if (order.date) invalidateCacheForDate(order.date);
   res.json({ success: true });
 });
 
@@ -650,14 +752,21 @@ app.post('/api/report-orders/batch-delete', authenticateToken, (req, res) => {
   const { ids } = req.body;
   if (!ids || !ids.length) return res.status(400).json({ error: '请选择订单' });
   const placeholders = ids.map(() => '?').join(',');
-  const orders = db.prepare(`SELECT id, user FROM report_orders WHERE id IN (${placeholders})`).all(...ids);
-  for (const o of orders) if (req.user.role !== 'admin' && o.user !== req.user.username) return res.status(403).json({ error: '无权删除' });
+  const orders = db.prepare(`SELECT id, user, date FROM report_orders WHERE id IN (${placeholders})`).all(...ids);
+  for (const order of orders) {
+    if (req.user.role !== 'admin' && order.user !== req.user.username) {
+      return res.status(403).json({ error: '无权删除' });
+    }
+  }
   const del = db.prepare('DELETE FROM report_orders WHERE id = ?');
-  db.transaction(() => ids.forEach(id => del.run(id)))();
+  const transaction = db.transaction(() => { ids.forEach(id => del.run(id)); });
+  transaction();
+  const dates = [...new Set(orders.map(o => o.date).filter(d => d))];
+  dates.forEach(d => invalidateCacheForDate(d));
   res.json({ success: true });
 });
 
-// ========== 识别接口 (后端实现) ==========
+// ========== 识别接口 ==========
 app.post('/api/recognize', authenticateToken, (req, res) => {
   try {
     const { text, config: customConfig } = req.body;
@@ -668,8 +777,8 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
     const HARD_AMP_LIST = ['各','各号','号','个','=','各数','每数','每号','个号','每个号','各码','各号码'];
     const AMP_ORIGINAL = '(?:' + HARD_AMP_LIST.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
     const allPre = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼'];
-    const vc = getAllValidCategories(config);
     const ZODIAC_SET = new Set(Object.keys(config.zodiac));
+    const vc = getAllValidCategories(config);
 
     function cn2n(s) {
       const m={'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000};
@@ -731,7 +840,8 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
             const cont = rl.substring(0, oi).trim();
             const am = om.match(/(\d+)/);
             if (am) {
-              if (cont) { const jo = tokenizeAndJoin(cont); if (jo) resultLines.push(`${jo} 各数 ${am[1]}`); }
+              const amt = am[1];
+              if (cont) { const jo = tokenizeAndJoin(cont); if (jo) resultLines.push(`${jo} 各数 ${amt}`); }
               rl = rl.substring(oi + om.length);
             }
           }
@@ -753,21 +863,41 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 风险计算与截断（支持 cap） ==========
+// ========== 风险计算（支持 orderer 参数，返回净上报和原始上报金额） ==========
 app.post('/api/calculate', authenticateToken, (req, res) => {
   try {
-    const { date, config: customConfig, rebateRate = 4, multiple = 47, cap } = req.body;
+    const { date, config: customConfig, rebateRate = 4, multiple = 47, orderer } = req.body;
     const config = mergeConfig(customConfig || {});
+    const cacheKey = getCacheKey(req.user.role === 'admin' ? 'admin' : req.user.username, date || 'all', rebateRate, multiple, orderer || '');
+    if (calculationCache.has(cacheKey)) {
+      return res.json(calculationCache.get(cacheKey));
+    }
+
     let orders, reportOrders;
     if (req.user.role === 'admin') {
-      orders = date ? db.prepare('SELECT * FROM orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM orders').all();
-      reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM report_orders').all();
+      // 管理员：如果传了 orderer，则按 orderer 筛选；否则按所有
+      if (orderer) {
+        orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND orderer = ?').all(date, orderer) : db.prepare('SELECT * FROM orders WHERE orderer = ?').all(orderer);
+        reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ? AND orderer = ?').all(date, orderer) : db.prepare('SELECT * FROM report_orders WHERE orderer = ?').all(orderer);
+      } else {
+        orders = date ? db.prepare('SELECT * FROM orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM orders').all();
+        reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM report_orders').all();
+      }
     } else {
-      orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username);
-      reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM report_orders WHERE user = ?').all(req.user.username);
+      // 普通用户
+      if (orderer) {
+        orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND user = ? AND orderer = ?').all(date, req.user.username, orderer) : db.prepare('SELECT * FROM orders WHERE user = ? AND orderer = ?').all(req.user.username, orderer);
+        reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ? AND user = ? AND orderer = ?').all(date, req.user.username, orderer) : db.prepare('SELECT * FROM report_orders WHERE user = ? AND orderer = ?').all(req.user.username, orderer);
+      } else {
+        orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM orders WHERE user = ?').all(req.user.username);
+        reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ? AND user = ?').all(date, req.user.username) : db.prepare('SELECT * FROM report_orders WHERE user = ?').all(req.user.username);
+      }
     }
+
     const betData = {};
-    const reportAmountData = {};
+    const reportDeductData = {};
+    const reportOrdersAmountData = {}; // 原始上报金额
+
     for (const order of orders) {
       const lines = order.content.split('\n').filter(l => l.trim());
       for (const line of lines) {
@@ -781,28 +911,36 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
         });
       }
     }
+
     for (const order of reportOrders) {
       const lines = order.content.split('\n').filter(l => l.trim());
       for (const line of lines) {
         const { numbers, zodiacs, amount } = parseLine(line, config);
-        numbers.forEach(num => { reportAmountData[num] = (reportAmountData[num] || 0) + amount; });
+        numbers.forEach(num => {
+          reportDeductData[num] = (reportDeductData[num] || 0) + amount;
+          reportOrdersAmountData[num] = (reportOrdersAmountData[num] || 0) + amount;
+        });
         zodiacs.forEach(z => {
           (config.zodiac[z] || []).forEach(n => {
             const num = n.padStart(2, '0');
-            reportAmountData[num] = (reportAmountData[num] || 0) + amount;
+            reportDeductData[num] = (reportDeductData[num] || 0) + amount;
+            reportOrdersAmountData[num] = (reportOrdersAmountData[num] || 0) + amount;
           });
         });
       }
     }
-    // 截断处理
-    const capValue = parseFloat(cap);
-    const applyCap = !isNaN(capValue) && capValue > 0;
+
+    const reportAmountData = {}; // 净上报金额 = 总下注 - 已上报
+    for (let i = 1; i <= 49; i++) {
+      const num = i.toString().padStart(2, '0');
+      reportAmountData[num] = (betData[num] || 0) - (reportDeductData[num] || 0);
+    }
+
+    // 总风险表（不变）
     const list = [];
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
-      let bet = betData[num] || 0;
-      if (applyCap && bet > capValue) bet = capValue;
-      list.push({ num, bet });
+      list.push({ num, bet: betData[num] || 0 });
     }
     list.sort((a, b) => b.bet - a.bet);
     const totalBet = list.reduce((s, i) => s + i.bet, 0);
@@ -813,23 +951,17 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       risk: Math.round(totalBet - item.bet * multiple - parseFloat(rebate)),
       rank: idx + 1
     }));
-    // 返回超出截断信息
-    let capInfo = '';
-    if (applyCap) {
-      const exc = [];
-      for (let i = 1; i <= 49; i++) {
-        const num = i.toString().padStart(2, '0');
-        const original = betData[num] || 0;
-        if (original > capValue) exc.push({ num, exceed: original - capValue });
-      }
-      if (exc.length > 0) {
-        exc.sort((a, b) => a.exceed - b.exceed);
-        capInfo = exc.map(x => `${x.num}各${x.exceed}米`).join('<br>') + `<br>合计${exc.reduce((s, x) => s + x.exceed, 0)}`;
-      } else {
-        capInfo = '无超出的号码';
-      }
-    }
-    res.json({ list: result, totalBet, totalRebate: rebate, reportAmountData, capInfo });
+
+    const responseData = {
+      list: result,
+      totalBet,
+      totalRebate: rebate,
+      reportAmountData,          // 净上报金额（用于上报风险表）
+      reportOrdersAmountData     // 原始上报金额（用于上报号码金额表格）
+    };
+
+    calculationCache.set(cacheKey, responseData);
+    res.json(responseData);
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
@@ -838,6 +970,10 @@ app.post('/api/frequency', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, amountMin, amountMax, zodiacAmountMin, zodiacAmountMax } = req.body;
     const config = mergeConfig(customConfig || {});
+    const cacheKey = getCacheKey(req.user.role === 'admin' ? 'admin' : req.user.username, date || 'all', 0, 0) + '_freq';
+    if (calculationCache.has(cacheKey)) {
+      return res.json(calculationCache.get(cacheKey));
+    }
     const nMin = parseInt(amountMin) || 1;
     const nMax = parseInt(amountMax) || 50000;
     const zMin = parseInt(zodiacAmountMin) || 1;
@@ -866,7 +1002,9 @@ app.post('/api/frequency', authenticateToken, (req, res) => {
         });
       }
     }
-    res.json({ numberCount, zodiacCount, numberAmountCount, zodiacAmountCount });
+    const responseData = { numberCount, zodiacCount, numberAmountCount, zodiacAmountCount };
+    calculationCache.set(cacheKey, responseData);
+    res.json(responseData);
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
@@ -876,12 +1014,13 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
     const { content, targetNum, config: customConfig } = req.body;
     if (!content || !targetNum) return res.json({ highlighted: content });
     const config = mergeConfig(customConfig || {});
-    const t = targetNum.padStart(2, '0');
+    const t = targetNum.toString().padStart(2, '0');
     function highlightParts(contStr) {
-      const parts = []; let tmp = '';
+      const parts = [];
+      let tmp = '';
       for (const ch of contStr) {
         if (ch === '-' || ch === ' ') { if (tmp) parts.push(tmp); parts.push(ch); tmp = ''; }
-        else tmp += ch;
+        else { tmp += ch; }
       }
       if (tmp) parts.push(tmp);
       return parts.map(p => {
@@ -895,41 +1034,33 @@ app.post('/api/highlight', authenticateToken, (req, res) => {
     const lines = content.split('\n');
     const highlightedLines = lines.map(line => {
       const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-      if (m) return highlightParts(m[1]) + ` 各数 ${m[2]}`;
-      else return highlightParts(line);
+      if (m) { return highlightParts(m[1]) + ` 各数 ${m[2]}`; }
+      else { return highlightParts(line); }
     });
     res.json({ highlighted: highlightedLines.join('\n') });
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 用户配置 API（支持全局 users 列表） ==========
+// ========== 用户配置 API ==========
 app.get('/api/settings', authenticateToken, (req, res) => {
   const rows = db.prepare('SELECT key, value FROM user_settings WHERE user = ?').all(req.user.username);
   const settings = {};
-  rows.forEach(row => { try { settings[row.key] = JSON.parse(row.value); } catch(e) { settings[row.key] = row.value; } });
-  // 管理员获取全局用户列表
-  if (req.user.role === 'admin') {
-    const global = db.prepare('SELECT value FROM global_settings WHERE key = ?').get('users');
-    if (global) settings.users = JSON.parse(global.value);
-  }
+  rows.forEach(row => {
+    try { settings[row.key] = JSON.parse(row.value); } catch (e) { settings[row.key] = row.value; }
+  });
   res.json(settings);
 });
 
 app.post('/api/settings', authenticateToken, (req, res) => {
   const { key, value } = req.body;
   if (!key) return res.status(400).json({ error: '缺少 key' });
-  // 如果是 users 且管理员，存入全局设置
-  if (key === 'users' && req.user.role === 'admin') {
-    const valStr = JSON.stringify(value);
-    const existing = db.prepare('SELECT key FROM global_settings WHERE key = ?').get('users');
-    if (existing) db.prepare('UPDATE global_settings SET value = ? WHERE key = ?').run(valStr, 'users');
-    else db.prepare('INSERT INTO global_settings (key, value) VALUES (?, ?)').run('users', valStr);
-    return res.json({ success: true });
-  }
   const valStr = typeof value === 'string' ? value : JSON.stringify(value);
   const existing = db.prepare('SELECT id FROM user_settings WHERE user = ? AND key = ?').get(req.user.username, key);
-  if (existing) db.prepare('UPDATE user_settings SET value = ? WHERE user = ? AND key = ?').run(valStr, req.user.username, key);
-  else db.prepare('INSERT INTO user_settings (user, key, value) VALUES (?, ?, ?)').run(req.user.username, key, valStr);
+  if (existing) {
+    db.prepare('UPDATE user_settings SET value = ? WHERE user = ? AND key = ?').run(valStr, req.user.username, key);
+  } else {
+    db.prepare('INSERT INTO user_settings (user, key, value) VALUES (?, ?, ?)').run(req.user.username, key, valStr);
+  }
   res.json({ success: true });
 });
 
@@ -946,10 +1077,6 @@ app.get('/api/export', authenticateToken, (req, res) => {
   const settings = db.prepare('SELECT key, value FROM user_settings WHERE user = ?').all(req.user.username);
   const config = {};
   settings.forEach(s => { try { config[s.key] = JSON.parse(s.value); } catch(e) { config[s.key] = s.value; } });
-  if (req.user.role === 'admin') {
-    const global = db.prepare('SELECT value FROM global_settings WHERE key = ?').get('users');
-    if (global) config.users = JSON.parse(global.value);
-  }
   res.json({ orders, reportOrders, config, exportTime: new Date().toISOString() });
 });
 
@@ -963,23 +1090,19 @@ app.post('/api/import', authenticateToken, (req, res) => {
     if (reportOrders) reportOrders.forEach(o => insertReport.run(o.content, o.user || req.user.username, o.orderer || '', o.date, o.totalAmount || 0, o.timestamp));
     if (config) {
       for (const key in config) {
-        const val = JSON.stringify(config[key]);
-        if (key === 'users' && req.user.role === 'admin') {
-          const existing = db.prepare('SELECT key FROM global_settings WHERE key = ?').get('users');
-          if (existing) db.prepare('UPDATE global_settings SET value = ? WHERE key = ?').run(val, 'users');
-          else db.prepare('INSERT INTO global_settings (key, value) VALUES (?, ?)').run('users', val);
-        } else {
-          const existing = db.prepare('SELECT id FROM user_settings WHERE user = ? AND key = ?').get(req.user.username, key);
-          if (existing) db.prepare('UPDATE user_settings SET value = ? WHERE user = ? AND key = ?').run(val, req.user.username, key);
-          else db.prepare('INSERT INTO user_settings (user, key, value) VALUES (?, ?, ?)').run(req.user.username, key, val);
-        }
+        const val = typeof config[key] === 'string' ? config[key] : JSON.stringify(config[key]);
+        const existing = db.prepare('SELECT id FROM user_settings WHERE user = ? AND key = ?').get(req.user.username, key);
+        if (existing) db.prepare('UPDATE user_settings SET value = ? WHERE user = ? AND key = ?').run(val, req.user.username, key);
+        else db.prepare('INSERT INTO user_settings (user, key, value) VALUES (?, ?, ?)').run(req.user.username, key, val);
       }
     }
   });
   transaction();
+  calculationCache.clear();
   res.json({ success: true });
 });
 
+// ========== 清空 API ==========
 app.post('/api/reset', authenticateToken, (req, res) => {
   if (req.user.role === 'admin') {
     db.prepare('DELETE FROM orders').run();
@@ -988,14 +1111,20 @@ app.post('/api/reset', authenticateToken, (req, res) => {
     db.prepare('DELETE FROM orders WHERE user = ?').run(req.user.username);
     db.prepare('DELETE FROM report_orders WHERE user = ?').run(req.user.username);
   }
+  calculationCache.clear();
   res.json({ success: true });
 });
 
 app.post('/api/config', authenticateToken, (req, res) => {
-  // 存储自定义分类配置（可扩展）
+  currentConfig = mergeConfig(req.body);
   res.json({ success: true });
 });
 
+app.get('/api/config', authenticateToken, (req, res) => {
+  res.json(currentConfig);
+});
+
+// ========== 路由处理 ==========
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
