@@ -1165,10 +1165,11 @@ function markSelection() {
   convertOrderText();
 }
 
-// ========== 识别函数（防抖 150ms，保留配置缓存，正则稳健写法） ==========
+// ========== 识别函数（防抖 150ms，包含生肖特殊识别） ==========
 const HARD_AMP_LIST = ['各','各号','号','个','=','各数','每数','每号','个号','每个号','各码','各号码'];
 const AMP_ORIGINAL = '(?:' + HARD_AMP_LIST.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
 const IGN = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼'];
+const ZODIAC_NAMES = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
 
 let convertTimer = null;
 function convertOrderText() {
@@ -1191,7 +1192,6 @@ function _doConvert() {
   const baseSuf = '元块咪米斤#،。\\s';
   const cusAmtSuf = getCustomAmountSuffixes();
   const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');
-  // 安全转义正则特殊字符
   const escapedAmtChars = allAmtChars.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
   const AMP_ORIGINAL_ESCAPED = AMP_ORIGINAL;
   const ampRegex = new RegExp(`(${AMP_ORIGINAL_ESCAPED}\\d+[${escapedAmtChars}]*)`, 'g');
@@ -1199,6 +1199,7 @@ function _doConvert() {
   const allPre = [...IGN, ...cusPre];
   const cfg = getAllConfigData();
   const vc = getAllValidCategories(cfg);
+  const currentYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
 
   function cn2n(s) { const m={'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000}; let sum=0,tmp=0; for(let c of s) { const v=m[c]; if(v===10||v===100||v===1000) { if(tmp===0)tmp=1; tmp*=v; sum+=tmp; tmp=0; } else if(v!==undefined) { if(tmp>0){sum+=tmp;tmp=0;} tmp=v; } } sum+=tmp; return sum; }
 
@@ -1226,6 +1227,50 @@ function _doConvert() {
       }
       if (!isValidPrefix) cl = cl.substring(leadingChinese.length).trim();
     }
+
+    // ---------- 生肖特殊识别 ----------
+    const specialAmp = ['各','各肖'];
+    const specialRegex = new RegExp(`^([${ZODIAC_NAMES.join('')}\\s,\\.\\-、/|]+)(${specialAmp.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(\\d+)${AMTS}$`);
+    const specialMatch = cl.match(specialRegex);
+    if (specialMatch) {
+      const zodiacPart = specialMatch[1].replace(/[\s,\\.\\-、/|]+/g, ''); // 移除分隔符，只保留汉字
+      const totalAmt = parseInt(specialMatch[3]);
+      // 拆分成单个生肖
+      const zodiacs = [];
+      for (const ch of zodiacPart) {
+        if (ZODIAC_NAMES.includes(ch) && !zodiacs.includes(ch)) {
+          zodiacs.push(ch);
+        }
+      }
+      // 检查是否只有生肖（无其他类别）
+      let onlyZodiac = true;
+      for (const ch of zodiacPart) {
+        if (!ZODIAC_NAMES.includes(ch)) { onlyZodiac = false; break; }
+      }
+      if (onlyZodiac && zodiacs.length > 0) {
+        const hasYearZodiac = zodiacs.includes(currentYearZodiac);
+        if (hasYearZodiac) {
+          // 有本年生肖：拆分两行
+          const otherZodiacs = zodiacs.filter(z => z !== currentYearZodiac);
+          const yearAmt = Math.floor(totalAmt / 5);
+          const otherAmt = Math.floor(totalAmt / 4);
+          if (yearAmt > 0) {
+            resultLines.push({ text: `${currentYearZodiac} 各数 ${yearAmt}`, valid: true });
+          }
+          if (otherZodiacs.length > 0 && otherAmt > 0) {
+            resultLines.push({ text: `${otherZodiacs.join('-')} 各数 ${otherAmt}`, valid: true });
+          }
+        } else {
+          // 无本年生肖：全部合并一行，金额/4
+          const amt = Math.floor(totalAmt / 4);
+          if (amt > 0) {
+            resultLines.push({ text: `${zodiacs.join('-')} 各数 ${amt}`, valid: true });
+          }
+        }
+        return;
+      }
+    }
+    // ---------- 通用识别 ----------
     const om = cl.match(ampRegex);
     if (om && om.length > 0) {
       let rl = cl;
@@ -1346,7 +1391,7 @@ function replaceSeparators() {
   ta.value = ta.value.substring(0, s) + replaced + ta.value.substring(e);
   convertOrderText();
 }
-async function semanticReplace() {
+    async function semanticReplace() {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
   const s = ta.selectionStart, e = ta.selectionEnd;
@@ -1908,7 +1953,7 @@ function renderAmountFrequencyCardsFromData(freqData) {
   const nt = document.getElementById('numberAmountFreqTable'); if(nt){ nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){tb+='<tr>'; for(let c=0;c<5;c++){const n=cols[c][r]||''; if(n){const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`;}else{tb+='<td></td><td></td>';}}tb+='</tr>';}tb+='</tbody>';nt.innerHTML=th+tb;}
   const zt = document.getElementById('zodiacAmountFreqTable'); if(zt){zt.innerHTML='';const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪'];const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};let zth='<thead><tr><th>生肖</th><th>次数</th><th>生肖</th><th>次数</th></tr></thead>',ztb='<tbody>';for(let r=0;r<6;r++){const l=lz[r],r2=rz[r];const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0;ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td></tr>`;}ztb+='</tbody>';zt.innerHTML=zth+ztb;}
 }
-function switchRiskReport() {
+    function switchRiskReport() {
   const val = document.getElementById('riskReportSwitcher').value;
   if (val === 'total') {
     document.getElementById('riskSection').style.display = '';
@@ -2076,7 +2121,12 @@ async function saveReportOrder() {
     await fetchApi('/api/report-orders', { method:'POST', body: JSON.stringify({ content, orderer, date, totalAmount: total }) });
     showToast('上报成功');
     clearOrderInputs();
+    // 刷新默认视图
     updateTableFromRecords();
+    // 额外刷新下单人视图
+    if (orderer) {
+      updateTableFromRecords(orderer);
+    }
   } catch(e) { showToast('上报失败：'+e.message); }
 }
 
