@@ -117,7 +117,7 @@ function getCacheKey(user, date, rebateRate, multiple, orderer) {
 
 function invalidateCacheForDate(date) {
   for (const key of calculationCache.keys()) {
-    if (key.includes(date)) calculationCache.delete(key);
+    if (key.includes(date) || key.includes('_freq')) calculationCache.delete(key);
   }
 }
 
@@ -875,7 +875,6 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
 
     let orders, reportOrders;
     if (req.user.role === 'admin') {
-      // 管理员：如果传了 orderer，则按 orderer 筛选；否则按所有
       if (orderer) {
         orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND orderer = ?').all(date, orderer) : db.prepare('SELECT * FROM orders WHERE orderer = ?').all(orderer);
         reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ? AND orderer = ?').all(date, orderer) : db.prepare('SELECT * FROM report_orders WHERE orderer = ?').all(orderer);
@@ -884,7 +883,6 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
         reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ?').all(date) : db.prepare('SELECT * FROM report_orders').all();
       }
     } else {
-      // 普通用户
       if (orderer) {
         orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND user = ? AND orderer = ?').all(date, req.user.username, orderer) : db.prepare('SELECT * FROM orders WHERE user = ? AND orderer = ?').all(req.user.username, orderer);
         reportOrders = date ? db.prepare('SELECT * FROM report_orders WHERE date = ? AND user = ? AND orderer = ?').all(date, req.user.username, orderer) : db.prepare('SELECT * FROM report_orders WHERE user = ? AND orderer = ?').all(req.user.username, orderer);
@@ -896,7 +894,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
 
     const betData = {};
     const reportDeductData = {};
-    const reportOrdersAmountData = {}; // 原始上报金额
+    const reportOrdersAmountData = {};
 
     for (const order of orders) {
       const lines = order.content.split('\n').filter(l => l.trim());
@@ -930,13 +928,12 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       }
     }
 
-    const reportAmountData = {}; // 净上报金额 = 总下注 - 已上报
+    const reportAmountData = {};
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
       reportAmountData[num] = (betData[num] || 0) - (reportDeductData[num] || 0);
     }
 
-    // 总风险表（不变）
     const list = [];
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
@@ -956,8 +953,8 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       list: result,
       totalBet,
       totalRebate: rebate,
-      reportAmountData,          // 净上报金额（用于上报风险表）
-      reportOrdersAmountData     // 原始上报金额（用于上报号码金额表格）
+      reportAmountData,
+      reportOrdersAmountData
     };
 
     calculationCache.set(cacheKey, responseData);
