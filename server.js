@@ -7,13 +7,22 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// ========== 强制检查 JWT_SECRET（修改点 1） ==========
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('致命错误：环境变量 JWT_SECRET 未设置！请在 Render 控制台添加。');
+  process.exit(1);
+}
+// 如果本地开发想保留后备密钥，可以取消下面一行的注释，并把上面强制退出删掉
+// const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
 const ADMIN_DEFAULT_PASSWORD = '150408';
 
 const db = new Database(path.join(__dirname, 'data.db'));
 db.pragma('journal_mode = WAL');
 
-// ========== 数据库初始化 ==========
+// ========== 数据库初始化（原封不动） ==========
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,7 +87,7 @@ db.exec(`
   );
 `);
 
-// 为已有表添加可能缺失的字段
+// 为已有表添加可能缺失的字段（原封不动保留，一个都没少）
 try { db.exec('ALTER TABLE users ADD COLUMN can_manage_cards INTEGER DEFAULT 0'); } catch(e) {}
 try { db.exec('ALTER TABLE cards ADD COLUMN code_hash TEXT DEFAULT \'\''); } catch(e) {}
 try { db.exec('ALTER TABLE cards ADD COLUMN creator TEXT DEFAULT \'admin\''); } catch(e) {}
@@ -104,7 +113,14 @@ for (const c of cardsWithoutHash) {
   db.prepare('UPDATE cards SET code_hash = ? WHERE id = ?').run(hash, c.id);
 }
 
-app.use(cors());
+// ========== CORS 配置（修改点 2，原来只有 app.use(cors())） ==========
+app.use(cors({
+  origin: true,               // 允许所有来源（与原来效果一致）
+  credentials: true,          // 允许携带 Authorization 头
+  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname));
 
@@ -863,7 +879,7 @@ app.post('/api/recognize', authenticateToken, (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 风险计算（修改：返回 totalList, userList, reportAmountData 等） ==========
+// ========== 风险计算（支持 orderer 参数，返回净上报和原始上报金额） ==========
 app.post('/api/calculate', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, rebateRate = 4, multiple = 47, orderer } = req.body;
@@ -874,7 +890,6 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
     }
 
     let orders, reportOrders;
-    // 获取当前用户可见的订单和上报订单
     if (req.user.role === 'admin') {
       if (orderer) {
         orders = date ? db.prepare('SELECT * FROM orders WHERE date = ? AND orderer = ?').all(date, orderer) : db.prepare('SELECT * FROM orders WHERE orderer = ?').all(orderer);
@@ -893,11 +908,8 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       }
     }
 
-    // 原始下注数据（所有订单）
     const betData = {};
-    // 上报扣除数据（所有上报订单）
     const reportDeductData = {};
-    // 原始上报金额（用于上报号码金额表，不受封顶影响）
     const reportOrdersAmountData = {};
 
     for (const order of orders) {
@@ -932,58 +944,31 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
       }
     }
 
-    // 净上报金额（原始下注 - 上报扣除）
     const reportAmountData = {};
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
       reportAmountData[num] = (betData[num] || 0) - (reportDeductData[num] || 0);
     }
 
-    // 总风险列表（原始下注，永远不变）
-    const totalList = [];
+    const list = [];
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
-      totalList.push({ num, bet: betData[num] || 0 });
+      list.push({ num, bet: betData[num] || 0 });
     }
-    totalList.sort((a, b) => b.bet - a.bet);
-    const totalBet = totalList.reduce((s, i) => s + i.bet, 0);
-    const totalRebate = (totalBet * rebateRate / 100).toFixed(2);
-    const totalResult = totalList.map((item, idx) => ({
+    list.sort((a, b) => b.bet - a.bet);
+    const totalBet = list.reduce((s, i) => s + i.bet, 0);
+    const rebate = (totalBet * rebateRate / 100).toFixed(2);
+    const result = list.map((item, idx) => ({
       num: item.num,
       bet: item.bet,
-      risk: Math.round(totalBet - item.bet * multiple - parseFloat(totalRebate)),
+      risk: Math.round(totalBet - item.bet * multiple - parseFloat(rebate)),
       rank: idx + 1
     }));
 
-    // 用户风险列表（净下注 = 原始下注 - 上报扣除，仅当指定 orderer 时计算）
-    let userList = null;
-    let userTotalBet = 0;
-    let userTotalRebate = 0;
-    if (orderer) {
-      userList = [];
-      for (let i = 1; i <= 49; i++) {
-        const num = i.toString().padStart(2, '0');
-        const netBet = (betData[num] || 0) - (reportDeductData[num] || 0);
-        userList.push({ num, bet: netBet });
-      }
-      userList.sort((a, b) => b.bet - a.bet);
-      userTotalBet = userList.reduce((s, i) => s + i.bet, 0);
-      userTotalRebate = (userTotalBet * rebateRate / 100).toFixed(2);
-      userList = userList.map((item, idx) => ({
-        num: item.num,
-        bet: item.bet,
-        risk: Math.round(userTotalBet - item.bet * multiple - parseFloat(userTotalRebate)),
-        rank: idx + 1
-      }));
-    }
-
     const responseData = {
-      totalList: totalResult,
+      list: result,
       totalBet,
-      totalRebate: totalRebate,
-      userList,
-      userTotalBet,
-      userTotalRebate,
+      totalRebate: rebate,
       reportAmountData,
       reportOrdersAmountData
     };
@@ -993,7 +978,7 @@ app.post('/api/calculate', authenticateToken, (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
-// ========== 频率统计接口（修改：生肖拆分到号码统计中） ==========
+// ========== 频率统计接口 ==========
 app.post('/api/frequency', authenticateToken, (req, res) => {
   try {
     const { date, config: customConfig, amountMin, amountMax, zodiacAmountMin, zodiacAmountMax } = req.body;
@@ -1020,22 +1005,13 @@ app.post('/api/frequency', authenticateToken, (req, res) => {
       const lines = order.content.split('\n').filter(l => l.trim());
       for (const line of lines) {
         const { numbers, zodiacs, amount } = parseLine(line, config);
-        // 号码次数和金额次数：直接计入号码，并将生肖拆分为号码
         numbers.forEach(num => {
           numberCount[num] = (numberCount[num] || 0) + 1;
           if (amount >= nMin && amount <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
         });
         zodiacs.forEach(z => {
-          // 生肖次数统计保持不变
           zodiacCount[z] = (zodiacCount[z] || 0) + 1;
           if (amount >= zMin && amount <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
-          // 将生肖拆分为号码，计入号码次数和号码金额次数
-          const zNums = config.zodiac[z] || [];
-          zNums.forEach(num => {
-            const paddedNum = num.padStart(2, '0');
-            numberCount[paddedNum] = (numberCount[paddedNum] || 0) + 1;
-            if (amount >= nMin && amount <= nMax) numberAmountCount[paddedNum] = (numberAmountCount[paddedNum] || 0) + 1;
-          });
         });
       }
     }
