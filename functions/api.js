@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { connectDB } = require('./utils/db');
+const { getStore } = require('@netlify/blobs');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const ADMIN_ACCOUNT = process.env.ADMIN_ACCOUNT;
@@ -9,14 +9,13 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const CONFIG_PASSWORD = process.env.CONFIG_PASSWORD;
 const ZODIAC_PASSWORD = process.env.ZODIAC_PASSWORD;
 
-// ============ 工具函数 ============
-
+// 工具函数：解析路径
 function parsePath(path) {
-  // path 格式: /.netlify/functions/api/something 或 /api/something
   const parts = path.replace('/.netlify/functions/api', '').replace('/api', '').split('/').filter(Boolean);
   return parts;
 }
 
+// 获取 JWT token
 function getToken(event) {
   const auth = event.headers.authorization || '';
   return auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -54,6 +53,28 @@ function generateCardCode() {
   return crypto.randomUUID().replace(/-/g, '').substring(0, 16).toUpperCase();
 }
 
+// ========== 数据存储辅助函数（使用 Blobs） ==========
+
+async function getBlobStore() {
+  // 使用站点 ID 作为命名空间
+  return getStore('hk-macau-data');
+}
+
+async function loadCollection(collectionName) {
+  const store = await getBlobStore();
+  try {
+    const data = await store.get(collectionName);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveCollection(collectionName, data) {
+  const store = await getBlobStore();
+  await store.setJSON(collectionName, data);
+}
+
 // ============ 路由处理 ============
 
 exports.handler = async (event) => {
@@ -64,30 +85,29 @@ exports.handler = async (event) => {
   const token = getToken(event);
   const decoded = verifyToken(token);
 
-  // 管理员权限检查
+  // 权限检查
   const requireAdmin = () => {
     if (!decoded || decoded.role !== 'admin') {
-      return { statusCode: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: '无权限' }) };
+      return jsonResponse({ error: '无权限' }, 403);
     }
     return null;
   };
 
-  // 登录权限检查
   const requireLogin = () => {
     if (!decoded) {
-      return { statusCode: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: '请先登录' }) };
+      return jsonResponse({ error: '请先登录' }, 401);
     }
     return null;
   };
 
   try {
-    const db = await connectDB();
-    const usersCol = db.collection('users');
-    const cardsCol = db.collection('cards');
-    const configCol = db.collection('config');
-    const ordersCol = db.collection('orders');
-    const reportsCol = db.collection('reports');
-    const recycleCol = db.collection('recycle_bin');
+    // 加载各个“集合”
+    const users = await loadCollection('users');
+    const cards = await loadCollection('cards');
+    const config = await loadCollection('config'); // 配置对象，可能不是数组
+    const orders = await loadCollection('orders');
+    const reports = await loadCollection('reports');
+    const recycleBin = await loadCollection('recycle_bin');
 
     // ==================== 登录/注册 ====================
 
@@ -107,29 +127,31 @@ exports.handler = async (event) => {
       if (!username || !password || !card) return errorResponse('缺少参数');
       if (username === 'admin') return errorResponse('用户名不可用');
 
-      // 检查用户名
-      const existUser = await usersCol.findOne({ username });
-      if (existUser) return errorResponse('用户名已存在');
+      if (users.find(u => u.username === username)) return errorResponse('用户名已存在');
 
-      // 检查卡密
-      const cardDoc = await cardsCol.findOne({ code: card, status: 'unused' });
+      const cardDoc = cards.find(c => c.code === card && c.status === 'unused');
       if (!cardDoc) return errorResponse('卡密无效或已被使用');
       if (Date.now() > new Date(cardDoc.createdAt).getTime() + cardDoc.expireDays * 86400000) {
         return errorResponse('卡密已过期');
       }
 
-      // 创建用户
       const hash = await bcrypt.hash(password, 10);
-      await usersCol.insertOne({
+      users.push({
         username,
         passwordHash: hash,
         cardCode: card,
         cardStatus: 'active',
-        createdAt: new Date()
+        createdAt: new Date().toISOString()
       });
 
-      // 标记卡密已使用
-      await cardsCol.updateOne({ code: card }, { $set: { status: 'used', usedBy: username, usedAt: new Date() } });
+      // 更新卡密状态
+      const cardIndex = cards.indexOf(cardDoc);
+      cards[cardIndex].status = 'used';
+      cards[cardIndex].usedBy = username;
+      cards[cardIndex].usedAt = new Date().toISOString();
+
+      await saveCollection('users', users);
+      await saveCollection('cards', cards);
 
       const userToken = jwt.sign({ role: 'user', username }, JWT_SECRET, { expiresIn: '7d' });
       return jsonResponse({ token: userToken, username, role: 'user' });
@@ -141,14 +163,13 @@ exports.handler = async (event) => {
       if (!username || !password) return errorResponse('缺少参数');
       if (username === 'admin') return errorResponse('请使用管理员登录');
 
-      const user = await usersCol.findOne({ username });
+      const user = users.find(u => u.username === username);
       if (!user) return errorResponse('用户名或密码错误', 401);
 
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) return errorResponse('用户名或密码错误', 401);
 
-      // 检查卡密状态
-      const cardDoc = await cardsCol.findOne({ code: user.cardCode });
+      const cardDoc = cards.find(c => c.code === user.cardCode);
       if (cardDoc && cardDoc.status === 'disabled') {
         return jsonResponse({ error: 'card_disabled', message: '卡密已被禁用，请联系管理员' }, 403);
       }
@@ -160,7 +181,7 @@ exports.handler = async (event) => {
       return jsonResponse({ token: userToken, username, role: 'user' });
     }
 
-    // 卡密重新激活（过期续期）
+    // 卡密重新激活
     if (route === 'auth-reactivate' && method === 'POST') {
       const perm = requireLogin();
       if (perm) return perm;
@@ -168,22 +189,28 @@ exports.handler = async (event) => {
       if (!card) return errorResponse('缺少卡密');
 
       const username = decoded.username;
-      const user = await usersCol.findOne({ username });
+      const user = users.find(u => u.username === username);
       if (!user) return errorResponse('用户不存在');
 
-      // 检查新卡密
-      const newCard = await cardsCol.findOne({ code: card, status: 'unused' });
+      const newCard = cards.find(c => c.code === card && c.status === 'unused');
       if (!newCard) return errorResponse('卡密无效或已被使用');
       if (Date.now() > new Date(newCard.createdAt).getTime() + newCard.expireDays * 86400000) {
         return errorResponse('卡密已过期');
       }
 
-      // 释放旧卡密（可选：标记为 replaced）
-      await cardsCol.updateOne({ code: user.cardCode }, { $set: { status: 'replaced' } });
-
+      // 旧卡密标记为 replaced
+      const oldCard = cards.find(c => c.code === user.cardCode);
+      if (oldCard) oldCard.status = 'replaced';
       // 绑定新卡密
-      await usersCol.updateOne({ username }, { $set: { cardCode: card, cardStatus: 'active' } });
-      await cardsCol.updateOne({ code: card }, { $set: { status: 'used', usedBy: username, usedAt: new Date() } });
+      user.cardCode = card;
+      user.cardStatus = 'active';
+      const newCardIndex = cards.indexOf(newCard);
+      cards[newCardIndex].status = 'used';
+      cards[newCardIndex].usedBy = username;
+      cards[newCardIndex].usedAt = new Date().toISOString();
+
+      await saveCollection('users', users);
+      await saveCollection('cards', cards);
 
       return jsonResponse({ success: true });
     }
@@ -195,14 +222,15 @@ exports.handler = async (event) => {
       if (perm) return perm;
       const { expireDays = 30 } = body;
       const code = generateCardCode();
-      await cardsCol.insertOne({ code, status: 'unused', createdAt: new Date(), expireDays, usedBy: null });
+      cards.push({ code, status: 'unused', createdAt: new Date().toISOString(), expireDays, usedBy: null });
+      await saveCollection('cards', cards);
       return jsonResponse({ code });
     }
 
     if (route === 'admin-get-cards' && method === 'GET') {
       const perm = requireAdmin();
       if (perm) return perm;
-      const cards = await cardsCol.find().sort({ createdAt: -1 }).toArray();
+      cards.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       return jsonResponse(cards);
     }
 
@@ -210,12 +238,16 @@ exports.handler = async (event) => {
       const perm = requireAdmin();
       if (perm) return perm;
       const { code } = body;
-      await cardsCol.updateOne({ code }, { $set: { status: 'disabled' } });
-      // 同步禁用对应用户
-      const cardDoc = await cardsCol.findOne({ code });
-      if (cardDoc && cardDoc.usedBy) {
-        await usersCol.updateOne({ username: cardDoc.usedBy }, { $set: { cardStatus: 'disabled' } });
+      const cardDoc = cards.find(c => c.code === code);
+      if (cardDoc) {
+        cardDoc.status = 'disabled';
+        if (cardDoc.usedBy) {
+          const user = users.find(u => u.username === cardDoc.usedBy);
+          if (user) user.cardStatus = 'disabled';
+        }
       }
+      await saveCollection('cards', cards);
+      await saveCollection('users', users);
       return jsonResponse({ success: true });
     }
 
@@ -223,19 +255,17 @@ exports.handler = async (event) => {
       const perm = requireAdmin();
       if (perm) return perm;
       const { code } = body;
-      const cardDoc = await cardsCol.findOne({ code });
+      const cardDoc = cards.find(c => c.code === code);
       if (cardDoc) {
-        // 如果是已使用的卡密，检查过期
-        if (cardDoc.status === 'used') {
-          const expired = Date.now() > new Date(cardDoc.createdAt).getTime() + cardDoc.expireDays * 86400000;
-          await cardsCol.updateOne({ code }, { $set: { status: expired ? 'expired' : 'used' } });
-          if (cardDoc.usedBy) {
-            await usersCol.updateOne({ username: cardDoc.usedBy }, { $set: { cardStatus: expired ? 'expired' : 'active' } });
-          }
-        } else {
-          await cardsCol.updateOne({ code }, { $set: { status: 'unused' } });
+        const expired = Date.now() > new Date(cardDoc.createdAt).getTime() + cardDoc.expireDays * 86400000;
+        cardDoc.status = expired ? 'expired' : (cardDoc.status === 'used' ? 'used' : 'unused');
+        if (cardDoc.usedBy) {
+          const user = users.find(u => u.username === cardDoc.usedBy);
+          if (user) user.cardStatus = expired ? 'expired' : 'active';
         }
       }
+      await saveCollection('cards', cards);
+      await saveCollection('users', users);
       return jsonResponse({ success: true });
     }
 
@@ -243,7 +273,9 @@ exports.handler = async (event) => {
       const perm = requireAdmin();
       if (perm) return perm;
       const { code } = body;
-      await cardsCol.deleteOne({ code });
+      const index = cards.findIndex(c => c.code === code);
+      if (index !== -1) cards.splice(index, 1);
+      await saveCollection('cards', cards);
       return jsonResponse({ success: true });
     }
 
@@ -252,9 +284,8 @@ exports.handler = async (event) => {
     if (route === 'admin-get-users' && method === 'GET') {
       const perm = requireAdmin();
       if (perm) return perm;
-      const users = await usersCol.find({ username: { $ne: 'admin' } }).toArray();
-      const result = await Promise.all(users.map(async (u) => {
-        const card = await cardsCol.findOne({ code: u.cardCode });
+      const result = users.filter(u => u.username !== 'admin').map(u => {
+        const card = cards.find(c => c.code === u.cardCode);
         return {
           username: u.username,
           cardCode: u.cardCode,
@@ -263,7 +294,7 @@ exports.handler = async (event) => {
           createdAt: u.createdAt,
           cardCreatedAt: card ? card.createdAt : null
         };
-      }));
+      });
       return jsonResponse(result);
     }
 
@@ -271,11 +302,14 @@ exports.handler = async (event) => {
       const perm = requireAdmin();
       if (perm) return perm;
       const { username } = body;
-      const user = await usersCol.findOne({ username });
+      const user = users.find(u => u.username === username);
       if (user) {
-        await usersCol.updateOne({ username }, { $set: { cardStatus: 'disabled' } });
-        await cardsCol.updateOne({ code: user.cardCode }, { $set: { status: 'disabled' } });
+        user.cardStatus = 'disabled';
+        const card = cards.find(c => c.code === user.cardCode);
+        if (card) card.status = 'disabled';
       }
+      await saveCollection('users', users);
+      await saveCollection('cards', cards);
       return jsonResponse({ success: true });
     }
 
@@ -283,15 +317,15 @@ exports.handler = async (event) => {
       const perm = requireAdmin();
       if (perm) return perm;
       const { username } = body;
-      const user = await usersCol.findOne({ username });
+      const user = users.find(u => u.username === username);
       if (user) {
-        const cardDoc = await cardsCol.findOne({ code: user.cardCode });
-        const expired = cardDoc ? Date.now() > new Date(cardDoc.createdAt).getTime() + cardDoc.expireDays * 86400000 : false;
-        await usersCol.updateOne({ username }, { $set: { cardStatus: expired ? 'expired' : 'active' } });
-        if (cardDoc) {
-          await cardsCol.updateOne({ code: user.cardCode }, { $set: { status: expired ? 'expired' : 'used' } });
-        }
+        const card = cards.find(c => c.code === user.cardCode);
+        const expired = card ? Date.now() > new Date(card.createdAt).getTime() + card.expireDays * 86400000 : false;
+        user.cardStatus = expired ? 'expired' : 'active';
+        if (card) card.status = expired ? 'expired' : 'used';
       }
+      await saveCollection('users', users);
+      await saveCollection('cards', cards);
       return jsonResponse({ success: true });
     }
 
@@ -299,14 +333,28 @@ exports.handler = async (event) => {
       const perm = requireAdmin();
       if (perm) return perm;
       const { username } = body;
-      const user = await usersCol.findOne({ username });
-      if (user) {
-        await cardsCol.updateOne({ code: user.cardCode }, { $set: { status: 'unused', usedBy: null } });
-        await usersCol.deleteOne({ username });
-        // 同时删除该用户的所有订单和上报
-        await ordersCol.deleteMany({ username });
-        await reportsCol.deleteMany({ username });
+      const userIndex = users.findIndex(u => u.username === username);
+      if (userIndex !== -1) {
+        const user = users[userIndex];
+        // 释放卡密
+        const card = cards.find(c => c.code === user.cardCode);
+        if (card) {
+          card.status = 'unused';
+          card.usedBy = null;
+        }
+        users.splice(userIndex, 1);
+        // 删除该用户的订单和上报
+        for (let i = orders.length - 1; i >= 0; i--) {
+          if (orders[i].username === username) orders.splice(i, 1);
+        }
+        for (let i = reports.length - 1; i >= 0; i--) {
+          if (reports[i].username === username) reports.splice(i, 1);
+        }
       }
+      await saveCollection('users', users);
+      await saveCollection('cards', cards);
+      await saveCollection('orders', orders);
+      await saveCollection('reports', reports);
       return jsonResponse({ success: true });
     }
 
@@ -315,8 +363,7 @@ exports.handler = async (event) => {
     if (route === 'config' && method === 'GET') {
       const perm = requireLogin();
       if (perm) return perm;
-      const config = await configCol.findOne({ _id: 'global' });
-      return jsonResponse(config ? config.data : {});
+      return jsonResponse(config || {});
     }
 
     if (route === 'config' && method === 'PUT') {
@@ -324,7 +371,7 @@ exports.handler = async (event) => {
       if (perm) return perm;
       const { password, data } = body;
       if (password !== CONFIG_PASSWORD) return errorResponse('密码错误', 403);
-      await configCol.updateOne({ _id: 'global' }, { $set: { data, updatedAt: new Date() } }, { upsert: true });
+      await saveCollection('config', data);
       return jsonResponse({ success: true });
     }
 
@@ -338,12 +385,11 @@ exports.handler = async (event) => {
       return jsonResponse({ valid: false });
     }
 
-    // ==================== 订单解析 ====================
+    // ==================== 订单解析（占位，后续补逻辑） ====================
 
     if (route === 'orders-parse' && method === 'POST') {
       const perm = requireLogin();
       if (perm) return perm;
-      // 这个接口只是占位，实际解析逻辑后续补上
       return jsonResponse({ lines: [] });
     }
 
@@ -354,6 +400,7 @@ exports.handler = async (event) => {
       if (perm) return perm;
       const { content, user, date, totalAmount, region, rawContent } = body;
       const doc = {
+        id: Date.now().toString(36) + crypto.randomBytes(4).toString('hex'),
         content,
         rawContent: rawContent || content,
         user: user || decoded.username,
@@ -364,33 +411,35 @@ exports.handler = async (event) => {
         timestamp: new Date().toISOString(),
         type: 'order'
       };
-      await ordersCol.insertOne(doc);
-      return jsonResponse({ success: true, id: doc._id });
+      orders.push(doc);
+      await saveCollection('orders', orders);
+      return jsonResponse({ success: true, id: doc.id });
     }
 
     if (route === 'orders-list' && method === 'GET') {
       const perm = requireLogin();
       if (perm) return perm;
       const { date, region, user } = event.queryStringParameters || {};
-      const filter = {};
-      if (decoded.role !== 'admin') filter.username = decoded.username;
-      if (date) filter.date = date;
-      if (region) filter.region = region;
-      if (user && decoded.role === 'admin') filter.user = user;
-      const orders = await ordersCol.find(filter).sort({ timestamp: -1 }).toArray();
-      return jsonResponse(orders);
+      let filtered = orders.slice();
+      if (decoded.role !== 'admin') filtered = filtered.filter(o => o.username === decoded.username);
+      if (date) filtered = filtered.filter(o => o.date === date);
+      if (region) filtered = filtered.filter(o => o.region === region);
+      if (user && decoded.role === 'admin') filtered = filtered.filter(o => o.user === user);
+      filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      return jsonResponse(filtered);
     }
 
     if (route === 'orders-delete' && method === 'DELETE') {
       const perm = requireLogin();
       if (perm) return perm;
       const { id } = body;
-      const order = await ordersCol.findOne({ _id: id });
-      if (!order) return errorResponse('订单不存在');
-      if (decoded.role !== 'admin' && order.username !== decoded.username) return errorResponse('无权限', 403);
-      // 移到回收站
-      await recycleCol.insertOne({ ...order, deletedAt: new Date().toISOString(), originalId: id });
-      await ordersCol.deleteOne({ _id: id });
+      const index = orders.findIndex(o => o.id === id);
+      if (index === -1) return errorResponse('订单不存在');
+      if (decoded.role !== 'admin' && orders[index].username !== decoded.username) return errorResponse('无权限', 403);
+      const deletedOrder = orders.splice(index, 1)[0];
+      recycleBin.push({ ...deletedOrder, deletedAt: new Date().toISOString() });
+      await saveCollection('orders', orders);
+      await saveCollection('recycle_bin', recycleBin);
       return jsonResponse({ success: true });
     }
 
@@ -401,6 +450,7 @@ exports.handler = async (event) => {
       if (perm) return perm;
       const { content, user, date, totalAmount, region } = body;
       const doc = {
+        id: Date.now().toString(36) + crypto.randomBytes(4).toString('hex'),
         content,
         user: user || decoded.username,
         username: decoded.username,
@@ -410,54 +460,50 @@ exports.handler = async (event) => {
         timestamp: new Date().toISOString(),
         type: 'report'
       };
-      await reportsCol.insertOne(doc);
-      return jsonResponse({ success: true, id: doc._id });
+      reports.push(doc);
+      await saveCollection('reports', reports);
+      return jsonResponse({ success: true, id: doc.id });
     }
 
     if (route === 'reports-list' && method === 'GET') {
       const perm = requireLogin();
       if (perm) return perm;
       const { date, region, user } = event.queryStringParameters || {};
-      const filter = {};
-      if (decoded.role !== 'admin') filter.username = decoded.username;
-      if (date) filter.date = date;
-      if (region) filter.region = region;
-      if (user && decoded.role === 'admin') filter.user = user;
-      const reports = await reportsCol.find(filter).sort({ timestamp: -1 }).toArray();
-      return jsonResponse(reports);
+      let filtered = reports.slice();
+      if (decoded.role !== 'admin') filtered = filtered.filter(r => r.username === decoded.username);
+      if (date) filtered = filtered.filter(r => r.date === date);
+      if (region) filtered = filtered.filter(r => r.region === region);
+      if (user && decoded.role === 'admin') filtered = filtered.filter(r => r.user === user);
+      filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      return jsonResponse(filtered);
     }
 
     if (route === 'reports-delete' && method === 'DELETE') {
       const perm = requireLogin();
       if (perm) return perm;
       const { id } = body;
-      const report = await reportsCol.findOne({ _id: id });
-      if (!report) return errorResponse('上报记录不存在');
-      if (decoded.role !== 'admin' && report.username !== decoded.username) return errorResponse('无权限', 403);
-      await recycleCol.insertOne({ ...report, deletedAt: new Date().toISOString(), originalId: id });
-      await reportsCol.deleteOne({ _id: id });
+      const index = reports.findIndex(r => r.id === id);
+      if (index === -1) return errorResponse('上报记录不存在');
+      if (decoded.role !== 'admin' && reports[index].username !== decoded.username) return errorResponse('无权限', 403);
+      const deletedReport = reports.splice(index, 1)[0];
+      recycleBin.push({ ...deletedReport, deletedAt: new Date().toISOString() });
+      await saveCollection('reports', reports);
+      await saveCollection('recycle_bin', recycleBin);
       return jsonResponse({ success: true });
     }
 
-    // ==================== 统计数据 ====================
+    // ==================== 统计数据（占位） ====================
 
     if (route === 'statistics' && method === 'GET') {
       const perm = requireLogin();
       if (perm) return perm;
-      // 占位，后续补计算逻辑
       return jsonResponse({
         tableBetData: {},
         reportBetData: {},
         numberCount: {},
         zodiacCount: {},
-        numberAmountCount: {},
-        zodiacAmountCount: {},
-        reportAmountData: {},
-        reportRiskData: {},
         numberOrderTotal: 0,
-        zodiacWeightedTotal: 0,
-        orders: [],
-        reports: []
+        zodiacWeightedTotal: 0
       });
     }
 
@@ -466,9 +512,9 @@ exports.handler = async (event) => {
     if (route === 'recycle-list' && method === 'GET') {
       const perm = requireLogin();
       if (perm) return perm;
-      const filter = {};
-      if (decoded.role !== 'admin') filter.username = decoded.username;
-      const items = await recycleCol.find(filter).sort({ deletedAt: -1 }).toArray();
+      let items = recycleBin.slice();
+      if (decoded.role !== 'admin') items = items.filter(i => i.username === decoded.username);
+      items.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
       return jsonResponse(items);
     }
 
@@ -476,15 +522,21 @@ exports.handler = async (event) => {
       const perm = requireLogin();
       if (perm) return perm;
       const { id } = body;
-      const item = await recycleCol.findOne({ _id: id });
-      if (!item) return errorResponse('记录不存在');
+      const index = recycleBin.findIndex(r => r.id === id);
+      if (index === -1) return errorResponse('记录不存在');
+      const item = recycleBin[index];
       if (decoded.role !== 'admin' && item.username !== decoded.username) return errorResponse('无权限', 403);
+      recycleBin.splice(index, 1);
       if (item.type === 'order') {
-        await ordersCol.insertOne({ ...item, _id: item.originalId });
+        delete item.deletedAt;
+        orders.push(item);
+        await saveCollection('orders', orders);
       } else {
-        await reportsCol.insertOne({ ...item, _id: item.originalId });
+        delete item.deletedAt;
+        reports.push(item);
+        await saveCollection('reports', reports);
       }
-      await recycleCol.deleteOne({ _id: id });
+      await saveCollection('recycle_bin', recycleBin);
       return jsonResponse({ success: true });
     }
 
@@ -492,10 +544,11 @@ exports.handler = async (event) => {
       const perm = requireLogin();
       if (perm) return perm;
       const { id } = body;
-      const item = await recycleCol.findOne({ _id: id });
-      if (!item) return errorResponse('记录不存在');
-      if (decoded.role !== 'admin' && item.username !== decoded.username) return errorResponse('无权限', 403);
-      await recycleCol.deleteOne({ _id: id });
+      const index = recycleBin.findIndex(r => r.id === id);
+      if (index === -1) return errorResponse('记录不存在');
+      if (decoded.role !== 'admin' && recycleBin[index].username !== decoded.username) return errorResponse('无权限', 403);
+      recycleBin.splice(index, 1);
+      await saveCollection('recycle_bin', recycleBin);
       return jsonResponse({ success: true });
     }
 
@@ -504,9 +557,12 @@ exports.handler = async (event) => {
       if (perm) return perm;
       const { password } = body;
       if (password !== CONFIG_PASSWORD) return errorResponse('密码错误', 403);
-      const filter = {};
-      if (decoded.role !== 'admin') filter.username = decoded.username;
-      await recycleCol.deleteMany(filter);
+      if (decoded.role === 'admin') {
+        await saveCollection('recycle_bin', []);
+      } else {
+        const filtered = recycleBin.filter(i => i.username !== decoded.username);
+        await saveCollection('recycle_bin', filtered);
+      }
       return jsonResponse({ success: true });
     }
 
