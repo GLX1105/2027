@@ -1,7 +1,7 @@
 {
   "name": "hk-macau-system",
   "version": "1.0.0",
-  "description": "港澳识别系统后端",
+  "description": "港澳识别系统",
   "main": "index.html",
   "scripts": {
     "start": "netlify dev"
@@ -9,6 +9,7 @@
   "dependencies": {
     "mongodb": "^6.3.0",
     "jsonwebtoken": "^9.0.2",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "@netlify/blobs": "^7.0.0"
   }
 }
