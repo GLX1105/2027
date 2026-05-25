@@ -13,4 +13,3 @@
   CONFIG_PASSWORD = "891105"
   ZODIAC_PASSWORD = "150408"
   JWT_SECRET = "hkMacau2024SecretKey!@#"
-MONGODB_URI = "mongodb+srv://562761508:ganlingxun891105@cluster0.folbbmf.mongodb.net/?appName=Cluster0"
