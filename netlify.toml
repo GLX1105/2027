@@ -6,3 +6,11 @@
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
   status = 200
+
+[build.environment]
+  ADMIN_ACCOUNT = "17776192265"
+  ADMIN_PASSWORD = "150408"
+  CONFIG_PASSWORD = "891105"
+  ZODIAC_PASSWORD = "150408"
+  JWT_SECRET = "hkMacau2024SecretKey!@#"
+  MONGODB_URI = "你的MongoDB连接字符串"
