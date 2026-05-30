@@ -846,77 +846,54 @@ function convertOrderText() {
   if (!inputEl || !resultEl) return;
   let text = applyCategoryAliases(applyReplacePresets(inputEl.value.trim()));
   if (!text) { resultEl.innerHTML = ''; if (invalidSpan) { invalidSpan.textContent = ''; invalidSpan.style.display = 'none'; } updateOrderTotalDisplay(); return; }
-  const lines = text.split('\n'); const resultLines = []; const originalContents = []; const skipInvalidCheck = new Set();
-
+  const lines = text.split('\n');
+  const resultLines = []; const originalContents = []; const skipInvalidCheck = new Set();
   const HARD_AMP_LIST = ['每个号','各号码','各数','每数','每号','个号','各号','各码','号','个','=','各'];
-  const cusAmp = getCustomAmountPrefixes(); const allAmpList = [...HARD_AMP_LIST, ...cusAmp];
-  allAmpList.sort((a, b) => b.length - a.length);
+  const cusAmp = getCustomAmountPrefixes();
+  const allAmpList = [...HARD_AMP_LIST, ...cusAmp]; allAmpList.sort((a, b) => b.length - a.length);
   const AMP_ORIGINAL = '(?:' + allAmpList.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
   const IGN = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼'];
   const cusPre = getCustomPrefixes(); const allPre = [...IGN, ...cusPre];
   const baseSuf = '元块咪米斤#،。\\s'; const cusAmtSuf = getCustomAmountSuffixes();
   const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');
   const AMTS = `[${allAmtChars}]*`;
-
-  function cn2n(s) { const m = {'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000}; let sum = 0, tmp = 0; for (let c of s) { const v = m[c]; if (v === 10 || v === 100 || v === 1000) { if (tmp === 0) tmp = 1; tmp *= v; sum += tmp; tmp = 0; } else if (v !== undefined) { if (tmp > 0) { sum += tmp; tmp = 0; } tmp = v; } } sum += tmp; return sum; }
-
+  // ===== 修改一：SIMPLE_PAIR 支持金额后缀和中文数字 =====
   const SIMPLE_PAIR = new RegExp(`^(\\d{1,2})[^\\d\\s]+(\\d+)\\s*${AMTS}$`);
+  function cn2n(s) { const m = {'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000}; let sum = 0, tmp = 0; for (let c of s) { const v = m[c]; if (v === 10 || v === 100 || v === 1000) { if (tmp === 0) tmp = 1; tmp *= v; sum += tmp; tmp = 0; } else if (v !== undefined) { if (tmp > 0) { sum += tmp; tmp = 0; } tmp = v; } } sum += tmp; return sum; }
   const cfg = getAllConfigData(); const vc = getAllValidCategories(cfg);
   const allCatNames = new Set(); Object.keys(cfg.zodiac).forEach(z => allCatNames.add(z)); vc.forEach(c => allCatNames.add(c));
   const ZODIAC_SET = new Set(Object.keys(cfg.zodiac));
-
   function startsWithCategory(str) { for (let cat of allCatNames) { if (str.startsWith(cat)) return true; } return false; }
   function isValidNumber(token) { return /^(0[1-9]|[1-4][0-9]|49?|[1-9])$/.test(token); }
   const PUNCT_REGEX = /[\s,，.。、+\-*＊\/\\|!@#$%^&*()=+_{}\[\]:;"'<>,.?\/~！@#￥%…&*（）—+【】{}|："；"''《》，。？、]/g;
   function isValidToken(token) { const clean = token.replace(PUNCT_REGEX, ''); if (clean === '') return false; if (isValidNumber(clean)) return true; if (/^\d+尾$/.test(clean) || /^\d+头$/.test(clean)) return true; if (allCatNames.has(clean)) return true; if (/^[\u4e00-\u9fa5]+$/.test(clean) && clean.length > 1) { const chars = clean.split(''); if (chars.every(ch => allCatNames.has(ch))) return true; } return false; }
-
   lines.forEach(line => {
     line = line.trim(); if (!line) return;
-
-    // ===== 区间识别 =====
-    const rangeFullMatch = line.match(new RegExp(`^([\\u4e00-\\u9fa5\\-]*?)(\\d{1,2})到(\\d{1,2})\\s*${AMP_ORIGINAL}\\s*(\\d+)\\s*${AMTS}$`));
+    // 区间识别
+    const rangeFullMatch = line.match(new RegExp(`^([\\u4e00-\\u9fa5\\-]*?)(\\d{1,2})到(\\d{1,2})[\\s，。、]*${AMP_ORIGINAL}[\\s，。、]*(\\d+)\\s*${AMTS}$`));
     if (rangeFullMatch) { const prefix = rangeFullMatch[1].replace(/-$/, '').trim(); const startNum = parseInt(rangeFullMatch[2]); const endNum = parseInt(rangeFullMatch[3]); const amt = rangeFullMatch[4]; if (startNum >= 1 && startNum <= 49 && endNum >= 1 && endNum <= 49 && startNum <= endNum) { const numList = []; for (let i = startNum; i <= endNum; i++) { numList.push(i.toString().padStart(2, '0')); } const expanded = numList.join('-'); const finalLine = prefix ? `${prefix}-${expanded}` : expanded; resultLines.push(`${finalLine} 各数 ${amt}`); originalContents.push(finalLine); skipInvalidCheck.add(resultLines.length - 1); return; } }
-
-    // ===== SIMPLE_PAIR =====
+    // SIMPLE_PAIR 匹配（先新后旧）
     let pairMatch = line.match(SIMPLE_PAIR);
     if (!pairMatch) { pairMatch = line.match(/(\d{1,2})[^\d\s]+(\d+)$/); }
     if (pairMatch) { let num = pairMatch[1]; const amount = pairMatch[2]; if (num.length === 1) num = '0' + num; resultLines.push(`${num} 各数 ${amount}`); originalContents.push(pairMatch[1]); return; }
-
     let cl = line;
     allPre.forEach(p => { if (cl.startsWith(p)) cl = cl.substring(p.length).trim(); });
-    cl = cl.replace(/[^\u4e00-\u9fa5\d]+$/, ''); cl = cl.replace(/([一二三四五六七八九十百千]+)/g, (m) => cn2n(m));
+    cl = cl.replace(/[^\u4e00-\u9fa5\d]+$/, '');
+    cl = cl.replace(/([一二三四五六七八九十百千]+)/g, (m) => cn2n(m));
     while (cl && !/^[\d\u4e00-\u9fa5]/.test(cl)) { cl = cl.substring(1).trim(); }
     while (cl && !/^\d/.test(cl) && !startsWithCategory(cl)) { cl = cl.substring(1).trim(); }
     if (!cl) return;
-
-    // ===== 各肖识别 =====
-    const shxMatch = cl.match(new RegExp(`^(.+?)(各肖|各)\\s*(\\d+)${AMTS}$`));
+    // ===== 修改二：各肖识别允许空格和标点 =====
+    const shxMatch = cl.match(new RegExp(`^(.+?)(各肖|各)[\\s，。、]*(\\d+)${AMTS}$`));
     if (shxMatch) { const rawContent = shxMatch[1]; const amtRaw = parseInt(shxMatch[3]) || 0; if (!/\d/.test(rawContent)) { const zodiacs = []; for (const ch of rawContent) { if (ZODIAC_SET.has(ch)) zodiacs.push(ch); } if (zodiacs.length > 0) { const curBenming = document.getElementById('startZodiacSelect')?.value || '马'; const benmingList = [], otherList = []; zodiacs.forEach(z => { if (z === curBenming) benmingList.push(z); else otherList.push(z); }); const amtPerBen = Math.round(amtRaw / 5); const amtPerOther = Math.round(amtRaw / 4); if (benmingList.length > 0) { resultLines.push(`${benmingList.join('-')} 各数 ${amtPerBen}`); originalContents.push(benmingList.join('-')); } if (otherList.length > 0) { resultLines.push(`${otherList.join('-')} 各数 ${amtPerOther}`); originalContents.push(otherList.join('-')); } return; } } }
-
-    // ===== 指示词 + 金额 带标点 =====
-    let op = new RegExp(`(${AMP_ORIGINAL}[\\s，。、]*\\d+${AMTS})`, 'g');
-    let om = cl.match(op);
-    if (!om) { op = new RegExp(`(${AMP_ORIGINAL}\\s*\\d+${AMTS})`, 'g'); om = cl.match(op); }
-    if (om && om.length > 0) {
-      let rl = cl; om.forEach(om => { const oi = rl.indexOf(om); if (oi !== -1) { const cont = rl.substring(0, oi).trim(); const am = om.match(/(\d+)/); if (am) { const amt = am[1]; if (cont) { const jo = tokenizeAndJoin(cont); if (jo) { resultLines.push(`${jo} 各数 ${amt}`); originalContents.push(cont); } } rl = rl.substring(oi + om.length); } } });
-      if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(rl.trim()); } }
-    } else {
-      let m = cl.match(new RegExp(`^(.+?)[\\s，。、]*${AMP_ORIGINAL}[\\s，。、]*(\\d+)$`));
-      if (!m) { m = cl.match(new RegExp(`^(.+?)${AMP_ORIGINAL}\\s*(\\d+)$`)); }
-      if (m) { const jo = tokenizeAndJoin(m[1].trim()); if (jo) { resultLines.push(`${jo} 各数 ${m[2]}`); originalContents.push(m[1].trim()); } }
-      else {
-        let sm = cl.match(new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})[\\s，。、]*(\\d+)$`));
-        if (!sm) { sm = cl.match(new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})\\s*(\\d+)$`)); }
-        if (sm) { let num = sm[1].trim(); if (parseInt(num) >= 1 && parseInt(num) <= 49) { num = num.length === 1 ? `0${num}` : num; resultLines.push(`${num} 各数 ${sm[2]}`); originalContents.push(num); } }
-        else { const jo = tokenizeAndJoin(cl); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(cl); } }
-      }
-    }
-  });
-
-  // ===== 无效行检测 =====
+    // ===== 修改三：指示词前后支持标点，同时无空格也能识别 =====
+    const op = new RegExp(`(${AMP_ORIGINAL}[\\s，。、]*\\d+${AMTS})`, 'g');
+    const om = cl.match(op);
+    if (om && om.length > 0) { let rl = cl; om.forEach(om => { const oi = rl.indexOf(om); if (oi !== -1) { const cont = rl.substring(0, oi).trim(); const am = om.match(/(\d+)/); if (am) { const amt = am[1]; if (cont) { const jo = tokenizeAndJoin(cont); if (jo) { resultLines.push(`${jo} 各数 ${amt}`); originalContents.push(cont); } } rl = rl.substring(oi + om.length); } } }); if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(rl.trim()); } } } else { const pat = new RegExp(`^(.+?)[\\s，。、]*${AMP_ORIGINAL}[\\s，。、]*(\\d+)$`); const m = cl.match(pat); if (m) { const jo = tokenizeAndJoin(m[1].trim()); if (jo) { resultLines.push(`${jo} 各数 ${m[2]}`); originalContents.push(m[1].trim()); } } else { const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})[\\s，。、]*(\\d+)$`); const sm = cl.match(sp); if (sm) { let num = sm[1].trim(); if (parseInt(num) >= 1 && parseInt(num) <= 49) { num = num.length === 1 ? `0${num}` : num; resultLines.push(`${num} 各数 ${sm[2]}`); originalContents.push(num); } } else { const jo = tokenizeAndJoin(cl); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(cl); } } } } });
   const lineInvalidTokens = []; resultLines.forEach((line, idx) => { if (skipInvalidCheck.has(idx)) { lineInvalidTokens.push([]); return; } const originalContent = originalContents[idx] || ''; const rawTokens = originalContent.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim()); const invalidInLine = []; rawTokens.forEach(token => { if (!isValidToken(token)) { const clean = token.replace(PUNCT_REGEX, ''); if (clean) { if (/^[\u4e00-\u9fa5]+$/.test(clean) && clean.length > 1) { const chars = clean.split(''); chars.forEach(ch => { if (!allCatNames.has(ch)) invalidInLine.push(ch); }); } else { invalidInLine.push(clean); } } } }); lineInvalidTokens.push(invalidInLine); });
   let html = ''; resultLines.forEach((line, idx) => { const m = line.match(/^(.+?)\s+各数\s+(\d+)$/); if (!m) { html += `<div style="color:red;">${line}</div>`; return; } const content = m[1]; const amt = parseInt(m[2]) || 0; const hasInvalidInSource = lineInvalidTokens[idx].length > 0; const isSkipped = skipInvalidCheck.has(idx); const { numbers, zodiacs } = countItemsInLine(line, cfg, vc); const totalItems = numbers.length + zodiacs.length; const isInvalid = !isSkipped && (totalItems === 0 || amt <= 0 || hasInvalidInSource); if (isInvalid) { html += `<div style="color:red;">${line}</div>`; } else { html += `<div>${line}</div>`; } }); resultEl.innerHTML = html;
-  if (invalidSpan) { const displayLines = []; lineInvalidTokens.forEach(arr => { if (arr.length > 0) { displayLines.push('无效: ' + arr.join(', ')); } }); if (displayLines.length > 0) { invalidSpan.innerHTML = displayLines.join('<br>'); invalidSpan.style.display = 'inline'; } else { invalidSpan.innerHTML = ''; invalidSpan.style.display = 'none'; } } updateOrderTotalDisplay();
+  if (invalidSpan) { const displayLines = []; lineInvalidTokens.forEach(arr => { if (arr.length > 0) { displayLines.push('无效: ' + arr.join(', ')); } }); if (displayLines.length > 0) { invalidSpan.innerHTML = displayLines.join('<br>'); invalidSpan.style.display = 'inline'; } else { invalidSpan.innerHTML = ''; invalidSpan.style.display = 'none'; } }
+  updateOrderTotalDisplay();
 }
 
 function getAllValidCategories(cfg) { const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); s.add('蓝大'); s.add('蓝小'); s.add('红大'); s.add('红小'); s.add('绿大'); s.add('绿小'); s.add('蓝波大'); s.add('蓝波小'); s.add('红波大'); s.add('红波小'); s.add('绿波大'); s.add('绿波小'); return s; }
@@ -1144,16 +1121,8 @@ async function importData(){
         if (data.drawRecords) { for (const [key, value] of Object.entries(data.drawRecords)) { const existing = localStorage.getItem(key); if (existing) { try { const existingData = JSON.parse(existing); const newData = JSON.parse(value); let changed = false; for (const [issue, entry] of Object.entries(newData)) { if (existingData[issue] && existingData[issue].number && existingData[issue].number.trim()) { continue; } else { existingData[issue] = entry; changed = true; } } if (changed) { localStorage.setItem(key, JSON.stringify(existingData)); dcImported++; } } catch(e) { localStorage.setItem(key, value); dcImported++; } } else { localStorage.setItem(key, value); dcImported++; } } }
 
         let presetImported = 0, aliasImported = 0;
-        if (data.replacePresets && Array.isArray(data.replacePresets)) {
-          const currentPresets = getReplacePresets();
-          data.replacePresets.forEach(p => { if (!currentPresets.some(x => x.old === p.old)) { currentPresets.push(p); presetImported++; } });
-          localStorage.setItem('replacePresets', JSON.stringify(currentPresets));
-        }
-        if (data.categoryAliases && Array.isArray(data.categoryAliases)) {
-          const currentAliases = getCategoryAliases();
-          data.categoryAliases.forEach(a => { if (!currentAliases.some(x => x.alias === a.alias)) { currentAliases.push(a); aliasImported++; } });
-          localStorage.setItem('categoryAliases', JSON.stringify(currentAliases));
-        }
+        if (data.replacePresets && Array.isArray(data.replacePresets)) { const currentPresets = getReplacePresets(); data.replacePresets.forEach(p => { if (!currentPresets.some(x => x.old === p.old)) { currentPresets.push(p); presetImported++; } }); localStorage.setItem('replacePresets', JSON.stringify(currentPresets)); }
+        if (data.categoryAliases && Array.isArray(data.categoryAliases)) { const currentAliases = getCategoryAliases(); data.categoryAliases.forEach(a => { if (!currentAliases.some(x => x.alias === a.alias)) { currentAliases.push(a); aliasImported++; } }); localStorage.setItem('categoryAliases', JSON.stringify(currentAliases)); }
 
         await updateTableFromRecords(); calculateStorageUsage();
         let msg = `成功导入 ${no+nr} 条订单/上报记录，${dcImported} 组开奖记录。`;
@@ -1206,7 +1175,7 @@ const originalApplyReportCap = applyReportCap;
 applyReportCap = function() { originalApplyReportCap(); const info = document.getElementById('reportCapInfo').innerText; if (!info || info === '无超出的号码') { document.getElementById('parseResultArea').innerText = ''; } };
 
 // ===== 修正后的回收站窗口（按地区隔离显示） =====
-async function showRecycleBin() { const existingWin = document.getElementById('recycleWin'); if (existingWin) existingWin.remove(); const allRecords = await getRecycleBinRecords(); const records = allRecords.filter(r => r.region === currentRegion); const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recycleWin'; win.style.width = '750px'; win.style.height = '550px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; let html = `<div class="modal-header"><h3>🗑️ 回收站</h3><div class="window-controls"><button onclick="maximizeWindow('recycleWin')">🗖</button><button onclick="document.getElementById('recycleWin').remove()">×</button></div></div>`; html += `<div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html += `<div style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><button onclick="checkAllRecycle()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAllRecycle()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="restoreCheckedRecycle()" style="padding:6px 12px;background:#27ae60;color:#fff;border:none;border-radius:4px;">恢复选中</button><button onclick="deleteCheckedRecycle()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">彻底删除</button><button onclick="emptyRecycleBin()" style="padding:6px 12px;background:#8e44ad;color:#fff;border:none;border-radius:4px;margin-left:auto;">清空回收站</button></div>`; html += `<div id="recycleListContainer" style="flex:1; overflow-y:auto;">`; if (records.length === 0) { html += `<div style="padding:20px;text-align:center;color:#666;">回收站为空</div>`; } else { records.sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt)); records.forEach(rec => { const ts = formatTimestampToCST(rec.deletedAt); const typeLabel = rec.type === 'order' ? '下单' : '上报'; const typeColor = rec.type === 'order' ? '#3498db' : '#e67e22'; html += `<div class="order-item"><input type="checkbox" class="recycle-check" data-id="${rec.id}"><div class="order-content">${rec.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${rec.totalAmount || 0}</span><span class="order-meta"><span style="color:${typeColor};">类型：${typeLabel}</span><span style="color:#e74c3c;">删除：${ts}</span><span>用户：${rec.user || '未知'}</span></span></div><button class="order-del" onclick="restoreRecycleRecord('${rec.id}')" style="background:#27ae60;margin-right:4px;">恢复</button><button class="order-del" onclick="permanentlyDeleteRecycleRecord('${rec.id}')">删除</button></div>`; }); } html += `</div></div><div class="modal-footer" style="justify-content:space-between;"><span style="font-size:12px;color:#666;" id="recycleStorageInfo"></span><button onclick="document.getElementById('recycleWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; win.innerHTML = html; document.body.appendChild(win); updateRecycleStorageInfo(); makeWindowDraggable('recycleWin'); highestZ += 1; win.style.zIndex = highestZ; updateRecycleCount(); }
+async function showRecycleBin() { const existingWin = document.getElementById('recycleWin'); if (existingWin) existingWin.remove(); const allRecords = await getRecycleBinRecords(); const records = allRecords.filter(r => r.region === currentRegion); const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recycleWin'; win.style.width = '750px'; win.style.height = '550px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; let html = `<div class="modal-header"><h3>回收站</h3><div class="window-controls"><button onclick="maximizeWindow('recycleWin')">🗖</button><button onclick="document.getElementById('recycleWin').remove()">×</button></div></div>`; html += `<div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html += `<div style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><button onclick="checkAllRecycle()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAllRecycle()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="restoreCheckedRecycle()" style="padding:6px 12px;background:#27ae60;color:#fff;border:none;border-radius:4px;">恢复选中</button><button onclick="deleteCheckedRecycle()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">彻底删除</button><button onclick="emptyRecycleBin()" style="padding:6px 12px;background:#8e44ad;color:#fff;border:none;border-radius:4px;margin-left:auto;">清空回收站</button></div>`; html += `<div id="recycleListContainer" style="flex:1; overflow-y:auto;">`; if (records.length === 0) { html += `<div style="padding:20px;text-align:center;color:#666;">回收站为空</div>`; } else { records.sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt)); records.forEach(rec => { const ts = formatTimestampToCST(rec.deletedAt); const typeLabel = rec.type === 'order' ? '下单' : '上报'; const typeColor = rec.type === 'order' ? '#3498db' : '#e67e22'; html += `<div class="order-item"><input type="checkbox" class="recycle-check" data-id="${rec.id}"><div class="order-content">${rec.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${rec.totalAmount || 0}</span><span class="order-meta"><span style="color:${typeColor};">类型：${typeLabel}</span><span style="color:#e74c3c;">删除：${ts}</span><span>用户：${rec.user || '未知'}</span></span></div><button class="order-del" onclick="restoreRecycleRecord('${rec.id}')" style="background:#27ae60;margin-right:4px;">恢复</button><button class="order-del" onclick="permanentlyDeleteRecycleRecord('${rec.id}')">删除</button></div>`; }); } html += `</div></div><div class="modal-footer" style="justify-content:space-between;"><span style="font-size:12px;color:#666;" id="recycleStorageInfo"></span><button onclick="document.getElementById('recycleWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; win.innerHTML = html; document.body.appendChild(win); updateRecycleStorageInfo(); makeWindowDraggable('recycleWin'); highestZ += 1; win.style.zIndex = highestZ; updateRecycleCount(); }
 function updateRecycleStorageInfo() { const span = document.getElementById('recycleStorageInfo'); if (!span) return; getRecycleBinRecords().then(allRecords => { const records = allRecords.filter(r => r.region === currentRegion); let bytes = 0; records.forEach(r => bytes += JSON.stringify(r).length * 2); const usedMB = (bytes / (1024*1024)).toFixed(2); span.textContent = `回收站占用：${usedMB} MB（共${records.length}条记录）`; }); }
 async function updateRecycleCount() { const span = document.getElementById('recycleCount'); if (!span) return; try { const allRecords = await getRecycleBinRecords(); const count = allRecords.filter(r => r.region === currentRegion).length; if (count > 0) { span.textContent = count; span.style.display = 'inline-block'; } else { span.style.display = 'none'; } } catch(e) { span.style.display = 'none'; } }
 function checkAllRecycle() { document.querySelectorAll('.recycle-check').forEach(cb => cb.checked = true); }
@@ -1217,7 +1186,7 @@ async function restoreCheckedRecycle() { const ids = []; document.querySelectorA
 async function deleteCheckedRecycle() { const ids = []; document.querySelectorAll('.recycle-check:checked').forEach(cb => ids.push(String(cb.dataset.id))); if (ids.length === 0) { showToast('请选择'); return; } if (!(await confirm(`确定彻底删除选中的 ${ids.length} 条记录吗？此操作不可恢复！`))) return; await batchDeleteFromRecycleBin(ids); showToast(`已彻底删除 ${ids.length} 条`); updateRecycleStorageInfo(); showRecycleBin(); updateRecycleCount(); }
 async function emptyRecycleBin() { if (!(await confirm('确定清空整个回收站吗？此操作不可恢复！'))) return; const pwd = await prompt("输入清空密码：",""); if (pwd !== PASSWORD) { await alert("密码错误"); return; } await clearRecycleBin(currentRegion); showToast('回收站已清空'); showRecycleBin(); updateRecycleCount(); }
 async function autoCleanRecycleBin() { try { const records = await getRecycleBinRecords(); const now = Date.now(); const expireMs = RECYCLE_RETENTION_DAYS * 24 * 60 * 60 * 1000; for (const record of records) { const deletedTime = new Date(record.deletedAt).getTime(); if (now - deletedTime > expireMs) { await deleteFromRecycleBin(record.id); } } updateRecycleCount(); } catch(e) {} }
-// ===== 格式化日期 M/D（仅用于期号计算，表格不再显示日期列） =====
+    // ===== 格式化日期 M/D（仅用于期号计算，表格不再显示日期列） =====
 function formatDateMD(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; }
 
 // ===== 开奖记录窗口（添加清空按钮） =====
@@ -1306,4 +1275,4 @@ window.onload = async () => {
 };
 </script>
 </body>
-</html>    
+</html>
