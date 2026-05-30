@@ -320,6 +320,37 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
           </div>
         </div>
       </div>
+
+      <!-- 新增：号码分析双卡片 -->
+      <div class="card" style="margin-top:0;">
+        <div class="card-title">号码分析</div>
+        <div class="freq-container">
+          <!-- 卡片 A：自定义筛选 -->
+          <div class="freq-card">
+            <div class="freq-title">
+              <span>自定义筛选</span>
+              <div style="display:flex; gap:4px; margin-top:5px; flex-wrap:wrap;">
+                <input type="text" id="filterInputCardA" placeholder="条件" style="width:70px; padding:3px 6px; font-size:12px; border:1px solid #ccc; border-radius:4px;" oninput="updateCardA()">
+                <input type="number" id="topNInput" placeholder="N" min="1" style="width:45px; padding:3px 6px; font-size:12px; border:1px solid #ccc; border-radius:4px;" oninput="updateCardA()">
+                <button class="btn-copy" onclick="copyCardANumbers('risk')" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:20px; background:#3498db; color:#fff; border:none; cursor:pointer; white-space:nowrap;">复制风险</button>
+                <button class="btn-copy" onclick="copyCardANumbers('active')" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:20px; background:#2ecc71; color:#fff; border:none; cursor:pointer;">复制活跃</button>
+                <button class="btn-copy" onclick="copyCardANumbers('inactive')" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:20px; background:#e67e22; color:#fff; border:none; cursor:pointer;">复制不活跃</button>
+                <button class="btn-copy" onclick="toggleZodiacRank()" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:20px; background:#9b59b6; color:#fff; border:none; cursor:pointer;">生肖排行</button>
+              </div>
+            </div>
+            <div id="cardAContent" style="font-size:12px; line-height:1.6; word-break:break-all;">
+              <!-- 动态填充 -->
+            </div>
+          </div>
+          <!-- 卡片 B：平特肖 -->
+          <div class="freq-card">
+            <div class="freq-title">平特肖</div>
+            <div id="pingtexiaoTableContainer" style="overflow-x:auto;">
+              <!-- 表格动态生成 -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="risk-report-area">
@@ -575,7 +606,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
   </div>
 </div>
 <script>
-// ===== 密码解码函数 =====
+    // ===== 密码解码函数 =====
 function decodePassword(encoded) { return atob(encoded); }
 
 // ===== 自定义对话框系统 =====
@@ -823,7 +854,7 @@ async function resetPresetsToDefault(){
     {"old":"兰","new":"蓝"},{"old":"录","new":"绿"},{"old":"碌","new":"绿"},{"old":"禄","new":"绿"},{"old":"拦","new":"蓝"},{"old":"篮","new":"蓝"},{"old":"免","new":"兔"},{"old":"午","new":"牛"},{"old":"侯","new":"猴"},{"old":"㺅","new":"猴"},{"old":"名","new":"各"}
   ];
   const defaultAliases=[
-    {"alias":"红色","target":"红波"},{"alias":"蓝色","target":"蓝波"},{"alias":"绿色","target":"绿波"},{"alias":"兰波","target":"蓝波"},{"alias":"录波","target":"绿波"},{"alias":"金行","target":"金"},{"alias":"木行","target":"木"},{"alias":"水行","target":"水"},{"alias":"火行","target":"火"},{"alias":"土行","target":"土"},{"alias":"红蓝","target":"红波-蓝波"},{"alias":"红绿","target":"红波-绿波"},{"alias":"蓝绿","target":"蓝波-绿波"},{"alias":"火土","target":"火-土"},{"alias":"红蓝波","target":"红波-蓝波"},{"alias":"红绿波","target":"红波-绿波"},{"alias":"蓝绿波","target":"蓝波-绿波"},{"alias":"大单小双","target":"大单-小双"},{"alias":"大双小单","target":"大双-小单"},{"alias":"金木水","target":"金-木-水"},{"alias":"家肖","target":"家禽"},{"alias":"野肖","target":"野兽"},{"alias":"号各","target":"各号"},{"alias":"小数","target":"小"},{"alias":"大数","target":"大"},{"alias":"合单","target":"合数单"},{"alias":"合双","target":"合数双"},{"alias":"大尾","target":"尾大"},{"alias":"小尾","target":"尾小"},{"alias":"大数单","target":"大单"},{"alias":"大数双","target":"大双"},{"alias":"小数单","target":"小单"},{"alias":"小数双","target":"小双"},{"alias":"红波单","target":"红单"},{"alias":"红波双","target":"红双"},{"alias":"蓝波单","target":"蓝单"},{"alias":"蓝波双","target":"蓝双"},{"alias":"绿波单","target":"绿单"},{"alias":"绿波双","target":"绿双"},{"alias":"老虎","target":"虎"},{"alias":"老鼠","target":"鼠"},{"alias":"兔子","target":"兔"},{"alias":"大号","target":"大"},{"alias":"小号","target":"小"}
+{"alias":"红色","target":"红波"},{"alias":"蓝色","target":"蓝波"},{"alias":"绿色","target":"绿波"},{"alias":"兰波","target":"蓝波"},{"alias":"录波","target":"绿波"},{"alias":"金行","target":"金"},{"alias":"木行","target":"木"},{"alias":"水行","target":"水"},{"alias":"火行","target":"火"},{"alias":"土行","target":"土"},{"alias":"红蓝","target":"红波-蓝波"},{"alias":"红绿","target":"红波-绿波"},{"alias":"蓝绿","target":"蓝波-绿波"},{"alias":"火土","target":"火-土"},{"alias":"红蓝波","target":"红波-蓝波"},{"alias":"红绿波","target":"红波-绿波"},{"alias":"蓝绿波","target":"蓝波-绿波"},{"alias":"大单小双","target":"大单-小双"},{"alias":"大双小单","target":"大双-小单"},{"alias":"金木水","target":"金-木-水"},{"alias":"家肖","target":"家禽"},{"alias":"野肖","target":"野兽"},{"alias":"号各","target":"各号"},{"alias":"小数","target":"小"},{"alias":"大数","target":"大"},{"alias":"合单","target":"合数单"},{"alias":"合双","target":"合数双"},{"alias":"大尾","target":"尾大"},{"alias":"小尾","target":"尾小"},{"alias":"大数单","target":"大单"},{"alias":"大数双","target":"大双"},{"alias":"小数单","target":"小单"},{"alias":"小数双","target":"小双"},{"alias":"红波单","target":"红单"},{"alias":"红波双","target":"红双"},{"alias":"蓝波单","target":"蓝单"},{"alias":"蓝波双","target":"蓝双"},{"alias":"绿波单","target":"绿单"},{"alias":"绿波双","target":"绿双"},{"alias":"老虎","target":"虎"},{"alias":"老鼠","target":"鼠"},{"alias":"兔子","target":"兔"},{"alias":"大号","target":"大"},{"alias":"小号","target":"小"}
   ];
   localStorage.setItem('replacePresets',JSON.stringify(defaultPresets));
   localStorage.setItem('categoryAliases',JSON.stringify(defaultAliases));
@@ -839,62 +870,7 @@ async function semanticReplace() { const ta=document.querySelector('.source-orde
 
 function tokenizeAndJoin(content) { const cfg = getAllConfigData(); const vc = getAllValidCategories(cfg); const tokens = content.split(/[^\u4e00-\u9fa5\d]+/).filter(t => t.trim()).map(t => t.trim()); const res = []; tokens.forEach(t => { const tm = t.match(/^(\d{2,})尾$/); const hm = t.match(/^(\d{2,})头$/); if (tm) { const ds = tm[1].split('').map(d => d + '尾'); res.push(...ds); } else if (hm) { const ds = hm[1].split('').map(d => d + '头'); res.push(...ds); } else if (/^\d{1,2}$/.test(t)) { const n = parseInt(t); if (n >= 1 && n <= 49) res.push(t.length === 1 ? '0' + t : t); } else if (vc.has(t)) { res.push(t); } else if (/^[\u4e00-\u9fa5]+$/.test(t)) { const cs = t.match(/[\u4e00-\u9fa5]/g) || []; if (cs.some(c => vc.has(c))) { cs.forEach(c => { if (vc.has(c)) res.push(c); }); } } }); return res.join('-'); }
 
-function convertOrderText() {
-  const inputEl = document.querySelector('.source-order-input');
-  const resultEl = document.getElementById('orderResult');
-  const invalidSpan = document.getElementById('invalidTokensDisplay');
-  if (!inputEl || !resultEl) return;
-  let text = applyCategoryAliases(applyReplacePresets(inputEl.value.trim()));
-  if (!text) { resultEl.innerHTML = ''; if (invalidSpan) { invalidSpan.textContent = ''; invalidSpan.style.display = 'none'; } updateOrderTotalDisplay(); return; }
-  const lines = text.split('\n');
-  const resultLines = []; const originalContents = []; const skipInvalidCheck = new Set();
-  const HARD_AMP_LIST = ['每个号','各号码','各数','每数','每号','个号','各号','各码','号','个','=','各'];
-  const cusAmp = getCustomAmountPrefixes();
-  const allAmpList = [...HARD_AMP_LIST, ...cusAmp]; allAmpList.sort((a, b) => b.length - a.length);
-  const AMP_ORIGINAL = '(?:' + allAmpList.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
-  const IGN = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼'];
-  const cusPre = getCustomPrefixes(); const allPre = [...IGN, ...cusPre];
-  const baseSuf = '元块咪米斤#،。\\s'; const cusAmtSuf = getCustomAmountSuffixes();
-  const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');
-  const AMTS = `[${allAmtChars}]*`;
-  // ===== 修改一：SIMPLE_PAIR 支持金额后缀和中文数字 =====
-  const SIMPLE_PAIR = new RegExp(`^(\\d{1,2})[^\\d\\s]+(\\d+)\\s*${AMTS}$`);
-  function cn2n(s) { const m = {'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000}; let sum = 0, tmp = 0; for (let c of s) { const v = m[c]; if (v === 10 || v === 100 || v === 1000) { if (tmp === 0) tmp = 1; tmp *= v; sum += tmp; tmp = 0; } else if (v !== undefined) { if (tmp > 0) { sum += tmp; tmp = 0; } tmp = v; } } sum += tmp; return sum; }
-  const cfg = getAllConfigData(); const vc = getAllValidCategories(cfg);
-  const allCatNames = new Set(); Object.keys(cfg.zodiac).forEach(z => allCatNames.add(z)); vc.forEach(c => allCatNames.add(c));
-  const ZODIAC_SET = new Set(Object.keys(cfg.zodiac));
-  function startsWithCategory(str) { for (let cat of allCatNames) { if (str.startsWith(cat)) return true; } return false; }
-  function isValidNumber(token) { return /^(0[1-9]|[1-4][0-9]|49?|[1-9])$/.test(token); }
-  const PUNCT_REGEX = /[\s,，.。、+\-*＊\/\\|!@#$%^&*()=+_{}\[\]:;"'<>,.?\/~！@#￥%…&*（）—+【】{}|："；"''《》，。？、]/g;
-  function isValidToken(token) { const clean = token.replace(PUNCT_REGEX, ''); if (clean === '') return false; if (isValidNumber(clean)) return true; if (/^\d+尾$/.test(clean) || /^\d+头$/.test(clean)) return true; if (allCatNames.has(clean)) return true; if (/^[\u4e00-\u9fa5]+$/.test(clean) && clean.length > 1) { const chars = clean.split(''); if (chars.every(ch => allCatNames.has(ch))) return true; } return false; }
-  lines.forEach(line => {
-    line = line.trim(); if (!line) return;
-    // 区间识别
-    const rangeFullMatch = line.match(new RegExp(`^([\\u4e00-\\u9fa5\\-]*?)(\\d{1,2})到(\\d{1,2})[\\s，。、]*${AMP_ORIGINAL}[\\s，。、]*(\\d+)\\s*${AMTS}$`));
-    if (rangeFullMatch) { const prefix = rangeFullMatch[1].replace(/-$/, '').trim(); const startNum = parseInt(rangeFullMatch[2]); const endNum = parseInt(rangeFullMatch[3]); const amt = rangeFullMatch[4]; if (startNum >= 1 && startNum <= 49 && endNum >= 1 && endNum <= 49 && startNum <= endNum) { const numList = []; for (let i = startNum; i <= endNum; i++) { numList.push(i.toString().padStart(2, '0')); } const expanded = numList.join('-'); const finalLine = prefix ? `${prefix}-${expanded}` : expanded; resultLines.push(`${finalLine} 各数 ${amt}`); originalContents.push(finalLine); skipInvalidCheck.add(resultLines.length - 1); return; } }
-    // SIMPLE_PAIR 匹配（先新后旧）
-    let pairMatch = line.match(SIMPLE_PAIR);
-    if (!pairMatch) { pairMatch = line.match(/(\d{1,2})[^\d\s]+(\d+)$/); }
-    if (pairMatch) { let num = pairMatch[1]; const amount = pairMatch[2]; if (num.length === 1) num = '0' + num; resultLines.push(`${num} 各数 ${amount}`); originalContents.push(pairMatch[1]); return; }
-    let cl = line;
-    allPre.forEach(p => { if (cl.startsWith(p)) cl = cl.substring(p.length).trim(); });
-    cl = cl.replace(/[^\u4e00-\u9fa5\d]+$/, '');
-    cl = cl.replace(/([一二三四五六七八九十百千]+)/g, (m) => cn2n(m));
-    while (cl && !/^[\d\u4e00-\u9fa5]/.test(cl)) { cl = cl.substring(1).trim(); }
-    while (cl && !/^\d/.test(cl) && !startsWithCategory(cl)) { cl = cl.substring(1).trim(); }
-    if (!cl) return;
-    // ===== 修改二：各肖识别允许空格和标点 =====
-    const shxMatch = cl.match(new RegExp(`^(.+?)(各肖|各)[\\s，。、]*(\\d+)${AMTS}$`));
-    if (shxMatch) { const rawContent = shxMatch[1]; const amtRaw = parseInt(shxMatch[3]) || 0; if (!/\d/.test(rawContent)) { const zodiacs = []; for (const ch of rawContent) { if (ZODIAC_SET.has(ch)) zodiacs.push(ch); } if (zodiacs.length > 0) { const curBenming = document.getElementById('startZodiacSelect')?.value || '马'; const benmingList = [], otherList = []; zodiacs.forEach(z => { if (z === curBenming) benmingList.push(z); else otherList.push(z); }); const amtPerBen = Math.round(amtRaw / 5); const amtPerOther = Math.round(amtRaw / 4); if (benmingList.length > 0) { resultLines.push(`${benmingList.join('-')} 各数 ${amtPerBen}`); originalContents.push(benmingList.join('-')); } if (otherList.length > 0) { resultLines.push(`${otherList.join('-')} 各数 ${amtPerOther}`); originalContents.push(otherList.join('-')); } return; } } }
-    // ===== 修改三：指示词前后支持标点，同时无空格也能识别 =====
-    const op = new RegExp(`(${AMP_ORIGINAL}[\\s，。、]*\\d+${AMTS})`, 'g');
-    const om = cl.match(op);
-    if (om && om.length > 0) { let rl = cl; om.forEach(om => { const oi = rl.indexOf(om); if (oi !== -1) { const cont = rl.substring(0, oi).trim(); const am = om.match(/(\d+)/); if (am) { const amt = am[1]; if (cont) { const jo = tokenizeAndJoin(cont); if (jo) { resultLines.push(`${jo} 各数 ${amt}`); originalContents.push(cont); } } rl = rl.substring(oi + om.length); } } }); if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(rl.trim()); } } } else { const pat = new RegExp(`^(.+?)[\\s，。、]*${AMP_ORIGINAL}[\\s，。、]*(\\d+)$`); const m = cl.match(pat); if (m) { const jo = tokenizeAndJoin(m[1].trim()); if (jo) { resultLines.push(`${jo} 各数 ${m[2]}`); originalContents.push(m[1].trim()); } } else { const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})[\\s，。、]*(\\d+)$`); const sm = cl.match(sp); if (sm) { let num = sm[1].trim(); if (parseInt(num) >= 1 && parseInt(num) <= 49) { num = num.length === 1 ? `0${num}` : num; resultLines.push(`${num} 各数 ${sm[2]}`); originalContents.push(num); } } else { const jo = tokenizeAndJoin(cl); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(cl); } } } } });
-  const lineInvalidTokens = []; resultLines.forEach((line, idx) => { if (skipInvalidCheck.has(idx)) { lineInvalidTokens.push([]); return; } const originalContent = originalContents[idx] || ''; const rawTokens = originalContent.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim()); const invalidInLine = []; rawTokens.forEach(token => { if (!isValidToken(token)) { const clean = token.replace(PUNCT_REGEX, ''); if (clean) { if (/^[\u4e00-\u9fa5]+$/.test(clean) && clean.length > 1) { const chars = clean.split(''); chars.forEach(ch => { if (!allCatNames.has(ch)) invalidInLine.push(ch); }); } else { invalidInLine.push(clean); } } } }); lineInvalidTokens.push(invalidInLine); });
-  let html = ''; resultLines.forEach((line, idx) => { const m = line.match(/^(.+?)\s+各数\s+(\d+)$/); if (!m) { html += `<div style="color:red;">${line}</div>`; return; } const content = m[1]; const amt = parseInt(m[2]) || 0; const hasInvalidInSource = lineInvalidTokens[idx].length > 0; const isSkipped = skipInvalidCheck.has(idx); const { numbers, zodiacs } = countItemsInLine(line, cfg, vc); const totalItems = numbers.length + zodiacs.length; const isInvalid = !isSkipped && (totalItems === 0 || amt <= 0 || hasInvalidInSource); if (isInvalid) { html += `<div style="color:red;">${line}</div>`; } else { html += `<div>${line}</div>`; } }); resultEl.innerHTML = html;
-  if (invalidSpan) { const displayLines = []; lineInvalidTokens.forEach(arr => { if (arr.length > 0) { displayLines.push('无效: ' + arr.join(', ')); } }); if (displayLines.length > 0) { invalidSpan.innerHTML = displayLines.join('<br>'); invalidSpan.style.display = 'inline'; } else { invalidSpan.innerHTML = ''; invalidSpan.style.display = 'none'; } }
-  updateOrderTotalDisplay();
-}
+function convertOrderText() { const inputEl = document.querySelector('.source-order-input'); const resultEl = document.getElementById('orderResult'); const invalidSpan = document.getElementById('invalidTokensDisplay'); if (!inputEl || !resultEl) return; let text = applyCategoryAliases(applyReplacePresets(inputEl.value.trim())); if (!text) { resultEl.innerHTML = ''; if (invalidSpan) { invalidSpan.textContent = ''; invalidSpan.style.display = 'none'; } updateOrderTotalDisplay(); return; } const lines = text.split('\n'); const resultLines = []; const originalContents = []; const skipInvalidCheck = new Set(); const HARD_AMP_LIST = ['每个号','各号码','各数','每数','每号','个号','各号','各码','号','个','=','各']; const cusAmp = getCustomAmountPrefixes(); const allAmpList = [...HARD_AMP_LIST, ...cusAmp]; allAmpList.sort((a, b) => b.length - a.length); const AMP_ORIGINAL = '(?:' + allAmpList.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')'; const IGN = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼']; const cusPre = getCustomPrefixes(); const allPre = [...IGN, ...cusPre]; const baseSuf = '元块咪米斤#،。\\s'; const cusAmtSuf = getCustomAmountSuffixes(); const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join(''); const AMTS = `[${allAmtChars}]*`; function cn2n(s) { const m = {'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000}; let sum = 0, tmp = 0; for (let c of s) { const v = m[c]; if (v === 10 || v === 100 || v === 1000) { if (tmp === 0) tmp = 1; tmp *= v; sum += tmp; tmp = 0; } else if (v !== undefined) { if (tmp > 0) { sum += tmp; tmp = 0; } tmp = v; } } sum += tmp; return sum; } const SIMPLE_PAIR = /^(\d{1,2})[^\d\s]+(\d+)$/; const cfg = getAllConfigData(); const vc = getAllValidCategories(cfg); const allCatNames = new Set(); Object.keys(cfg.zodiac).forEach(z => allCatNames.add(z)); vc.forEach(c => allCatNames.add(c)); const ZODIAC_SET = new Set(Object.keys(cfg.zodiac)); function startsWithCategory(str) { for (let cat of allCatNames) { if (str.startsWith(cat)) return true; } return false; } function isValidNumber(token) { return /^(0[1-9]|[1-4][0-9]|49?|[1-9])$/.test(token); } const PUNCT_REGEX = /[\s,，.。、+\-*＊\/\\|!@#$%^&*()=+_{}\[\]:;"'<>,.?\/~！@#￥%…&*（）—+【】{}|："；"''《》，。？、]/g; function isValidToken(token) { const clean = token.replace(PUNCT_REGEX, ''); if (clean === '') return false; if (isValidNumber(clean)) return true; if (/^\d+尾$/.test(clean) || /^\d+头$/.test(clean)) return true; if (allCatNames.has(clean)) return true; if (/^[\u4e00-\u9fa5]+$/.test(clean) && clean.length > 1) { const chars = clean.split(''); if (chars.every(ch => allCatNames.has(ch))) return true; } return false; } lines.forEach(line => { line = line.trim(); if (!line) return; const rangeFullMatch = line.match(new RegExp(`^([\\u4e00-\\u9fa5\\-]*?)(\\d{1,2})到(\\d{1,2})\\s*${AMP_ORIGINAL}\\s*(\\d+)\\s*${AMTS}$`)); if (rangeFullMatch) { const prefix = rangeFullMatch[1].replace(/-$/, '').trim(); const startNum = parseInt(rangeFullMatch[2]); const endNum = parseInt(rangeFullMatch[3]); const amt = rangeFullMatch[4]; if (startNum >= 1 && startNum <= 49 && endNum >= 1 && endNum <= 49 && startNum <= endNum) { const numList = []; for (let i = startNum; i <= endNum; i++) { numList.push(i.toString().padStart(2, '0')); } const expanded = numList.join('-'); const finalLine = prefix ? `${prefix}-${expanded}` : expanded; resultLines.push(`${finalLine} 各数 ${amt}`); originalContents.push(finalLine); skipInvalidCheck.add(resultLines.length - 1); return; } } const pairMatch = line.match(SIMPLE_PAIR); if (pairMatch) { let num = pairMatch[1]; const amount = pairMatch[2]; if (num.length === 1) num = '0' + num; resultLines.push(`${num} 各数 ${amount}`); originalContents.push(pairMatch[1]); return; } let cl = line; allPre.forEach(p => { if (cl.startsWith(p)) cl = cl.substring(p.length).trim(); }); cl = cl.replace(/[^\u4e00-\u9fa5\d]+$/, ''); cl = cl.replace(/([一二三四五六七八九十百千]+)/g, (m) => cn2n(m)); while (cl && !/^[\d\u4e00-\u9fa5]/.test(cl)) { cl = cl.substring(1).trim(); } while (cl && !/^\d/.test(cl) && !startsWithCategory(cl)) { cl = cl.substring(1).trim(); } if (!cl) return; const shxMatch = cl.match(new RegExp(`^(.+?)(各肖|各)\\s*(\\d+)${AMTS}$`)); if (shxMatch) { const rawContent = shxMatch[1]; const amtRaw = parseInt(shxMatch[3]) || 0; if (!/\d/.test(rawContent)) { const zodiacs = []; for (const ch of rawContent) { if (ZODIAC_SET.has(ch)) zodiacs.push(ch); } if (zodiacs.length > 0) { const curBenming = document.getElementById('startZodiacSelect')?.value || '马'; const benmingList = [], otherList = []; zodiacs.forEach(z => { if (z === curBenming) benmingList.push(z); else otherList.push(z); }); const amtPerBen = Math.round(amtRaw / 5); const amtPerOther = Math.round(amtRaw / 4); if (benmingList.length > 0) { resultLines.push(`${benmingList.join('-')} 各数 ${amtPerBen}`); originalContents.push(benmingList.join('-')); } if (otherList.length > 0) { resultLines.push(`${otherList.join('-')} 各数 ${amtPerOther}`); originalContents.push(otherList.join('-')); } return; } } } const op = new RegExp(`(${AMP_ORIGINAL}\\s*\\d+${AMTS})`, 'g'); const om = cl.match(op); if (om && om.length > 0) { let rl = cl; om.forEach(om => { const oi = rl.indexOf(om); if (oi !== -1) { const cont = rl.substring(0, oi).trim(); const am = om.match(/(\d+)/); if (am) { const amt = am[1]; if (cont) { const jo = tokenizeAndJoin(cont); if (jo) { resultLines.push(`${jo} 各数 ${amt}`); originalContents.push(cont); } } rl = rl.substring(oi + om.length); } } }); if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(rl.trim()); } } } else { const pat = new RegExp(`^(.+?)${AMP_ORIGINAL}\\s*(\\d+)$`); const m = cl.match(pat); if (m) { const jo = tokenizeAndJoin(m[1].trim()); if (jo) { resultLines.push(`${jo} 各数 ${m[2]}`); originalContents.push(m[1].trim()); } } else { const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})\\s*(\\d+)$`); const sm = cl.match(sp); if (sm) { let num = sm[1].trim(); if (parseInt(num) >= 1 && parseInt(num) <= 49) { num = num.length === 1 ? `0${num}` : num; resultLines.push(`${num} 各数 ${sm[2]}`); originalContents.push(num); } } else { const jo = tokenizeAndJoin(cl); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(cl); } } } } }); const lineInvalidTokens = []; resultLines.forEach((line, idx) => { if (skipInvalidCheck.has(idx)) { lineInvalidTokens.push([]); return; } const originalContent = originalContents[idx] || ''; const rawTokens = originalContent.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim()); const invalidInLine = []; rawTokens.forEach(token => { if (!isValidToken(token)) { const clean = token.replace(PUNCT_REGEX, ''); if (clean) { if (/^[\u4e00-\u9fa5]+$/.test(clean) && clean.length > 1) { const chars = clean.split(''); chars.forEach(ch => { if (!allCatNames.has(ch)) invalidInLine.push(ch); }); } else { invalidInLine.push(clean); } } } }); lineInvalidTokens.push(invalidInLine); }); let html = ''; resultLines.forEach((line, idx) => { const m = line.match(/^(.+?)\s+各数\s+(\d+)$/); if (!m) { html += `<div style="color:red;">${line}</div>`; return; } const content = m[1]; const amt = parseInt(m[2]) || 0; const hasInvalidInSource = lineInvalidTokens[idx].length > 0; const isSkipped = skipInvalidCheck.has(idx); const { numbers, zodiacs } = countItemsInLine(line, cfg, vc); const totalItems = numbers.length + zodiacs.length; const isInvalid = !isSkipped && (totalItems === 0 || amt <= 0 || hasInvalidInSource); if (isInvalid) { html += `<div style="color:red;">${line}</div>`; } else { html += `<div>${line}</div>`; } }); resultEl.innerHTML = html; if (invalidSpan) { const displayLines = []; lineInvalidTokens.forEach(arr => { if (arr.length > 0) { displayLines.push('无效: ' + arr.join(', ')); } }); if (displayLines.length > 0) { invalidSpan.innerHTML = displayLines.join('<br>'); invalidSpan.style.display = 'inline'; } else { invalidSpan.innerHTML = ''; invalidSpan.style.display = 'none'; } } updateOrderTotalDisplay(); }
 
 function getAllValidCategories(cfg) { const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); s.add('蓝大'); s.add('蓝小'); s.add('红大'); s.add('红小'); s.add('绿大'); s.add('绿小'); s.add('蓝波大'); s.add('蓝波小'); s.add('红波大'); s.add('红波小'); s.add('绿波大'); s.add('绿波小'); return s; }
 
@@ -902,6 +878,7 @@ async function saveOrder(){ const user=document.getElementById('orderUserSelect'
 async function saveReportOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:''; const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText; if(!textToUse)return; const vl=textToUse.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveReportOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,false,date); const si=document.querySelector('.source-order-input'); if(si)si.value=''; if(resultEl)resultEl.innerHTML=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); calculateStorageUsage(); }
 function countItemsInLine(line,cfg,keys){ const m=line.match(/([\u4e00-\u9fa5\d\-]+)\s+各数\s+(\d+)/); if(!m)return{numbers:[],zodiacs:[],amount:0}; let cont=m[1]; const amt=parseInt(m[2])||0; const items=cont.split('-').map(i=>i.trim()).filter(i=>i); const nums=[],zods=[]; items.forEach(item=>{ if(/^\d+$/.test(item))nums.push(item.padStart(2,'0')); else if(cfg.shengxiaoAttr[item]){ const zs=cfg.shengxiaoAttr[item]||[]; zs.forEach(z=>zods.push(z)); } else if(cfg.zodiac[item])zods.push(item); else if(cfg.toushuDanshuang&&cfg.toushuDanshuang[item]){ (cfg.toushuDanshuang[item]||[]).forEach(n=>nums.push(n.padStart(2,'0'))); } else { const nl=getNumberListForCategory(item,cfg); if(nl&&nl.length>0)nl.forEach(n=>nums.push(n.padStart(2,'0'))); } }); return{numbers:nums,zodiacs:zods,amount:amt}; }
 function processCurrentOrder(input,user,isNormal,date=null){ const cfg=getAllConfigData(); const keys=getAllValidCategories(cfg); const lines=input.split('\n').filter(l=>l.trim()); if(!userBetData[user])userBetData[user]={}; const curZod=localStorage.getItem('selectedStartZodiac')||'马'; lines.forEach(line=>{ const{numbers,zodiacs,amount}=countItemsInLine(line,cfg,keys); const nMin=parseInt(document.getElementById('numAmountMin')?.value)||1,nMax=parseInt(document.getElementById('numAmountMax')?.value)||50000; const zMin=parseInt(document.getElementById('zodiacAmountMin')?.value)||1,zMax=parseInt(document.getElementById('zodiacAmountMax')?.value)||50000; if(isNormal){ if(zodiacs.length>0){ zodiacs.forEach(z=>{ const w=z===curZod?5:4; zodiacWeightedTotal+=amount*w; }); }else if(numbers.length>0){ numberOrderTotal+=numbers.length*amount; } } numbers.forEach(num=>{ if(isNormal){ userBetData[user][num]=(userBetData[user][num]||0)+amount; tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount; numberCount[num]=(numberCount[num]||0)+1; if(amount>=nMin&&amount<=nMax)numberAmountCount[num]=(numberAmountCount[num]||0)+1; originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount; if(zodiacs.length === 0) directOrderAmount[num] = (directOrderAmount[num]||0) + amount; } else { userBetData[user][num]=(userBetData[user][num]||0)-amount; reportBetData[num]=(reportBetData[num]||0)-amount; reportAmountData[num]=(reportAmountData[num]||0)+amount; if(zodiacs.length === 0) directReportAmount[num] = (directReportAmount[num]||0) + amount; } }); if(isNormal){ zodiacs.forEach(z=>{ zodiacCount[z]=(zodiacCount[z]||0)+1; zodiacDirectAmount[z]=(zodiacDirectAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0); if(amount>=zMin&&amount<=zMax){zodiacAmountCount[z]=(zodiacAmountCount[z]||0)+1; zodiacFilteredAmount[z]=(zodiacFilteredAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);} (cfg.zodiac[z]||[]).forEach(n=>{ const num=n.padStart(2,'0'); userBetData[user][num]=(userBetData[user][num]||0)+amount; tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount; originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount; }); }); } else { zodiacs.forEach(z=>{ zodiacReportAmount[z]=(zodiacReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0); if(amount>=zMin&&amount<=zMax){ zodiacFilteredReportAmount[z]=(zodiacFilteredReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);} (cfg.zodiac[z]||[]).forEach(n=>{ const num=n.padStart(2,'0'); userBetData[user][num]=(userBetData[user][num]||0)-amount; reportBetData[num]=(reportBetData[num]||0)-amount; reportAmountData[num]=(reportAmountData[num]||0)+amount; }); }); } }); generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards(); renderReportAmountTable(); renderOriginalAmountTable(); updateReportAmountTotal(); updateAmountDisplays(); }
+
     
 async function updateTableFromRecords(){
   try{
@@ -1083,7 +1060,7 @@ if (resetBtn) {
 
 async function resetTable(){ const regionName = currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港'; const confirmed = await confirm(`确定清空当前地区（${regionName}）的所有订单和上报数据吗？此操作不可恢复。`); if (!confirmed) return; const pwd = await prompt("输入清空密码：",""); if (pwd !== PASSWORD) { await alert("密码错误"); return; } clearMemoryData(); await clearAllOrderRecordsFromIDB(currentRegion); await clearAllReportOrderRecordsFromIDB(currentRegion); renderAllTablesPlaceholder(); calculateStorageUsage(); updateAmountDisplays(); showToast(`已清空${regionName}的所有订单和上报记录`); }
 function clearAllInput(){ const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.innerHTML=''; updateOrderTotalDisplay(); }
-async function pasteOrder(){ try{ const text=await navigator.clipboard.readText(); if(text){const si=document.querySelector('.source-order-input');if(si){si.value=text;convertOrderText();}} }catch(err){showToast('无法访问剪贴板');} }
+async function pasteOrder(){ try{ const text=await navigator.clipboard.readText(); if(text){const si=document.querySelector('.source-order-input');if(si){si.value=text;convertOrderText();}} } catch(err){showToast('无法访问剪贴板');} }
 
 // ===== 导出导入（导出全部数据：订单、上报、开奖记录、替换预设、分类缩写） =====
 async function exportData(){
@@ -1120,9 +1097,18 @@ async function importData(){
         let dcImported = 0;
         if (data.drawRecords) { for (const [key, value] of Object.entries(data.drawRecords)) { const existing = localStorage.getItem(key); if (existing) { try { const existingData = JSON.parse(existing); const newData = JSON.parse(value); let changed = false; for (const [issue, entry] of Object.entries(newData)) { if (existingData[issue] && existingData[issue].number && existingData[issue].number.trim()) { continue; } else { existingData[issue] = entry; changed = true; } } if (changed) { localStorage.setItem(key, JSON.stringify(existingData)); dcImported++; } } catch(e) { localStorage.setItem(key, value); dcImported++; } } else { localStorage.setItem(key, value); dcImported++; } } }
 
+        // 导入替换预设和分类缩写（去重合并）
         let presetImported = 0, aliasImported = 0;
-        if (data.replacePresets && Array.isArray(data.replacePresets)) { const currentPresets = getReplacePresets(); data.replacePresets.forEach(p => { if (!currentPresets.some(x => x.old === p.old)) { currentPresets.push(p); presetImported++; } }); localStorage.setItem('replacePresets', JSON.stringify(currentPresets)); }
-        if (data.categoryAliases && Array.isArray(data.categoryAliases)) { const currentAliases = getCategoryAliases(); data.categoryAliases.forEach(a => { if (!currentAliases.some(x => x.alias === a.alias)) { currentAliases.push(a); aliasImported++; } }); localStorage.setItem('categoryAliases', JSON.stringify(currentAliases)); }
+        if (data.replacePresets && Array.isArray(data.replacePresets)) {
+          const currentPresets = getReplacePresets();
+          data.replacePresets.forEach(p => { if (!currentPresets.some(x => x.old === p.old)) { currentPresets.push(p); presetImported++; } });
+          localStorage.setItem('replacePresets', JSON.stringify(currentPresets));
+        }
+        if (data.categoryAliases && Array.isArray(data.categoryAliases)) {
+          const currentAliases = getCategoryAliases();
+          data.categoryAliases.forEach(a => { if (!currentAliases.some(x => x.alias === a.alias)) { currentAliases.push(a); aliasImported++; } });
+          localStorage.setItem('categoryAliases', JSON.stringify(currentAliases));
+        }
 
         await updateTableFromRecords(); calculateStorageUsage();
         let msg = `成功导入 ${no+nr} 条订单/上报记录，${dcImported} 组开奖记录。`;
@@ -1175,7 +1161,7 @@ const originalApplyReportCap = applyReportCap;
 applyReportCap = function() { originalApplyReportCap(); const info = document.getElementById('reportCapInfo').innerText; if (!info || info === '无超出的号码') { document.getElementById('parseResultArea').innerText = ''; } };
 
 // ===== 修正后的回收站窗口（按地区隔离显示） =====
-async function showRecycleBin() { const existingWin = document.getElementById('recycleWin'); if (existingWin) existingWin.remove(); const allRecords = await getRecycleBinRecords(); const records = allRecords.filter(r => r.region === currentRegion); const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recycleWin'; win.style.width = '750px'; win.style.height = '550px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; let html = `<div class="modal-header"><h3>回收站</h3><div class="window-controls"><button onclick="maximizeWindow('recycleWin')">🗖</button><button onclick="document.getElementById('recycleWin').remove()">×</button></div></div>`; html += `<div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html += `<div style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><button onclick="checkAllRecycle()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAllRecycle()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="restoreCheckedRecycle()" style="padding:6px 12px;background:#27ae60;color:#fff;border:none;border-radius:4px;">恢复选中</button><button onclick="deleteCheckedRecycle()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">彻底删除</button><button onclick="emptyRecycleBin()" style="padding:6px 12px;background:#8e44ad;color:#fff;border:none;border-radius:4px;margin-left:auto;">清空回收站</button></div>`; html += `<div id="recycleListContainer" style="flex:1; overflow-y:auto;">`; if (records.length === 0) { html += `<div style="padding:20px;text-align:center;color:#666;">回收站为空</div>`; } else { records.sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt)); records.forEach(rec => { const ts = formatTimestampToCST(rec.deletedAt); const typeLabel = rec.type === 'order' ? '下单' : '上报'; const typeColor = rec.type === 'order' ? '#3498db' : '#e67e22'; html += `<div class="order-item"><input type="checkbox" class="recycle-check" data-id="${rec.id}"><div class="order-content">${rec.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${rec.totalAmount || 0}</span><span class="order-meta"><span style="color:${typeColor};">类型：${typeLabel}</span><span style="color:#e74c3c;">删除：${ts}</span><span>用户：${rec.user || '未知'}</span></span></div><button class="order-del" onclick="restoreRecycleRecord('${rec.id}')" style="background:#27ae60;margin-right:4px;">恢复</button><button class="order-del" onclick="permanentlyDeleteRecycleRecord('${rec.id}')">删除</button></div>`; }); } html += `</div></div><div class="modal-footer" style="justify-content:space-between;"><span style="font-size:12px;color:#666;" id="recycleStorageInfo"></span><button onclick="document.getElementById('recycleWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; win.innerHTML = html; document.body.appendChild(win); updateRecycleStorageInfo(); makeWindowDraggable('recycleWin'); highestZ += 1; win.style.zIndex = highestZ; updateRecycleCount(); }
+async function showRecycleBin() { const existingWin = document.getElementById('recycleWin'); if (existingWin) existingWin.remove(); const allRecords = await getRecycleBinRecords(); const records = allRecords.filter(r => r.region === currentRegion); const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recycleWin'; win.style.width = '750px'; win.style.height = '550px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; let html = `<div class="modal-header"><h3>🗑️ 回收站</h3><div class="window-controls"><button onclick="maximizeWindow('recycleWin')">🗖</button><button onclick="document.getElementById('recycleWin').remove()">×</button></div></div>`; html += `<div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html += `<div style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><button onclick="checkAllRecycle()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAllRecycle()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="restoreCheckedRecycle()" style="padding:6px 12px;background:#27ae60;color:#fff;border:none;border-radius:4px;">恢复选中</button><button onclick="deleteCheckedRecycle()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">彻底删除</button><button onclick="emptyRecycleBin()" style="padding:6px 12px;background:#8e44ad;color:#fff;border:none;border-radius:4px;margin-left:auto;">清空回收站</button></div>`; html += `<div id="recycleListContainer" style="flex:1; overflow-y:auto;">`; if (records.length === 0) { html += `<div style="padding:20px;text-align:center;color:#666;">回收站为空</div>`; } else { records.sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt)); records.forEach(rec => { const ts = formatTimestampToCST(rec.deletedAt); const typeLabel = rec.type === 'order' ? '下单' : '上报'; const typeColor = rec.type === 'order' ? '#3498db' : '#e67e22'; html += `<div class="order-item"><input type="checkbox" class="recycle-check" data-id="${rec.id}"><div class="order-content">${rec.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${rec.totalAmount || 0}</span><span class="order-meta"><span style="color:${typeColor};">类型：${typeLabel}</span><span style="color:#e74c3c;">删除：${ts}</span><span>用户：${rec.user || '未知'}</span></span></div><button class="order-del" onclick="restoreRecycleRecord('${rec.id}')" style="background:#27ae60;margin-right:4px;">恢复</button><button class="order-del" onclick="permanentlyDeleteRecycleRecord('${rec.id}')">删除</button></div>`; }); } html += `</div></div><div class="modal-footer" style="justify-content:space-between;"><span style="font-size:12px;color:#666;" id="recycleStorageInfo"></span><button onclick="document.getElementById('recycleWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; win.innerHTML = html; document.body.appendChild(win); updateRecycleStorageInfo(); makeWindowDraggable('recycleWin'); highestZ += 1; win.style.zIndex = highestZ; updateRecycleCount(); }
 function updateRecycleStorageInfo() { const span = document.getElementById('recycleStorageInfo'); if (!span) return; getRecycleBinRecords().then(allRecords => { const records = allRecords.filter(r => r.region === currentRegion); let bytes = 0; records.forEach(r => bytes += JSON.stringify(r).length * 2); const usedMB = (bytes / (1024*1024)).toFixed(2); span.textContent = `回收站占用：${usedMB} MB（共${records.length}条记录）`; }); }
 async function updateRecycleCount() { const span = document.getElementById('recycleCount'); if (!span) return; try { const allRecords = await getRecycleBinRecords(); const count = allRecords.filter(r => r.region === currentRegion).length; if (count > 0) { span.textContent = count; span.style.display = 'inline-block'; } else { span.style.display = 'none'; } } catch(e) { span.style.display = 'none'; } }
 function checkAllRecycle() { document.querySelectorAll('.recycle-check').forEach(cb => cb.checked = true); }
@@ -1186,7 +1172,8 @@ async function restoreCheckedRecycle() { const ids = []; document.querySelectorA
 async function deleteCheckedRecycle() { const ids = []; document.querySelectorAll('.recycle-check:checked').forEach(cb => ids.push(String(cb.dataset.id))); if (ids.length === 0) { showToast('请选择'); return; } if (!(await confirm(`确定彻底删除选中的 ${ids.length} 条记录吗？此操作不可恢复！`))) return; await batchDeleteFromRecycleBin(ids); showToast(`已彻底删除 ${ids.length} 条`); updateRecycleStorageInfo(); showRecycleBin(); updateRecycleCount(); }
 async function emptyRecycleBin() { if (!(await confirm('确定清空整个回收站吗？此操作不可恢复！'))) return; const pwd = await prompt("输入清空密码：",""); if (pwd !== PASSWORD) { await alert("密码错误"); return; } await clearRecycleBin(currentRegion); showToast('回收站已清空'); showRecycleBin(); updateRecycleCount(); }
 async function autoCleanRecycleBin() { try { const records = await getRecycleBinRecords(); const now = Date.now(); const expireMs = RECYCLE_RETENTION_DAYS * 24 * 60 * 60 * 1000; for (const record of records) { const deletedTime = new Date(record.deletedAt).getTime(); if (now - deletedTime > expireMs) { await deleteFromRecycleBin(record.id); } } updateRecycleCount(); } catch(e) {} }
-    // ===== 格式化日期 M/D（仅用于期号计算，表格不再显示日期列） =====
+
+// ===== 格式化日期 M/D（仅用于期号计算，表格不再显示日期列） =====
 function formatDateMD(dateStr) { const d = new Date(dateStr + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; }
 
 // ===== 开奖记录窗口（添加清空按钮） =====
@@ -1231,6 +1218,454 @@ function updateRecentZodiacStats() { const container = document.getElementById('
 
 function updateFilterDateDrawInfo() { const span = document.getElementById('filterDateDrawInfo'); if (!span) return; const fd = document.getElementById('filterDate')?.value || getTodayCST(); let year = new Date().getFullYear(); const m = fd.match(/^(\d{4})/); if (m) year = parseInt(m[1]); const issueNumber = getCurrentIssueNumber(year, fd); if (!issueNumber) { span.style.display = 'none'; return; } const issueId = issueNumber.toString().padStart(2, '0'); const storageKey = `drawRecord_${currentRegion}_${year}`; let savedData = {}; try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) {} const entry = savedData[issueId]; if (!entry || !entry.number || !entry.number.trim()) { span.style.display = 'none'; return; } const num = entry.number.trim().padStart(2, '0'); if (!/^\d{2}$/.test(num) || parseInt(num) < 1 || parseInt(num) > 49) { span.style.display = 'none'; return; } const zodiac = currentZodiacMap[num] || ''; span.innerHTML = `<span class="num ${getNumberColorClass(num)}">${num}</span><span class="slash" style="color:#000;">/</span><span class="${getZodiacColorClass(zodiac)}">${zodiac}</span>`; span.style.display = ''; }
 
+    // ========== 平特肖数据存储 ==========
+function getPingtexiaoKey() { const fd = document.getElementById('filterDate')?.value || getTodayCST(); return `pingtexiao_${currentRegion}_${fd}`; }
+function getPingtexiaoData() { try { return JSON.parse(localStorage.getItem(getPingtexiaoKey()) || '{}'); } catch (e) { return {}; } }
+function savePingtexiaoData(data) { localStorage.setItem(getPingtexiaoKey(), JSON.stringify(data)); }
+
+// ========== 渲染平特肖表格（卡片B） ==========
+function renderPingtexiaoTable() {
+  const container = document.getElementById('pingtexiaoTableContainer');
+  if (!container) return;
+  const data = getPingtexiaoData();
+  const leftZodiacs = ['鼠','牛','虎','兔','龙','蛇'];
+  const rightZodiacs = ['马','羊','猴','鸡','狗','猪'];
+  const zcm = {'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};
+
+  let html = '<table class="freq-table"><thead><tr>';
+  html += '<th>生肖</th><th>金额</th><th>上报</th><th>剩余</th>';
+  html += '<th>生肖</th><th>金额</th><th>上报</th><th>剩余</th>';
+  html += '</tr></thead><tbody>';
+
+  for (let r = 0; r < 6; r++) {
+    html += '<tr>';
+    [leftZodiacs[r], rightZodiacs[r]].forEach(zodiac => {
+      const d = data[zodiac] || { amount: '', report: '' };
+      const amountVal = d.amount !== undefined && d.amount !== '' ? d.amount : '';
+      const reportVal = d.report !== undefined && d.report !== '' ? d.report : '';
+      const remain = (amountVal !== '' && reportVal !== '') ? (parseFloat(amountVal) - parseFloat(reportVal)) : '';
+      html += `<td class="${zcm[zodiac] || ''}">${zodiac}</td>`;
+      html += `<td><input type="number" class="pingtexiao-input pingtexiao-amount" data-zodiac="${zodiac}" value="${amountVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" onblur="savePingtexiaoCell()"></td>`;
+      html += `<td><input type="number" class="pingtexiao-input pingtexiao-report" data-zodiac="${zodiac}" value="${reportVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" onblur="savePingtexiaoCell()"></td>`;
+      html += `<td class="pingtexiao-remain" style="font-size:12px;">${remain !== '' ? remain : ''}</td>`;
+    });
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function savePingtexiaoCell() {
+  const data = getPingtexiaoData();
+  document.querySelectorAll('.pingtexiao-amount').forEach(input => {
+    const zodiac = input.dataset.zodiac;
+    if (!data[zodiac]) data[zodiac] = { amount: '', report: '' };
+    data[zodiac].amount = input.value.trim();
+  });
+  document.querySelectorAll('.pingtexiao-report').forEach(input => {
+    const zodiac = input.dataset.zodiac;
+    if (!data[zodiac]) data[zodiac] = { amount: '', report: '' };
+    data[zodiac].report = input.value.trim();
+  });
+  savePingtexiaoData(data);
+  // 刷新剩余列
+  document.querySelectorAll('.pingtexiao-remain').forEach(td => {
+    const row = td.closest('tr');
+    if (!row) return;
+    const amountInput = row.querySelector(`.pingtexiao-amount[data-zodiac]`);
+    const reportInput = row.querySelector(`.pingtexiao-report[data-zodiac]`);
+    if (amountInput && reportInput) {
+      const a = amountInput.value.trim();
+      const r = reportInput.value.trim();
+      td.textContent = (a !== '' && r !== '') ? (parseFloat(a) - parseFloat(r)) : '';
+    }
+  });
+}
+
+// ========== 卡片 A：自定义筛选 ==========
+let zodiacRankVisible = false;
+function toggleZodiacRank() {
+  zodiacRankVisible = !zodiacRankVisible;
+  updateCardA();
+  showToast(zodiacRankVisible ? '生肖排行已展开' : '生肖排行已收起');
+}
+
+function updateCardA() {
+  const contentEl = document.getElementById('cardAContent');
+  if (!contentEl) return;
+
+  let html = '';
+
+  // ===== 第一行：风险号码串 =====
+  const filterInput = document.getElementById('filterInputCardA');
+  const filterText = filterInput ? filterInput.value.trim() : '';
+  if (filterText) {
+    const tokens = filterText.split(/\s+/).filter(t => t);
+    const cfg = getAllConfigData();
+    const validCats = getAllValidCategories(cfg);
+    let targetNums = new Set();
+    tokens.forEach(token => {
+      if (/^\d{1,2}$/.test(token)) {
+        const n = token.padStart(2, '0');
+        if (parseInt(n) >= 1 && parseInt(n) <= 49) targetNums.add(n);
+      } else if (cfg.zodiac[token]) {
+        cfg.zodiac[token].forEach(n => targetNums.add(n.padStart(2, '0')));
+      } else if (validCats.has(token)) {
+        const nums = getNumberListForCategory(token, cfg);
+        nums.forEach(n => targetNums.add(n.padStart(2, '0')));
+      }
+    });
+
+    if (targetNums.size > 0) {
+      const negativeNums = [];
+      for (const num of targetNums) {
+        if (reportRiskData[num] !== undefined && reportRiskData[num] < 0) {
+          negativeNums.push(num);
+        }
+      }
+      if (negativeNums.length > 0) {
+        negativeNums.sort((a, b) => parseInt(a) - parseInt(b));
+        negativeNums.forEach((num, idx) => {
+          const cls = redNumbers.includes(num) ? 'red-text' : (blueNumbers.includes(num) ? 'blue-text' : 'green-text');
+          html += `<span class="${cls}">${num}</span>`;
+          if (idx < negativeNums.length - 1) html += '-';
+        });
+        html += '<br>';
+      } else {
+        html += '所有目标号码风险均非负<br>';
+      }
+    } else {
+      html += '未识别到有效号码<br>';
+    }
+  }
+
+  // ===== 第二、三行：活跃/不活跃前N名 =====
+  const topNInput = document.getElementById('topNInput');
+  const nVal = topNInput ? parseInt(topNInput.value) : NaN;
+  if (!isNaN(nVal) && nVal > 0) {
+    const entries = Object.entries(numberAmountCount).map(([num, cnt]) => ({ num, cnt: cnt || 0 }));
+    // 补全49个号码
+    for (let i = 1; i <= 49; i++) {
+      const n = i.toString().padStart(2, '0');
+      if (!numberAmountCount[n]) entries.push({ num: n, cnt: 0 });
+    }
+    // 活跃前N名（次数降序）
+    const sortedDesc = [...entries].sort((a, b) => b.cnt - a.cnt || parseInt(a.num) - parseInt(b.num));
+    const cutoffDesc = sortedDesc[nVal - 1]?.cnt;
+    const activeNums = sortedDesc.filter(e => e.cnt >= cutoffDesc);
+    // 不活跃前N名（次数升序取前N，但显示时次数降序）
+    const sortedAsc = [...entries].sort((a, b) => a.cnt - b.cnt || parseInt(a.num) - parseInt(b.num));
+    const cutoffAsc = sortedAsc[nVal - 1]?.cnt;
+    let inactiveNums = sortedAsc.filter(e => e.cnt <= cutoffAsc);
+    inactiveNums.sort((a, b) => b.cnt - a.cnt || parseInt(a.num) - parseInt(b.num));
+
+    // 活跃行
+    activeNums.forEach((e, idx) => {
+      const cls = redNumbers.includes(e.num) ? 'red-text' : (blueNumbers.includes(e.num) ? 'blue-text' : 'green-text');
+      html += `<span class="${cls}">${e.num}</span>(${e.cnt})`;
+      if (idx < activeNums.length - 1) html += ' ';
+    });
+    html += '<br>';
+
+    // 不活跃行
+    inactiveNums.forEach((e, idx) => {
+      const cls = redNumbers.includes(e.num) ? 'red-text' : (blueNumbers.includes(e.num) ? 'blue-text' : 'green-text');
+      html += `<span class="${cls}">${e.num}</span>(${e.cnt})`;
+      if (idx < inactiveNums.length - 1) html += ' ';
+    });
+    html += '<br>';
+  }
+
+  // ===== 生肖排行（切换显示） =====
+  if (zodiacRankVisible) {
+    const zodiacOrderFixed = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+    const zcm = {'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};
+
+    // 生肖次数排行
+    const zCountEntries = zodiacOrderFixed.map(z => ({ zodiac: z, cnt: zodiacAmountCount[z] || 0 }));
+    zCountEntries.sort((a, b) => b.cnt - a.cnt);
+    zCountEntries.forEach((e, idx) => {
+      html += `<span class="${zcm[e.zodiac] || ''}">${e.zodiac}</span>(${e.cnt})`;
+      if (idx < zCountEntries.length - 1) html += ' ';
+    });
+    html += '<br>';
+
+    // 生肖金额排行
+    const zAmtEntries = zodiacOrderFixed.map(z => ({ zodiac: z, amt: zodiacFilteredAmount[z] || 0 }));
+    zAmtEntries.sort((a, b) => b.amt - a.amt);
+    zAmtEntries.forEach((e, idx) => {
+      html += `<span class="${zcm[e.zodiac] || ''}">${e.zodiac}</span>(${e.amt})`;
+      if (idx < zAmtEntries.length - 1) html += ' ';
+    });
+    html += '<br>';
+  }
+
+  if (!html) html = '等待数据加载...';
+  contentEl.innerHTML = html;
+}
+
+// ========== 复制卡片A各行的号码串 ==========
+function copyCardANumbers(type) {
+  const contentEl = document.getElementById('cardAContent');
+  if (!contentEl) return;
+
+  const allSpans = contentEl.querySelectorAll('span');
+  if (allSpans.length === 0) { showToast('没有可复制的号码'); return; }
+
+  // 把内容分成行（通过<br>分隔）
+  const brNodes = contentEl.querySelectorAll('br');
+  const lines = [];
+  let currentLine = [];
+  const childNodes = Array.from(contentEl.childNodes);
+  for (const node of childNodes) {
+    if (node.nodeType === 3) {
+      // 文本节点（如 '-' 或 ' '）
+      currentLine.push(node);
+    } else if (node.nodeName === 'SPAN') {
+      currentLine.push(node);
+    } else if (node.nodeName === 'BR') {
+      lines.push(currentLine);
+      currentLine = [];
+    }
+  }
+  if (currentLine.length > 0) lines.push(currentLine);
+
+  // 找出目标行
+  const filterText = document.getElementById('filterInputCardA')?.value.trim();
+  const topNVal = parseInt(document.getElementById('topNInput')?.value);
+  let targetLineIndex = -1;
+  let lineIdx = 0;
+
+  // 第一行：风险号码（条件输入框有内容时）
+  if (filterText) {
+    if (type === 'risk') targetLineIndex = lineIdx;
+    lineIdx++;
+  } else if (type === 'risk') {
+    // 没有风险行
+  }
+
+  // 第二行：活跃（前N名有值时）
+  if (!isNaN(topNVal) && topNVal > 0) {
+    if (type === 'active') targetLineIndex = lineIdx;
+    lineIdx++;
+    if (type === 'inactive') targetLineIndex = lineIdx;
+    lineIdx++;
+  }
+
+  // 生肖排行行
+  if (zodiacRankVisible) {
+    lineIdx++; // 跳过生肖次数行
+    lineIdx++; // 跳过生肖金额行
+  }
+
+  if (targetLineIndex < 0 || targetLineIndex >= lines.length) {
+    showToast('对应行暂无数据');
+    return;
+  }
+
+  const targetNodes = lines[targetLineIndex];
+  const numbers = [];
+  for (const node of targetNodes) {
+    if (node.nodeName === 'SPAN') {
+      numbers.push(node.textContent.trim());
+    }
+  }
+
+  if (numbers.length === 0) { showToast('没有可复制的号码'); return; }
+  const text = numbers.join('-');
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('已复制: ' + text);
+  }).catch(() => {
+    showToast('复制失败');
+  });
+}
+
+// ========== 重写 generateReportTable 追加卡片更新 ==========
+(function() {
+  const originalFn = generateReportTable;
+  generateReportTable = function() {
+    originalFn.apply(this, arguments);
+    updateCardA();
+  };
+})();
+
+// ========== 重写 updateTableFromRecords 追加平特肖刷新 ==========
+(function() {
+  const originalFn = updateTableFromRecords;
+  updateTableFromRecords = async function() {
+    await originalFn.apply(this, arguments);
+    renderPingtexiaoTable();
+    updateCardA();
+  };
+})();
+
+// ========== 导出导入增强（含平特肖数据） ==========
+const originalExportData = exportData;
+exportData = async function() {
+  try {
+    const orders = await getAllOrdersUnfiltered();
+    const reports = await getAllReportsUnfiltered();
+    const drawRecords = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('drawRecord_')) drawRecords[key] = localStorage.getItem(key);
+    }
+    // 收集平特肖数据
+    const pingtexiao = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('pingtexiao_')) pingtexiao[key] = localStorage.getItem(key);
+    }
+    const presets = localStorage.getItem('replacePresets') || '[]';
+    const aliases = localStorage.getItem('categoryAliases') || '[]';
+    const data = {
+      orders, reports, drawRecords,
+      pingtexiao,
+      replacePresets: JSON.parse(presets),
+      categoryAliases: JSON.parse(aliases),
+      exportTime: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `港澳识别数据_全部_${getTodayCST()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) { showToast('导出失败'); }
+};
+
+const originalImportData = importData;
+importData = async function() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.json';
+  inp.style.display = 'none';
+  document.body.appendChild(inp);
+  inp.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) { document.body.removeChild(inp); return; }
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.orders || !data.reports) { showToast('无效格式'); document.body.removeChild(inp); return; }
+        const pingtexiaoCount = data.pingtexiao ? Object.keys(data.pingtexiao).length : 0;
+        const totalToImport = data.orders.length + data.reports.length +
+          (data.drawRecords ? Object.keys(data.drawRecords).length : 0) +
+          pingtexiaoCount +
+          (data.replacePresets ? data.replacePresets.length : 0) +
+          (data.categoryAliases ? data.categoryAliases.length : 0);
+        if (totalToImport === 0) { showToast('文件中没有数据'); document.body.removeChild(inp); return; }
+        let confirmMsg = `文件包含 ${data.orders.length} 条订单，${data.reports.length} 条上报，${data.drawRecords ? Object.keys(data.drawRecords).length : 0} 组开奖记录，${pingtexiaoCount} 组平特肖数据，${data.replacePresets ? data.replacePresets.length : 0} 条替换预设，${data.categoryAliases ? data.categoryAliases.length : 0} 条分类缩写。是否导入？`;
+        const cf = await confirm(confirmMsg);
+        if (!cf) { document.body.removeChild(inp); return; }
+
+        const eo = await getAllOrdersUnfiltered();
+        const er = await getAllReportsUnfiltered();
+        let so = 0, no = 0;
+        for (const r of data.orders) {
+          const region = r.region || currentRegion;
+          const dup = eo.find(o => o.content === r.content && o.user === r.user && o.timestamp === r.timestamp && o.region === region);
+          if (dup) { so++; continue; }
+          try { await saveOrderRecordToIDB(r.content, r.user, r.date, r.totalAmount || 0, r.timestamp, region); no++; } catch (e) {}
+        }
+        let sr = 0, nr = 0;
+        for (const r of data.reports) {
+          const region = r.region || currentRegion;
+          const dup = er.find(o => o.content === r.content && o.user === r.user && o.timestamp === r.timestamp && o.region === region);
+          if (dup) { sr++; continue; }
+          try { await saveReportOrderRecordToIDB(r.content, r.user, r.date, r.totalAmount || 0, r.timestamp, region); nr++; } catch (e) {}
+        }
+
+        let dcImported = 0;
+        if (data.drawRecords) {
+          for (const [key, value] of Object.entries(data.drawRecords)) {
+            const existing = localStorage.getItem(key);
+            if (existing) {
+              try {
+                const existingData = JSON.parse(existing);
+                const newData = JSON.parse(value);
+                let changed = false;
+                for (const [issue, entry] of Object.entries(newData)) {
+                  if (existingData[issue] && existingData[issue].number && existingData[issue].number.trim()) { continue; }
+                  else { existingData[issue] = entry; changed = true; }
+                }
+                if (changed) { localStorage.setItem(key, JSON.stringify(existingData)); dcImported++; }
+              } catch (e) { localStorage.setItem(key, value); dcImported++; }
+            } else { localStorage.setItem(key, value); dcImported++; }
+          }
+        }
+
+        // 导入平特肖数据（去重：已存在的键跳过）
+        let ptImported = 0, ptSkipped = 0;
+        if (data.pingtexiao) {
+          for (const [key, value] of Object.entries(data.pingtexiao)) {
+            if (localStorage.getItem(key)) {
+              ptSkipped++;
+            } else {
+              localStorage.setItem(key, value);
+              ptImported++;
+            }
+          }
+        }
+
+        let presetImported = 0, aliasImported = 0;
+        if (data.replacePresets && Array.isArray(data.replacePresets)) {
+          const currentPresets = getReplacePresets();
+          data.replacePresets.forEach(p => {
+            if (!currentPresets.some(x => x.old === p.old)) { currentPresets.push(p); presetImported++; }
+          });
+          localStorage.setItem('replacePresets', JSON.stringify(currentPresets));
+        }
+        if (data.categoryAliases && Array.isArray(data.categoryAliases)) {
+          const currentAliases = getCategoryAliases();
+          data.categoryAliases.forEach(a => {
+            if (!currentAliases.some(x => x.alias === a.alias)) { currentAliases.push(a); aliasImported++; }
+          });
+          localStorage.setItem('categoryAliases', JSON.stringify(currentAliases));
+        }
+
+        await updateTableFromRecords();
+        calculateStorageUsage();
+        renderPingtexiaoTable();
+        let msg = `成功导入 ${no + nr} 条订单/上报记录，${dcImported} 组开奖记录。`;
+        if (ptImported > 0) msg += `\n导入平特肖数据 ${ptImported} 组。`;
+        if (ptSkipped > 0) msg += `\n跳过平特肖数据 ${ptSkipped} 组（已存在）。`;
+        if (presetImported > 0) msg += `\n新增 ${presetImported} 条替换预设。`;
+        if (aliasImported > 0) msg += `\n新增 ${aliasImported} 条分类缩写。`;
+        if (so + sr > 0) msg += `\n跳过 ${so + sr} 条重复订单/上报记录。`;
+        showToast(msg);
+        document.body.removeChild(inp);
+      } catch (err) { showToast('导入失败'); document.body.removeChild(inp); }
+    };
+    reader.onerror = () => { showToast('读取失败'); document.body.removeChild(inp); };
+    reader.readAsText(file);
+  };
+  inp.addEventListener('cancel', () => { document.body.removeChild(inp); });
+  inp.click();
+};
+
+// ========== 重写 switchRegion 追加平特肖刷新 ==========
+(function() {
+  const originalFn = switchRegion;
+  switchRegion = async function(region) {
+    await originalFn.apply(this, arguments);
+    renderPingtexiaoTable();
+    updateCardA();
+  };
+})();
+
+// ========== 日期变更时刷新平特肖 ==========
+const originalFilterDateHandler = filterDateEl?.onchange;
+if (filterDateEl) {
+  filterDateEl.addEventListener('change', () => {
+    renderPingtexiaoTable();
+    updateCardA();
+  });
+}
+
+// ========== 页面初始化补充 ==========
 window.onload = async () => {
   setCurrentRegion(currentRegion); await initIndexedDB(); initDataConfig();
 
@@ -1264,14 +1699,25 @@ window.onload = async () => {
     localStorage.setItem('categoryAliases', JSON.stringify(defaultAliases));
   }
 
-  const today = getTodayCST(); const filterDateEl = document.getElementById('filterDate'); if (filterDateEl) filterDateEl.value = today;
+  const today = getTodayCST(); const filterDateEl2 = document.getElementById('filterDate'); if (filterDateEl2) filterDateEl2.value = today;
   const savedZodiac = localStorage.getItem('selectedStartZodiac') || '马'; document.getElementById('startZodiacSelect').value = savedZodiac;
   currentZodiacMap = buildZodiacMap(savedZodiac); updateSelects(); renderAllTablesPlaceholder();
   enableRowDragSelect('riskTable'); enableRowDragSelect('reportTable');
   await autoCleanRecycleBin(); setInterval(autoCleanRecycleBin, 24 * 60 * 60 * 1000); updateRecycleCount();
 
-  window._systemReady = async () => { await updateTableFromRecords(); calculateStorageUsage(); updateOrderTotalDisplay(); updateReportAmountTotal(); updateRecentDrawTexts(); };
-  if (!checkCurrentAccess()) { showLoginScreen(); } else { if (isAdmin()) document.getElementById('cardMgrBtn').style.display = ''; await window._systemReady(); }
+  window._systemReady = async () => {
+    await updateTableFromRecords();
+    calculateStorageUsage();
+    updateOrderTotalDisplay();
+    updateReportAmountTotal();
+    updateRecentDrawTexts();
+    renderPingtexiaoTable();
+    updateCardA();
+  };
+  if (!checkCurrentAccess()) { showLoginScreen(); } else {
+    if (isAdmin()) document.getElementById('cardMgrBtn').style.display = '';
+    await window._systemReady();
+  }
 };
 </script>
 </body>
