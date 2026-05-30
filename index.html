@@ -223,6 +223,8 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .recent-draw-text .num{font-weight:bold;}
 .recent-draw-text .slash{color:#000;}
 .recycle-count-badge{display:inline-block;background:#e74c3c;color:#fff;border-radius:10px;padding:0px 6px;font-size:11px;font-weight:bold;margin-left:4px;min-width:18px;text-align:center;}
+.pt-report-text{color:#ff0000!important;font-weight:normal;}
+.pt-remain-text{color:#0000ff!important;font-weight:bold;}
 </style>
 </head>
 <body>
@@ -299,6 +301,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
         </div>
       </div>
 
+      <!-- 上报控制卡片（右侧现在放自定义筛选卡片A） -->
       <div class="card" style="margin-top:0;">
         <div class="card-title">上报控制</div>
         <div class="freq-container">
@@ -314,18 +317,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
               <span id="parseResultArea" class="parse-inline" style="flex:1; min-width:0;"></span>
             </div>
           </div>
-          <div class="freq-card">
-            <div class="freq-title">上报号码金额<div class="amount-stat-box" id="reportAmountTotalBox" style="display:none; margin-left:8px;"><span id="reportAmountTotalValue">0</span></div></div>
-            <table class="freq-table" id="reportAmountTable"></table>
-          </div>
-        </div>
-      </div>
-
-      <!-- 新增：号码分析双卡片 -->
-      <div class="card" style="margin-top:0;">
-        <div class="card-title">号码分析</div>
-        <div class="freq-container">
-          <!-- 卡片 A：自定义筛选 -->
+          <!-- 自定义筛选卡片A移到此处 -->
           <div class="freq-card">
             <div class="freq-title">
               <span>自定义筛选</span>
@@ -338,16 +330,26 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
                 <button class="btn-copy" onclick="toggleZodiacRank()" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:20px; background:#9b59b6; color:#fff; border:none; cursor:pointer;">生肖排行</button>
               </div>
             </div>
-            <div id="cardAContent" style="font-size:12px; line-height:1.6; word-break:break-all;">
-              <!-- 动态填充 -->
-            </div>
+            <div id="cardAContent" style="font-size:12px; line-height:1.6; word-break:break-all;"></div>
           </div>
-          <!-- 卡片 B：平特肖 -->
+        </div>
+      </div>
+
+      <!-- 号码分析卡片：左侧上报号码金额表格，右侧平特肖 -->
+      <div class="card" style="margin-top:0;">
+        <div class="card-title">号码分析</div>
+        <div class="freq-container">
           <div class="freq-card">
-            <div class="freq-title">平特肖</div>
-            <div id="pingtexiaoTableContainer" style="overflow-x:auto;">
-              <!-- 表格动态生成 -->
+            <div class="freq-title">上报号码金额<div class="amount-stat-box" id="reportAmountTotalBox" style="display:none; margin-left:8px;"><span id="reportAmountTotalValue">0</span></div></div>
+            <table class="freq-table" id="reportAmountTable"></table>
+          </div>
+          <div class="freq-card">
+            <div class="freq-title">
+              平特肖
+              <span class="amount-stat-box" id="ptAmountTotalBox" style="display:none; margin-left:4px;"><span>金额合计：</span><span id="ptAmountTotal">0</span></span>
+              <span class="amount-stat-box" id="ptReportTotalBox" style="display:none; margin-left:4px;"><span>上报合计：</span><span id="ptReportTotal">0</span></span>
             </div>
+            <div id="pingtexiaoTableContainer" style="overflow-x:auto;"></div>
           </div>
         </div>
       </div>
@@ -789,8 +791,7 @@ async function deleteReportOrderRecordFromIDB(id) { if (!db) return false; const
 // ===== 批量删除函数 =====
 async function batchDeleteOrderRecordFromIDB(ids) { if (!db) return false; try { for (const id of ids) { const record = await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readonly'); const store = tx.objectStore(STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (record) { await moveToRecycleBin(record, 'order'); await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readwrite'); const store = tx.objectStore(STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); } } return true; } catch (e) { console.error('批量删除订单失败', e); return false; } }
 async function batchDeleteReportOrderRecordFromIDB(ids) { if (!db) return false; try { for (const id of ids) { const record = await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readonly'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (record) { await moveToRecycleBin(record, 'report'); await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); } } return true; } catch (e) { console.error('批量删除上报记录失败', e); return false; } }
-
-// ===== 清空函数（物理删除，不进入回收站） =====
+    // ===== 清空函数（物理删除，不进入回收站） =====
 async function clearAllOrderRecordsFromIDB(region = null) { return new Promise((resolve) => { if (!db) resolve(false); const tx = db.transaction([STORE_NAME],'readwrite'); const store = tx.objectStore(STORE_NAME); if (region) { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result.filter(r => r.region === region); records.forEach(r => store.delete(r.id)); resolve(true); }; } else { const req = store.clear(); req.onsuccess = () => resolve(true); } }); }
 async function clearAllReportOrderRecordsFromIDB(region = null) { return new Promise((resolve) => { if (!db) resolve(false); const tx = db.transaction([REPORT_STORE_NAME],'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); if (region) { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result.filter(r => r.region === region); records.forEach(r => store.delete(r.id)); resolve(true); }; } else { const req = store.clear(); req.onsuccess = () => resolve(true); } }); }
 
@@ -1031,7 +1032,7 @@ function updatePrizeStats(pn) {}
 
 async function applyPrizeFilter(){ const pi=document.getElementById('prizeNumberInput'),uf=document.getElementById('recordUserFilter'); if(!pi||!uf) return; const sd = document.getElementById('filterDate')?.value; const pn=pi.value.trim(),uv=uf.value; const recs=await getOrderRecords(); const reports=await getReportOrderRecords(); const fRecs = sd ? recs.filter(r=>r.date===sd) : recs; const fReps = sd ? reports.filter(r=>r.date===sd) : reports; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); let filtered=pn ? [] : [...userOrders]; if(pn){ const cfg=getAllConfigData(); for(const it of userOrders){ if(orderContainsTarget(it.content,pn,cfg)) filtered.push(it); } } const cont=document.getElementById('orderListContainer'); if(!cont)return; if(filtered.length===0){cont.innerHTML='<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';} else{ const cfg=getAllConfigData(); cont.innerHTML=filtered.map(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; const lines=it.content.split('\n'); const hl=lines.map(l=>{const m=l.match(/^(.+?)\s+各数\s+(\d+)$/);if(!m)return l;const cont=m[1],amt=m[2];const hc=highlightContent(cont,pn,cfg);return`${hc} 各数 ${amt}`;}).join('<br>'); return`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${hl}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }).join(''); } renderOrderStats(userOrders, userReports, uv, pn); }
 
-async function showOrderRecord(filter='all'){ try{ const recs=await getOrderRecords(),users=getUsers(),today=getTodayCST(); const reports=await getReportOrderRecords(); const fd=document.getElementById('filterDate')?.value; const fRecs=fd?recs.filter(r=>r.date===fd):recs; const fReps=fd?reports.filter(r=>r.date===fd):reports; if(document.getElementById('orderWin'))document.getElementById('orderWin').remove(); const w=document.createElement('div'); w.className='floating-window'; w.id='orderWin'; w.style.width='750px'; w.style.height='600px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; let html=`<div class="modal-header"><h3>下单记录</h3><div class="window-controls"><button onclick="maximizeWindow('orderWin')">🗖</button><button onclick="document.getElementById('orderWin').remove()">×</button></div></div><div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html+=`<div style="margin-bottom:6px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><select id="recordUserFilter" onchange="applyPrizeFilter()" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;"><option value="all" ${filter==='all'?'selected':''}>全部用户</option>`; users.forEach(u=>html+=`<option value="${u}" ${u===filter?'selected':''}>${u}</option>`); html+=`</select><button onclick="checkAll()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAll()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="deleteChecked()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button> <span style="display:flex;align-items:center;gap:3px;margin-left:auto;"><span id="orderStatsContainer" style="margin-right:4px;"></span><span style="display:flex;align-items:center;gap:2px;"><span>对奖:</span><input type="text" id="prizeNumberInput" maxlength="2" oninput="applyPrizeFilter()" style="padding:4px;border-radius:4px;border:1px solid #ccc;width:50px;"></span></span></div>`; html+=`<div id="orderListContainer" style="flex:1; overflow-y:auto;">`; const filterDateVal = fd || today; const df=fRecs; const fin=(filter==='all')?df:df.filter(r=>r.user===filter); if(fin.length===0)html+=`<div style="padding:20px;text-align:center;color:#666;">暂无订单记录</div>`; else{ fin.forEach(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; html+=`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${it.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }); } html+=`</div></div><div class="modal-footer"><button onclick="document.getElementById('orderWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; w.innerHTML=html; document.body.appendChild(w); makeWindowDraggable('orderWin'); highestZ+=1; w.style.zIndex=highestZ; const uv = filter || 'all'; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); renderOrderStats(userOrders, userReports, uv, ''); }catch(e){showToast('加载失败');} }
+async function showOrderRecord(filter='all'){ try{ const recs=await getOrderRecords(),users=getUsers(),today=getTodayCST(); const reports=await getReportOrderRecords(); const fd=document.getElementById('filterDate')?.value; const fRecs=fd?recs.filter(r=>r.date===fd):recs; const fReps=fd?reports.filter(r=>r.date===fd):reports; if(document.getElementById('orderWin'))document.getElementById('orderWin').remove(); const w=document.createElement('div'); w.className='floating-window'; w.id='orderWin'; w.style.width='750px'; w.style.height='600px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; let html=`<div class="modal-header"><h3>下单记录</h3><div class="window-controls"><button onclick="maximizeWindow('orderWin')">🗖</button><button onclick="document.getElementById('orderWin').remove()">×</button></div></div><div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html+=`<div style="margin-bottom:6px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><select id="recordUserFilter" onchange="applyPrizeFilter()" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;"><option value="all" ${filter==='all'?'selected':''}>全部用户</option>`; users.forEach(u=>html+=`<option value="${u}" ${u===filter?'selected':''}>${u}</option>`); html+=`</select><button onclick="checkAll()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAll()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="deleteChecked()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button> <span style="display:flex;align-items:center;gap:3px;margin-left:auto;"><span id="orderStatsContainer" style="margin-right:4px;"></span><span style="display:flex;align-items:center;gap:2px;"><span>对奖:</span><input type="text" id="prizeNumberInput" maxlength="2" oninput="applyPrizeFilter()" style="padding:4px;border-radius:4px;border:1px solid #ccc;width:50px;text-align:center;"></span></span></div>`; html+=`<div id="orderListContainer" style="flex:1; overflow-y:auto;">`; const filterDateVal = fd || today; const df=fRecs; const fin=(filter==='all')?df:df.filter(r=>r.user===filter); if(fin.length===0)html+=`<div style="padding:20px;text-align:center;color:#666;">暂无订单记录</div>`; else{ fin.forEach(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; html+=`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content">${it.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }); } html+=`</div></div><div class="modal-footer"><button onclick="document.getElementById('orderWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; w.innerHTML=html; document.body.appendChild(w); makeWindowDraggable('orderWin'); highestZ+=1; w.style.zIndex=highestZ; const uv = filter || 'all'; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); renderOrderStats(userOrders, userReports, uv, ''); }catch(e){showToast('加载失败');} }
 
 async function deleteOrderRecord(id) { if (!(await confirm('确定删除？（可到回收站恢复）'))) return; try { const result = await deleteOrderRecordFromIDB(id); if (result) { showToast('已移入回收站'); await updateTableFromRecords(); calculateStorageUsage(); showOrderRecord(); updateRecycleCount(); } else { showToast('删除失败，记录可能已不存在'); } } catch(e) { console.error('删除订单异常', e); showToast('删除异常'); } }
 
@@ -1061,15 +1062,17 @@ if (resetBtn) {
 async function resetTable(){ const regionName = currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港'; const confirmed = await confirm(`确定清空当前地区（${regionName}）的所有订单和上报数据吗？此操作不可恢复。`); if (!confirmed) return; const pwd = await prompt("输入清空密码：",""); if (pwd !== PASSWORD) { await alert("密码错误"); return; } clearMemoryData(); await clearAllOrderRecordsFromIDB(currentRegion); await clearAllReportOrderRecordsFromIDB(currentRegion); renderAllTablesPlaceholder(); calculateStorageUsage(); updateAmountDisplays(); showToast(`已清空${regionName}的所有订单和上报记录`); }
 function clearAllInput(){ const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.innerHTML=''; updateOrderTotalDisplay(); }
 async function pasteOrder(){ try{ const text=await navigator.clipboard.readText(); if(text){const si=document.querySelector('.source-order-input');if(si){si.value=text;convertOrderText();}} } catch(err){showToast('无法访问剪贴板');} }
-
-// ===== 导出导入（导出全部数据：订单、上报、开奖记录、替换预设、分类缩写） =====
+    // ===== 导出导入（导出全部数据：订单、上报、开奖记录、替换预设、分类缩写、平特肖） =====
 async function exportData(){
   try{
     const orders=await getAllOrdersUnfiltered(); const reports=await getAllReportsUnfiltered();
     const drawRecords = {}; for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (key && key.startsWith('drawRecord_')) { drawRecords[key] = localStorage.getItem(key); } }
+    // 收集平特肖数据
+    const pingtexiao = {};
+    for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (key && key.startsWith('pingtexiao_')) { pingtexiao[key] = localStorage.getItem(key); } }
     const presets = localStorage.getItem('replacePresets') || '[]';
     const aliases = localStorage.getItem('categoryAliases') || '[]';
-    const data={orders,reports,drawRecords,replacePresets:JSON.parse(presets),categoryAliases:JSON.parse(aliases),exportTime:new Date().toISOString()};
+    const data={orders,reports,drawRecords,pingtexiao,replacePresets:JSON.parse(presets),categoryAliases:JSON.parse(aliases),exportTime:new Date().toISOString()};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`港澳识别数据_全部_${getTodayCST()}.json`; a.click(); URL.revokeObjectURL(url);
   }catch(e){showToast('导出失败');}
@@ -1083,9 +1086,11 @@ async function importData(){
       try{
         const data=JSON.parse(ev.target.result);
         if(!data.orders||!data.reports){showToast('无效格式');document.body.removeChild(inp);return;}
-        const totalToImport = data.orders.length + data.reports.length + (data.drawRecords ? Object.keys(data.drawRecords).length : 0) + (data.replacePresets ? data.replacePresets.length : 0) + (data.categoryAliases ? data.categoryAliases.length : 0);
+        const pingtexiaoCount = data.pingtexiao ? Object.keys(data.pingtexiao).length : 0;
+        const totalToImport = data.orders.length + data.reports.length + (data.drawRecords ? Object.keys(data.drawRecords).length : 0) + pingtexiaoCount + (data.replacePresets ? data.replacePresets.length : 0) + (data.categoryAliases ? data.categoryAliases.length : 0);
         if(totalToImport === 0){ showToast('文件中没有数据'); document.body.removeChild(inp); return; }
-        const cf = await confirm(`文件包含 ${data.orders.length} 条订单，${data.reports.length} 条上报，${data.drawRecords ? Object.keys(data.drawRecords).length : 0} 组开奖记录，${data.replacePresets ? data.replacePresets.length : 0} 条替换预设，${data.categoryAliases ? data.categoryAliases.length : 0} 条分类缩写。是否导入？`);
+        let confirmMsg = `文件包含 ${data.orders.length} 条订单，${data.reports.length} 条上报，${data.drawRecords ? Object.keys(data.drawRecords).length : 0} 组开奖记录，${pingtexiaoCount} 组平特肖数据，${data.replacePresets ? data.replacePresets.length : 0} 条替换预设，${data.categoryAliases ? data.categoryAliases.length : 0} 条分类缩写。是否导入？`;
+        const cf = await confirm(confirmMsg);
         if(!cf){document.body.removeChild(inp);return;}
 
         const eo=await getAllOrdersUnfiltered(); const er=await getAllReportsUnfiltered();
@@ -1097,21 +1102,19 @@ async function importData(){
         let dcImported = 0;
         if (data.drawRecords) { for (const [key, value] of Object.entries(data.drawRecords)) { const existing = localStorage.getItem(key); if (existing) { try { const existingData = JSON.parse(existing); const newData = JSON.parse(value); let changed = false; for (const [issue, entry] of Object.entries(newData)) { if (existingData[issue] && existingData[issue].number && existingData[issue].number.trim()) { continue; } else { existingData[issue] = entry; changed = true; } } if (changed) { localStorage.setItem(key, JSON.stringify(existingData)); dcImported++; } } catch(e) { localStorage.setItem(key, value); dcImported++; } } else { localStorage.setItem(key, value); dcImported++; } } }
 
+        // 导入平特肖数据（去重：已存在的键跳过）
+        let ptImported = 0, ptSkipped = 0;
+        if (data.pingtexiao) { for (const [key, value] of Object.entries(data.pingtexiao)) { if (localStorage.getItem(key)) { ptSkipped++; } else { localStorage.setItem(key, value); ptImported++; } } }
+
         // 导入替换预设和分类缩写（去重合并）
         let presetImported = 0, aliasImported = 0;
-        if (data.replacePresets && Array.isArray(data.replacePresets)) {
-          const currentPresets = getReplacePresets();
-          data.replacePresets.forEach(p => { if (!currentPresets.some(x => x.old === p.old)) { currentPresets.push(p); presetImported++; } });
-          localStorage.setItem('replacePresets', JSON.stringify(currentPresets));
-        }
-        if (data.categoryAliases && Array.isArray(data.categoryAliases)) {
-          const currentAliases = getCategoryAliases();
-          data.categoryAliases.forEach(a => { if (!currentAliases.some(x => x.alias === a.alias)) { currentAliases.push(a); aliasImported++; } });
-          localStorage.setItem('categoryAliases', JSON.stringify(currentAliases));
-        }
+        if (data.replacePresets && Array.isArray(data.replacePresets)) { const currentPresets = getReplacePresets(); data.replacePresets.forEach(p => { if (!currentPresets.some(x => x.old === p.old)) { currentPresets.push(p); presetImported++; } }); localStorage.setItem('replacePresets', JSON.stringify(currentPresets)); }
+        if (data.categoryAliases && Array.isArray(data.categoryAliases)) { const currentAliases = getCategoryAliases(); data.categoryAliases.forEach(a => { if (!currentAliases.some(x => x.alias === a.alias)) { currentAliases.push(a); aliasImported++; } }); localStorage.setItem('categoryAliases', JSON.stringify(currentAliases)); }
 
-        await updateTableFromRecords(); calculateStorageUsage();
+        await updateTableFromRecords(); calculateStorageUsage(); renderPingtexiaoTable(); updateCardA();
         let msg = `成功导入 ${no+nr} 条订单/上报记录，${dcImported} 组开奖记录。`;
+        if (ptImported > 0) msg += `\n导入平特肖数据 ${ptImported} 组。`;
+        if (ptSkipped > 0) msg += `\n跳过平特肖数据 ${ptSkipped} 组（已存在）。`;
         if (presetImported > 0) msg += `\n新增 ${presetImported} 条替换预设。`;
         if (aliasImported > 0) msg += `\n新增 ${aliasImported} 条分类缩写。`;
         if(so+sr > 0) msg += `\n跳过 ${so+sr} 条重复订单/上报记录。`;
@@ -1151,7 +1154,7 @@ document.getElementById('zodiacAmountMin')?.addEventListener('input', updateTabl
 document.getElementById('zodiacAmountMax')?.addEventListener('input', updateTableFromRecords);
 
 const filterDateEl = document.getElementById('filterDate');
-if (filterDateEl) { filterDateEl.addEventListener('change', () => { updateTableFromRecords(); if (document.getElementById('orderWin')) { applyPrizeFilter(); } applyReportCap(); updateRecentDrawTexts(); }); filterDateEl.addEventListener('input', updateTableFromRecords); }
+if (filterDateEl) { filterDateEl.addEventListener('change', () => { updateTableFromRecords(); if (document.getElementById('orderWin')) { applyPrizeFilter(); } applyReportCap(); updateRecentDrawTexts(); renderPingtexiaoTable(); updateCardA(); }); filterDateEl.addEventListener('input', updateTableFromRecords); }
 
 let currentParseMethod = parseInt(localStorage.getItem('savedParseMethod') || '0');
 function parseExcessText(text, method) { const lines = text.trim().split('\n').filter(l => l.trim()); const items = []; for (const line of lines) { const match = line.match(/(\d{2})各(\d+)米/); if (match) { items.push({ num: match[1], amount: parseInt(match[2]) }); } } if (items.length === 0) return ''; items.sort((a, b) => b.amount - a.amount); const parseItems = (method) => { const data = items.map(item => ({ ...item })); const result = []; if (method === 0) { while (data.some(d => d.amount > 0)) { const maxAmount = Math.max(...data.map(d => d.amount)); if (maxAmount <= 0) break; const group = []; for (const d of data) { if (d.amount > 0 && (maxAmount - d.amount) <= maxAmount * 0.4) { group.push(d.num); } } const groupAmount = Math.min(...group.map(n => data.find(d => d.num === n).amount)); for (const n of group) { const d = data.find(d => d.num === n); d.amount -= groupAmount; } result.push(`${group.join('-')}各数${groupAmount}`); } } else if (method === 1) { while (data.some(d => d.amount > 0)) { let bestAmount = 0; let bestCount = 0; for (let i = 0; i < data.length; i++) { const candidate = data[i].amount; if (candidate <= 0) continue; let count = 0; for (const d of data) { if (d.amount >= candidate) count++; } if (count > bestCount || (count === bestCount && candidate < bestAmount)) { bestCount = count; bestAmount = candidate; } } if (bestCount === 0) break; const group = []; for (const d of data) { if (d.amount >= bestAmount) { group.push(d.num); d.amount -= bestAmount; } } result.push(`${group.join('-')}各数${bestAmount}`); } } else if (method === 2) { const levels = [50, 10, 5, 2, 1]; for (const lv of levels) { let again = true; while (again) { again = false; const group = []; for (const d of data) { if (d.amount >= lv) { group.push(d.num); d.amount -= lv; again = true; } } if (group.length > 0) { result.push(`${group.join('-')}各数${lv}`); } } } } else if (method === 3) { for (let lv = 100; lv >= 1; lv--) { let again = true; while (again) { again = false; const group = []; for (const d of data) { if (d.amount >= lv) { group.push(d.num); d.amount -= lv; again = true; } } if (group.length > 0) { result.push(`${group.join('-')}各数${lv}`); } } } } else if (method === 4) { const levels = []; for (let lv = 100; lv >= 5; lv -= 5) levels.push(lv); levels.push(3, 2, 1); for (const lv of levels) { let again = true; while (again) { again = false; const group = []; for (const d of data) { if (d.amount >= lv) { group.push(d.num); d.amount -= lv; again = true; } } if (group.length > 0) { result.push(`${group.join('-')}各数${lv}`); } } } } return result.join('\n'); }; return parseItems(method); }
@@ -1217,7 +1220,6 @@ function updateRecentDrawNumbers() { const container = document.getElementById('
 function updateRecentZodiacStats() { const container = document.getElementById('recentZodiacStats'); if (!container) return; const countStr = localStorage.getItem(`recentDrawCount_${currentRegion}`); if (!countStr) { container.style.display = 'none'; return; } const count = parseInt(countStr); if (isNaN(count) || count < 1) { container.style.display = 'none'; return; } const fd = document.getElementById('filterDate')?.value || getTodayCST(); let year = new Date().getFullYear(); const m = fd.match(/^(\d{4})/); if (m) year = parseInt(m[1]); const currentIssue = getCurrentIssueNumber(year, fd); if (!currentIssue) { container.style.display = 'none'; return; } const storageKey = `drawRecord_${currentRegion}_${year}`; let savedData = {}; try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) {} const zodiacList = []; for (let i = currentIssue - count; i < currentIssue; i++) { if (i < 1) continue; const issueId = i.toString().padStart(2, '0'); const entry = savedData[issueId]; if (entry && entry.number && entry.number.trim()) { const num = entry.number.trim().padStart(2, '0'); if (/^\d{2}$/.test(num) && parseInt(num) >= 1 && parseInt(num) <= 49) { const zodiac = currentZodiacMap[num] || ''; if (zodiac) zodiacList.push(zodiac); } } } if (zodiacList.length === 0) { container.style.display = 'none'; return; } const freq = {}; zodiacList.forEach(z => { freq[z] = (freq[z] || 0) + 1; }); const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]); const repeated = []; const single = []; sorted.forEach(([zodiac, cnt]) => { if (cnt > 1) { repeated.push({ zodiac, cnt }); } else { single.push(zodiac); } }); let html = ''; repeated.forEach(item => { html += `<div>${item.cnt}次：<span class="${getZodiacColorClass(item.zodiac)}">${item.zodiac}</span></div>`; }); if (single.length > 0) { const singleSpans = single.map(z => `<span class="${getZodiacColorClass(z)}">${z}</span>`).join('、'); html += `<div>${singleSpans}</div>`; } container.innerHTML = html; container.style.display = ''; }
 
 function updateFilterDateDrawInfo() { const span = document.getElementById('filterDateDrawInfo'); if (!span) return; const fd = document.getElementById('filterDate')?.value || getTodayCST(); let year = new Date().getFullYear(); const m = fd.match(/^(\d{4})/); if (m) year = parseInt(m[1]); const issueNumber = getCurrentIssueNumber(year, fd); if (!issueNumber) { span.style.display = 'none'; return; } const issueId = issueNumber.toString().padStart(2, '0'); const storageKey = `drawRecord_${currentRegion}_${year}`; let savedData = {}; try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) {} const entry = savedData[issueId]; if (!entry || !entry.number || !entry.number.trim()) { span.style.display = 'none'; return; } const num = entry.number.trim().padStart(2, '0'); if (!/^\d{2}$/.test(num) || parseInt(num) < 1 || parseInt(num) > 49) { span.style.display = 'none'; return; } const zodiac = currentZodiacMap[num] || ''; span.innerHTML = `<span class="num ${getNumberColorClass(num)}">${num}</span><span class="slash" style="color:#000;">/</span><span class="${getZodiacColorClass(zodiac)}">${zodiac}</span>`; span.style.display = ''; }
-
     // ========== 平特肖数据存储 ==========
 function getPingtexiaoKey() { const fd = document.getElementById('filterDate')?.value || getTodayCST(); return `pingtexiao_${currentRegion}_${fd}`; }
 function getPingtexiaoData() { try { return JSON.parse(localStorage.getItem(getPingtexiaoKey()) || '{}'); } catch (e) { return {}; } }
@@ -1245,14 +1247,15 @@ function renderPingtexiaoTable() {
       const reportVal = d.report !== undefined && d.report !== '' ? d.report : '';
       const remain = (amountVal !== '' && reportVal !== '') ? (parseFloat(amountVal) - parseFloat(reportVal)) : '';
       html += `<td class="${zcm[zodiac] || ''}">${zodiac}</td>`;
-      html += `<td><input type="number" class="pingtexiao-input pingtexiao-amount" data-zodiac="${zodiac}" value="${amountVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" onblur="savePingtexiaoCell()"></td>`;
-      html += `<td><input type="number" class="pingtexiao-input pingtexiao-report" data-zodiac="${zodiac}" value="${reportVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" onblur="savePingtexiaoCell()"></td>`;
-      html += `<td class="pingtexiao-remain" style="font-size:12px;">${remain !== '' ? remain : ''}</td>`;
+      html += `<td><input type="number" class="pingtexiao-input pingtexiao-amount amount-red-text" data-zodiac="${zodiac}" value="${amountVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" onblur="savePingtexiaoCell()"></td>`;
+      html += `<td><input type="number" class="pingtexiao-input pingtexiao-report pt-report-text" data-zodiac="${zodiac}" value="${reportVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" onblur="savePingtexiaoCell()"></td>`;
+      html += `<td class="pt-remain-text" style="font-size:12px;">${remain !== '' ? remain : ''}</td>`;
     });
     html += '</tr>';
   }
   html += '</tbody></table>';
   container.innerHTML = html;
+  updatePingtexiaoTotal();
 }
 
 function savePingtexiaoCell() {
@@ -1280,6 +1283,31 @@ function savePingtexiaoCell() {
       td.textContent = (a !== '' && r !== '') ? (parseFloat(a) - parseFloat(r)) : '';
     }
   });
+  updatePingtexiaoTotal();
+}
+
+function updatePingtexiaoTotal() {
+  let amountTotal = 0, reportTotal = 0;
+  document.querySelectorAll('.pingtexiao-amount').forEach(input => {
+    const v = parseFloat(input.value.trim());
+    if (!isNaN(v)) amountTotal += v;
+  });
+  document.querySelectorAll('.pingtexiao-report').forEach(input => {
+    const v = parseFloat(input.value.trim());
+    if (!isNaN(v)) reportTotal += v;
+  });
+  const amountBox = document.getElementById('ptAmountTotalBox');
+  const amountSpan = document.getElementById('ptAmountTotal');
+  const reportBox = document.getElementById('ptReportTotalBox');
+  const reportSpan = document.getElementById('ptReportTotal');
+  if (amountBox && amountSpan) {
+    if (amountTotal > 0) { amountSpan.textContent = amountTotal; amountBox.style.display = 'inline-flex'; }
+    else { amountBox.style.display = 'none'; }
+  }
+  if (reportBox && reportSpan) {
+    if (reportTotal > 0) { reportSpan.textContent = reportTotal; reportBox.style.display = 'inline-flex'; }
+    else { reportBox.style.display = 'none'; }
+  }
 }
 
 // ========== 卡片 A：自定义筛选 ==========
@@ -1331,11 +1359,7 @@ function updateCardA() {
           if (idx < negativeNums.length - 1) html += '-';
         });
         html += '<br>';
-      } else {
-        html += '所有目标号码风险均非负<br>';
       }
-    } else {
-      html += '未识别到有效号码<br>';
     }
   }
 
@@ -1344,7 +1368,6 @@ function updateCardA() {
   const nVal = topNInput ? parseInt(topNInput.value) : NaN;
   if (!isNaN(nVal) && nVal > 0) {
     const entries = Object.entries(numberAmountCount).map(([num, cnt]) => ({ num, cnt: cnt || 0 }));
-    // 补全49个号码
     for (let i = 1; i <= 49; i++) {
       const n = i.toString().padStart(2, '0');
       if (!numberAmountCount[n]) entries.push({ num: n, cnt: 0 });
@@ -1359,19 +1382,19 @@ function updateCardA() {
     let inactiveNums = sortedAsc.filter(e => e.cnt <= cutoffAsc);
     inactiveNums.sort((a, b) => b.cnt - a.cnt || parseInt(a.num) - parseInt(b.num));
 
-    // 活跃行
+    // 活跃行（只显示号码，用-连接）
     activeNums.forEach((e, idx) => {
       const cls = redNumbers.includes(e.num) ? 'red-text' : (blueNumbers.includes(e.num) ? 'blue-text' : 'green-text');
-      html += `<span class="${cls}">${e.num}</span>(${e.cnt})`;
-      if (idx < activeNums.length - 1) html += ' ';
+      html += `<span class="${cls}">${e.num}</span>`;
+      if (idx < activeNums.length - 1) html += '-';
     });
     html += '<br>';
 
-    // 不活跃行
+    // 不活跃行（只显示号码，用-连接）
     inactiveNums.forEach((e, idx) => {
       const cls = redNumbers.includes(e.num) ? 'red-text' : (blueNumbers.includes(e.num) ? 'blue-text' : 'green-text');
-      html += `<span class="${cls}">${e.num}</span>(${e.cnt})`;
-      if (idx < inactiveNums.length - 1) html += ' ';
+      html += `<span class="${cls}">${e.num}</span>`;
+      if (idx < inactiveNums.length - 1) html += '-';
     });
     html += '<br>';
   }
@@ -1381,81 +1404,62 @@ function updateCardA() {
     const zodiacOrderFixed = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
     const zcm = {'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};
 
-    // 生肖次数排行
+    // 生肖次数排行（只显示生肖名）
     const zCountEntries = zodiacOrderFixed.map(z => ({ zodiac: z, cnt: zodiacAmountCount[z] || 0 }));
     zCountEntries.sort((a, b) => b.cnt - a.cnt);
     zCountEntries.forEach((e, idx) => {
-      html += `<span class="${zcm[e.zodiac] || ''}">${e.zodiac}</span>(${e.cnt})`;
+      html += `<span class="${zcm[e.zodiac] || ''}">${e.zodiac}</span>`;
       if (idx < zCountEntries.length - 1) html += ' ';
     });
     html += '<br>';
 
-    // 生肖金额排行
+    // 生肖金额排行（只显示生肖名）
     const zAmtEntries = zodiacOrderFixed.map(z => ({ zodiac: z, amt: zodiacFilteredAmount[z] || 0 }));
     zAmtEntries.sort((a, b) => b.amt - a.amt);
     zAmtEntries.forEach((e, idx) => {
-      html += `<span class="${zcm[e.zodiac] || ''}">${e.zodiac}</span>(${e.amt})`;
+      html += `<span class="${zcm[e.zodiac] || ''}">${e.zodiac}</span>`;
       if (idx < zAmtEntries.length - 1) html += ' ';
     });
     html += '<br>';
   }
 
-  if (!html) html = '等待数据加载...';
   contentEl.innerHTML = html;
 }
 
-// ========== 复制卡片A各行的号码串 ==========
+// ========== 复制卡片A各行的号码/生肖串 ==========
 function copyCardANumbers(type) {
   const contentEl = document.getElementById('cardAContent');
   if (!contentEl) return;
 
-  const allSpans = contentEl.querySelectorAll('span');
-  if (allSpans.length === 0) { showToast('没有可复制的号码'); return; }
-
-  // 把内容分成行（通过<br>分隔）
-  const brNodes = contentEl.querySelectorAll('br');
+  // 获取所有 span 和 br 节点，分行
   const lines = [];
   let currentLine = [];
-  const childNodes = Array.from(contentEl.childNodes);
-  for (const node of childNodes) {
-    if (node.nodeType === 3) {
-      // 文本节点（如 '-' 或 ' '）
-      currentLine.push(node);
-    } else if (node.nodeName === 'SPAN') {
-      currentLine.push(node);
-    } else if (node.nodeName === 'BR') {
-      lines.push(currentLine);
-      currentLine = [];
-    }
-  }
+  Array.from(contentEl.childNodes).forEach(node => {
+    if (node.nodeName === 'SPAN') { currentLine.push(node); }
+    else if (node.nodeName === 'BR') { if (currentLine.length > 0) { lines.push(currentLine); currentLine = []; } }
+  });
   if (currentLine.length > 0) lines.push(currentLine);
 
-  // 找出目标行
+  // 确定目标行索引
   const filterText = document.getElementById('filterInputCardA')?.value.trim();
   const topNVal = parseInt(document.getElementById('topNInput')?.value);
   let targetLineIndex = -1;
   let lineIdx = 0;
 
-  // 第一行：风险号码（条件输入框有内容时）
   if (filterText) {
     if (type === 'risk') targetLineIndex = lineIdx;
     lineIdx++;
-  } else if (type === 'risk') {
-    // 没有风险行
   }
-
-  // 第二行：活跃（前N名有值时）
   if (!isNaN(topNVal) && topNVal > 0) {
     if (type === 'active') targetLineIndex = lineIdx;
     lineIdx++;
     if (type === 'inactive') targetLineIndex = lineIdx;
     lineIdx++;
   }
-
-  // 生肖排行行
+  // 生肖排行行（如果展开）
   if (zodiacRankVisible) {
-    lineIdx++; // 跳过生肖次数行
-    lineIdx++; // 跳过生肖金额行
+    // 生肖次数行、生肖金额行（但复制生肖排行时可能不需要，暂不处理，只处理号码行）
+    // 如需复制生肖行，可后续扩展
   }
 
   if (targetLineIndex < 0 || targetLineIndex >= lines.length) {
@@ -1464,15 +1468,9 @@ function copyCardANumbers(type) {
   }
 
   const targetNodes = lines[targetLineIndex];
-  const numbers = [];
-  for (const node of targetNodes) {
-    if (node.nodeName === 'SPAN') {
-      numbers.push(node.textContent.trim());
-    }
-  }
-
-  if (numbers.length === 0) { showToast('没有可复制的号码'); return; }
-  const text = numbers.join('-');
+  const items = targetNodes.map(span => span.textContent.trim()).filter(t => t);
+  if (items.length === 0) { showToast('没有可复制的项目'); return; }
+  const text = items.join('-');
   navigator.clipboard.writeText(text).then(() => {
     showToast('已复制: ' + text);
   }).catch(() => {
@@ -1499,153 +1497,6 @@ function copyCardANumbers(type) {
   };
 })();
 
-// ========== 导出导入增强（含平特肖数据） ==========
-const originalExportData = exportData;
-exportData = async function() {
-  try {
-    const orders = await getAllOrdersUnfiltered();
-    const reports = await getAllReportsUnfiltered();
-    const drawRecords = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('drawRecord_')) drawRecords[key] = localStorage.getItem(key);
-    }
-    // 收集平特肖数据
-    const pingtexiao = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('pingtexiao_')) pingtexiao[key] = localStorage.getItem(key);
-    }
-    const presets = localStorage.getItem('replacePresets') || '[]';
-    const aliases = localStorage.getItem('categoryAliases') || '[]';
-    const data = {
-      orders, reports, drawRecords,
-      pingtexiao,
-      replacePresets: JSON.parse(presets),
-      categoryAliases: JSON.parse(aliases),
-      exportTime: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `港澳识别数据_全部_${getTodayCST()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch (e) { showToast('导出失败'); }
-};
-
-const originalImportData = importData;
-importData = async function() {
-  const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = '.json';
-  inp.style.display = 'none';
-  document.body.appendChild(inp);
-  inp.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) { document.body.removeChild(inp); return; }
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        if (!data.orders || !data.reports) { showToast('无效格式'); document.body.removeChild(inp); return; }
-        const pingtexiaoCount = data.pingtexiao ? Object.keys(data.pingtexiao).length : 0;
-        const totalToImport = data.orders.length + data.reports.length +
-          (data.drawRecords ? Object.keys(data.drawRecords).length : 0) +
-          pingtexiaoCount +
-          (data.replacePresets ? data.replacePresets.length : 0) +
-          (data.categoryAliases ? data.categoryAliases.length : 0);
-        if (totalToImport === 0) { showToast('文件中没有数据'); document.body.removeChild(inp); return; }
-        let confirmMsg = `文件包含 ${data.orders.length} 条订单，${data.reports.length} 条上报，${data.drawRecords ? Object.keys(data.drawRecords).length : 0} 组开奖记录，${pingtexiaoCount} 组平特肖数据，${data.replacePresets ? data.replacePresets.length : 0} 条替换预设，${data.categoryAliases ? data.categoryAliases.length : 0} 条分类缩写。是否导入？`;
-        const cf = await confirm(confirmMsg);
-        if (!cf) { document.body.removeChild(inp); return; }
-
-        const eo = await getAllOrdersUnfiltered();
-        const er = await getAllReportsUnfiltered();
-        let so = 0, no = 0;
-        for (const r of data.orders) {
-          const region = r.region || currentRegion;
-          const dup = eo.find(o => o.content === r.content && o.user === r.user && o.timestamp === r.timestamp && o.region === region);
-          if (dup) { so++; continue; }
-          try { await saveOrderRecordToIDB(r.content, r.user, r.date, r.totalAmount || 0, r.timestamp, region); no++; } catch (e) {}
-        }
-        let sr = 0, nr = 0;
-        for (const r of data.reports) {
-          const region = r.region || currentRegion;
-          const dup = er.find(o => o.content === r.content && o.user === r.user && o.timestamp === r.timestamp && o.region === region);
-          if (dup) { sr++; continue; }
-          try { await saveReportOrderRecordToIDB(r.content, r.user, r.date, r.totalAmount || 0, r.timestamp, region); nr++; } catch (e) {}
-        }
-
-        let dcImported = 0;
-        if (data.drawRecords) {
-          for (const [key, value] of Object.entries(data.drawRecords)) {
-            const existing = localStorage.getItem(key);
-            if (existing) {
-              try {
-                const existingData = JSON.parse(existing);
-                const newData = JSON.parse(value);
-                let changed = false;
-                for (const [issue, entry] of Object.entries(newData)) {
-                  if (existingData[issue] && existingData[issue].number && existingData[issue].number.trim()) { continue; }
-                  else { existingData[issue] = entry; changed = true; }
-                }
-                if (changed) { localStorage.setItem(key, JSON.stringify(existingData)); dcImported++; }
-              } catch (e) { localStorage.setItem(key, value); dcImported++; }
-            } else { localStorage.setItem(key, value); dcImported++; }
-          }
-        }
-
-        // 导入平特肖数据（去重：已存在的键跳过）
-        let ptImported = 0, ptSkipped = 0;
-        if (data.pingtexiao) {
-          for (const [key, value] of Object.entries(data.pingtexiao)) {
-            if (localStorage.getItem(key)) {
-              ptSkipped++;
-            } else {
-              localStorage.setItem(key, value);
-              ptImported++;
-            }
-          }
-        }
-
-        let presetImported = 0, aliasImported = 0;
-        if (data.replacePresets && Array.isArray(data.replacePresets)) {
-          const currentPresets = getReplacePresets();
-          data.replacePresets.forEach(p => {
-            if (!currentPresets.some(x => x.old === p.old)) { currentPresets.push(p); presetImported++; }
-          });
-          localStorage.setItem('replacePresets', JSON.stringify(currentPresets));
-        }
-        if (data.categoryAliases && Array.isArray(data.categoryAliases)) {
-          const currentAliases = getCategoryAliases();
-          data.categoryAliases.forEach(a => {
-            if (!currentAliases.some(x => x.alias === a.alias)) { currentAliases.push(a); aliasImported++; }
-          });
-          localStorage.setItem('categoryAliases', JSON.stringify(currentAliases));
-        }
-
-        await updateTableFromRecords();
-        calculateStorageUsage();
-        renderPingtexiaoTable();
-        let msg = `成功导入 ${no + nr} 条订单/上报记录，${dcImported} 组开奖记录。`;
-        if (ptImported > 0) msg += `\n导入平特肖数据 ${ptImported} 组。`;
-        if (ptSkipped > 0) msg += `\n跳过平特肖数据 ${ptSkipped} 组（已存在）。`;
-        if (presetImported > 0) msg += `\n新增 ${presetImported} 条替换预设。`;
-        if (aliasImported > 0) msg += `\n新增 ${aliasImported} 条分类缩写。`;
-        if (so + sr > 0) msg += `\n跳过 ${so + sr} 条重复订单/上报记录。`;
-        showToast(msg);
-        document.body.removeChild(inp);
-      } catch (err) { showToast('导入失败'); document.body.removeChild(inp); }
-    };
-    reader.onerror = () => { showToast('读取失败'); document.body.removeChild(inp); };
-    reader.readAsText(file);
-  };
-  inp.addEventListener('cancel', () => { document.body.removeChild(inp); });
-  inp.click();
-};
-
 // ========== 重写 switchRegion 追加平特肖刷新 ==========
 (function() {
   const originalFn = switchRegion;
@@ -1656,16 +1507,29 @@ importData = async function() {
   };
 })();
 
-// ========== 日期变更时刷新平特肖 ==========
-const originalFilterDateHandler = filterDateEl?.onchange;
-if (filterDateEl) {
-  filterDateEl.addEventListener('change', () => {
-    renderPingtexiaoTable();
-    updateCardA();
-  });
-}
+// ========== 对奖输入框颜色渲染（在 applyPrizeFilter 中追加） ==========
+(function() {
+  const originalApplyPrizeFilter = applyPrizeFilter;
+  applyPrizeFilter = async function() {
+    await originalApplyPrizeFilter.apply(this, arguments);
+    const input = document.getElementById('prizeNumberInput');
+    if (!input) return;
+    let val = input.value.trim();
+    if (val === '') {
+      input.className = '';
+      return;
+    }
+    if (/^\d$/.test(val)) val = '0' + val;
+    if (/^\d{2}$/.test(val) && parseInt(val) >= 1 && parseInt(val) <= 49) {
+      const cls = redNumbers.includes(val) ? 'red-text' : (blueNumbers.includes(val) ? 'blue-text' : 'green-text');
+      input.className = cls;
+    } else {
+      input.className = '';
+    }
+  };
+})();
 
-// ========== 页面初始化补充 ==========
+// ========== 页面初始化 ==========
 window.onload = async () => {
   setCurrentRegion(currentRegion); await initIndexedDB(); initDataConfig();
 
