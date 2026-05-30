@@ -10,7 +10,6 @@
 * {margin:0;padding:0;box-sizing:border-box;font-family:"Microsoft YaHei",sans-serif;}
 body {background:#f5f7fa;font-size:14px;line-height:1.4;overflow-x:hidden;position:relative;}
 
-/* ================= 手机端适配 START ================= */
 @media screen and (max-width: 768px) {
     .container {flex-direction:column!important;padding:10px!important;gap:10px!important;}
     .recognize-wrap {width:100%!important;order:1;}
@@ -64,7 +63,6 @@ body {background:#f5f7fa;font-size:14px;line-height:1.4;overflow-x:hidden;positi
     #originalAmountTable th:nth-child(4),#originalAmountTable td:nth-child(4){width:44px!important;}
     .number-stats-scroll{overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}
 }
-/* ================= 手机端适配 END ================= */
 
 select {padding:4px 24px 4px 8px!important;border:1px solid #ccc!important;border-radius:4px!important;font-size:13px!important;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 8px center!important;-webkit-appearance:none!important;-moz-appearance:none!important;appearance:none!important;cursor:pointer;margin:0;vertical-align:middle;}
 input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
@@ -225,6 +223,15 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .recycle-count-badge{display:inline-block;background:#e74c3c;color:#fff;border-radius:10px;padding:0px 6px;font-size:11px;font-weight:bold;margin-left:4px;min-width:18px;text-align:center;}
 .pt-report-text{color:#ff0000!important;font-weight:normal;}
 .pt-remain-text{color:#0000ff!important;font-weight:bold;}
+.pt-remain-highlight{background-color:#fff3cd!important;font-weight:bold!important;}
+.pt-summary-bar{display:flex;align-items:center;gap:12px;width:100%;padding:4px 6px;border:1px solid #eee;border-top:none;background:#fafafa;font-size:12px;min-height:30px;}
+.pt-summary-bar .pt-sum-label{color:#333;}
+.pt-summary-bar .pt-sum-total{color:#0000ff;font-weight:bold;}
+.pt-summary-bar .pt-sum-win{color:#ff0000;font-weight:bold;}
+.pt-summary-bar .pt-sum-pl-green{color:#27ae60;font-weight:bold;}
+.pt-summary-bar .pt-sum-pl-red{color:#e74c3c;font-weight:bold;}
+.pt-clear-btn{width:45px;height:24px;border:1px solid #ccc;border-radius:2px;background:#f0f0f0;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;margin-left:auto;}
+.pt-clear-btn:hover{background:#e0e0e0;}
 </style>
 </head>
 <body>
@@ -301,7 +308,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
         </div>
       </div>
 
-      <!-- 上报控制卡片（右侧现在放自定义筛选卡片A） -->
       <div class="card" style="margin-top:0;">
         <div class="card-title">上报控制</div>
         <div class="freq-container">
@@ -317,7 +323,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
               <span id="parseResultArea" class="parse-inline" style="flex:1; min-width:0;"></span>
             </div>
           </div>
-          <!-- 自定义筛选卡片A移到此处 -->
           <div class="freq-card">
             <div class="freq-title">
               <span>自定义筛选</span>
@@ -335,7 +340,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
         </div>
       </div>
 
-      <!-- 号码分析卡片：左侧上报号码金额表格，右侧平特肖 -->
       <div class="card" style="margin-top:0;">
         <div class="card-title">号码分析</div>
         <div class="freq-container">
@@ -345,11 +349,20 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
           </div>
           <div class="freq-card">
             <div class="freq-title">
-              平特肖
+              <input type="number" id="ptRebateInput" class="pt-small-input" value="4" min="0" max="100" step="0.1" oninput="updatePingtexiaoTotal()" style="width:36px;padding:1px 2px;font-size:11px;text-align:center;border:1px solid #ccc;border-radius:2px;">
+              <input type="number" id="ptMultipleInput" class="pt-small-input" value="2" min="0" step="0.1" oninput="updatePingtexiaoTotal()" style="width:36px;padding:1px 2px;font-size:11px;text-align:center;border:1px solid #ccc;border-radius:2px;">
+              <input type="number" id="ptYearMultipleInput" class="pt-small-input" value="1.8" min="0" step="0.1" oninput="updatePingtexiaoTotal()" style="width:36px;padding:1px 2px;font-size:11px;text-align:center;border:1px solid #ccc;border-radius:2px;">
+              <span>平特肖</span>
               <span class="amount-stat-box" id="ptAmountTotalBox" style="display:none; margin-left:4px;"><span>金额合计：</span><span id="ptAmountTotal">0</span></span>
               <span class="amount-stat-box" id="ptReportTotalBox" style="display:none; margin-left:4px;"><span>上报合计：</span><span id="ptReportTotal">0</span></span>
             </div>
             <div id="pingtexiaoTableContainer" style="overflow-x:auto;"></div>
+            <div class="pt-summary-bar" id="ptSummaryBar">
+              <span class="pt-sum-label">总额：<span class="pt-sum-total" id="ptSumTotal">0</span></span>
+              <span class="pt-sum-label">中奖：<span class="pt-sum-win" id="ptSumWin">0</span></span>
+              <span id="ptSumPL"></span>
+              <button class="pt-clear-btn" onclick="clearPingtexiaoHighlight()">🧹</button>
+            </div>
           </div>
         </div>
       </div>
@@ -414,7 +427,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
   <p><span class="label">已用空间：</span><span class="value" id="usedSpace">0 MB</span></p>
   <p><span class="label">剩余空间：</span><span class="value" id="freeSpace">50 MB</span></p>
 </div>
-
 <div class="database-modal" id="databaseModal" style="display:none;">
   <div class="database-modal-box" id="databaseModalBox">
     <div class="database-modal-header" id="databaseModalHeader"><h3>📊 数据库配置</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
@@ -449,6 +461,26 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
           <div class="config-item"><div class="config-label">单笔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_danbi" value="鼠 龙 马 蛇 鸡 猪"></div>
           <div class="config-item"><div class="config-label">双笔</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_shuangbi" value="虎 猴 狗 兔 羊 牛"></div>
           <div class="config-item"><div class="config-label">白边</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_baibian" value="鼠 牛 虎 鸡 狗 猪"></div>
+          <div class="config-item"><div class="config-label">黑中</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_heizhong" value="兔 龙 蛇 马 羊 猴"></div>
+          <div class="config-item"><div class="config-label">日肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_rixiao" value="兔 龙 蛇 马 羊 猴"></div>
+          <div class="config-item"><div class="config-label">夜肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_yexiao" value="鼠 牛 虎 鸡 狗 猪"></div>
+          <div class="config-item"><div class="config-label">前肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_qianxiao" value="鼠 牛 虎 兔 龙 蛇"></div>
+          <div class="config-item"><div class="config-label">后肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_houxiao" value="马 羊 猴 鸡 狗 猪"></div>
+          <div class="config-item"><div class="config-label">大肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_daxiao2" value="牛 虎 马 羊 狗 猪"></div>
+          <div class="config-item"><div class="config-label">小肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_xiaoxiao" value="鼠 兔 龙 蛇 猴 鸡"></div>
+          <div class="config-item"><div class="config-label">红肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_hongxiao" value="马 兔 鼠 鸡"></div>
+          <div class="config-item"><div class="config-label">蓝肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_lanxiao" value="蛇 虎 猪 猴"></div>
+          <div class="config-item"><div class="config-label">绿肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_lvxiao" value="羊 龙 牛 狗"></div>
+          <div class="config-item"><div class="config-label">男肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_nanxiao" value="鼠 牛 虎 龙 马 猴 狗"></div>
+          <div class="config-item"><div class="config-label">女肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_nvxiao" value="兔 蛇 羊 鸡 猪"></div>
+          <div class="config-item"><div class="config-label">琴</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_qin" value="兔 蛇 鸡"></div>
+          <div class="config-item"><div class="config-label">棋</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_qi" value="鼠 牛 狗"></div>
+          <div class="config-item"><div class="config-label">书</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_shu" value="虎 龙 马"></div>
+          <div class="config-item"><div class="config-label">画</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_hua" value="羊 猴 猪"></div>
+          <div class="config-item"><div class="config-label">春肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_chunxiao" value="兔 虎 龙"></div>
+          <div class="config-item"><div class="config-label">夏肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_xiaxiao" value="马 蛇 羊"></div>
+          <div class="config-item"><div class="config-label">秋肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_qiuxiao" value="鸡 猴 狗"></div>
+          <div class="config-item"><div class="config-label">冬肖</div><div class="config-colon">：</div><input type="text" class="config-input" id="config_sx_dongxiao" value="鼠 猪 牛"></div>
         </div>
 
         <div class="config-section"><div class="config-section-title">五行配置</div>
@@ -608,7 +640,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
   </div>
 </div>
 <script>
-    // ===== 密码解码函数 =====
+// ===== 密码解码函数 =====
 function decodePassword(encoded) { return atob(encoded); }
 
 // ===== 自定义对话框系统 =====
@@ -729,9 +761,8 @@ function showRecognizeModal() {
 function closeRecognizeModal() { const textarea = document.querySelector('.source-order-input'); if (textarea) { const draftKey = `recognizeDraft_${currentRegion}`; localStorage.setItem(draftKey, textarea.value); } const win = document.getElementById('recognizeWin'); if (win) win.remove(); }
 
 function markSelection() { const ta = document.querySelector('.source-order-input'); if (!ta) return; const start = ta.selectionStart, end = ta.selectionEnd; if (start === end) { showToast('请先选择文本'); return; } const selectedText = ta.value.substring(start, end); const tokens = selectedText.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim()); if (tokens.length === 0) { showToast('所选内容无有效文字'); return; } const merged = tokens.join('-'); ta.value = ta.value.substring(0, start) + merged + ta.value.substring(end); convertOrderText(); }
-
-// ===== 数据库配置读写 =====
-function getAllConfigData() { const configData = { zodiac:{}, shengxiaoAttr:{}, wuxing:{}, bose:{}, banbo:{}, danshuang:{}, weishu:{}, daxiaodanshuang:{}, daxiao:{}, heshu:{}, toushu:{}, menshu:{}, duanwei:{}, hedahexiao:{}, weidaweixiao:{}, hewei:{}, heshudanshuang:{}, toushuDanshuang:{} }; const ids = { zodiac: { shu:'鼠', niu:'牛', hu:'虎', tu2:'兔', long:'龙', she:'蛇', ma:'马', yang:'羊', hou:'猴', ji:'鸡', gou:'狗', zhu:'猪' }, shengxiaoAttr: { sx_jiaqin:'家禽', sx_yeshou:'野兽', sx_jimei:'吉美', sx_xiongchou:'凶丑', sx_yinxing:'阴性', sx_yangxing:'阳性', sx_tianxiao:'天肖', sx_dixiao:'地肖', sx_danbi:'单笔', sx_shuangbi:'双笔', sx_baibian:'白边' }, wuxing: { jin:'金', mu:'木', shui:'水', huo:'火', tu:'土' }, bose: { hongbo:'红波', lanbo:'蓝波', lvbo:'绿波' }, banbo: { hongshuang:'红双', hongdan:'红单', lanshuang:'蓝双', landan:'蓝单', lvshuang:'绿双', lvdan:'绿单' }, danshuang: { danshu:'单数', shuangshu:'双数' }, weishu:{}, daxiaodanshuang: { dadan:'大单', dashuang:'大双', xiaodan:'小单', xiaoshuang:'小双' }, daxiao: { dx_xiao:'小', dx_da:'大' }, heshu:{}, toushu:{}, menshu:{}, duanwei:{}, hedahexiao: { hdx_hexiao:'合小', hdx_heda:'合大' }, weidaweixiao: { wdx_weixiao:'尾小', wdx_weida:'尾大' }, hewei:{}, heshudanshuang: { hsd_hsd:'合数单', hsd_hss:'合数双' }, toushuDanshuang:{} }; for (let i = 0; i <= 9; i++) ids.weishu[`ws_${i}`] = `${i}尾`; for (let i = 1; i <= 13; i++) ids.heshu[`hs_${i.toString().padStart(2,'0')}`] = `${i}合`; for (let i = 0; i <= 4; i++) ids.toushu[`ts_${i}`] = `${i}头`; for (let i = 1; i <= 5; i++) ids.menshu[`ms_${i}`] = `${i}门`; for (let i = 1; i <= 7; i++) ids.duanwei[`dw_${i}`] = `${i}段`; for (let i = 0; i <= 9; i++) ids.hewei[`hw_${i}`] = `${i}合尾`; for (let i = 0; i <= 4; i++) { ids.toushuDanshuang[`tds_${i}dan`] = `${i}头单`; ids.toushuDanshuang[`tds_${i}shuang`] = `${i}头双`; } for (const [group, groupIds] of Object.entries(ids)) { for (const [id, label] of Object.entries(groupIds)) { const el = document.getElementById(`config_${id}`); if (!el) continue; const val = el.value.trim(); if (group === 'zodiac' || group === 'wuxing' || group === 'bose' || group === 'banbo' || group === 'danshuang' || group === 'weishu' || group === 'daxiaodanshuang' || group === 'daxiao' || group === 'heshu' || group === 'toushu' || group === 'menshu' || group === 'duanwei' || group === 'hedahexiao' || group === 'weidaweixiao' || group === 'hewei' || group === 'heshudanshuang' || group === 'toushuDanshuang') { configData[group][label] = val.split(/\s+/).filter(n => /^\d+$/.test(n)); } else if (group === 'shengxiaoAttr') { configData[group][label] = val.split(/\s+/); } } } const baseValidCategories = getAllValidCategories(configData); const customCats = loadCustomCategories(); customCats.forEach((cat, idx) => { const el = document.getElementById(`config_custom_${idx}`); if (el) { const val = el.value.trim(); const tokens = val.split(/\s+/); const nums = new Set(); tokens.forEach(token => { if (/^\d+$/.test(token)) { nums.add(token.padStart(2, '0')); } else if (baseValidCategories.has(token)) { const subNums = getNumberListForCategory(token, configData); subNums.forEach(n => nums.add(n)); } }); configData.weishu[cat.label] = [...nums]; } }); return configData; }
+    // ===== 数据库配置读写 =====
+function getAllConfigData() { const configData = { zodiac:{}, shengxiaoAttr:{}, wuxing:{}, bose:{}, banbo:{}, danshuang:{}, weishu:{}, daxiaodanshuang:{}, daxiao:{}, heshu:{}, toushu:{}, menshu:{}, duanwei:{}, hedahexiao:{}, weidaweixiao:{}, hewei:{}, heshudanshuang:{}, toushuDanshuang:{} }; const ids = { zodiac: { shu:'鼠', niu:'牛', hu:'虎', tu2:'兔', long:'龙', she:'蛇', ma:'马', yang:'羊', hou:'猴', ji:'鸡', gou:'狗', zhu:'猪' }, shengxiaoAttr: { sx_jiaqin:'家禽', sx_yeshou:'野兽', sx_jimei:'吉美', sx_xiongchou:'凶丑', sx_yinxing:'阴性', sx_yangxing:'阳性', sx_tianxiao:'天肖', sx_dixiao:'地肖', sx_danbi:'单笔', sx_shuangbi:'双笔', sx_baibian:'白边', sx_heizhong:'黑中', sx_rixiao:'日肖', sx_yexiao:'夜肖', sx_qianxiao:'前肖', sx_houxiao:'后肖', sx_daxiao2:'大肖', sx_xiaoxiao:'小肖', sx_hongxiao:'红肖', sx_lanxiao:'蓝肖', sx_lvxiao:'绿肖', sx_nanxiao:'男肖', sx_nvxiao:'女肖', sx_qin:'琴', sx_qi:'棋', sx_shu:'书', sx_hua:'画', sx_chunxiao:'春肖', sx_xiaxiao:'夏肖', sx_qiuxiao:'秋肖', sx_dongxiao:'冬肖' }, wuxing: { jin:'金', mu:'木', shui:'水', huo:'火', tu:'土' }, bose: { hongbo:'红波', lanbo:'蓝波', lvbo:'绿波' }, banbo: { hongshuang:'红双', hongdan:'红单', lanshuang:'蓝双', landan:'蓝单', lvshuang:'绿双', lvdan:'绿单' }, danshuang: { danshu:'单数', shuangshu:'双数' }, weishu:{}, daxiaodanshuang: { dadan:'大单', dashuang:'大双', xiaodan:'小单', xiaoshuang:'小双' }, daxiao: { dx_xiao:'小', dx_da:'大' }, heshu:{}, toushu:{}, menshu:{}, duanwei:{}, hedahexiao: { hdx_hexiao:'合小', hdx_heda:'合大' }, weidaweixiao: { wdx_weixiao:'尾小', wdx_weida:'尾大' }, hewei:{}, heshudanshuang: { hsd_hsd:'合数单', hsd_hss:'合数双' }, toushuDanshuang:{} }; for (let i = 0; i <= 9; i++) ids.weishu[`ws_${i}`] = `${i}尾`; for (let i = 1; i <= 13; i++) ids.heshu[`hs_${i.toString().padStart(2,'0')}`] = `${i}合`; for (let i = 0; i <= 4; i++) ids.toushu[`ts_${i}`] = `${i}头`; for (let i = 1; i <= 5; i++) ids.menshu[`ms_${i}`] = `${i}门`; for (let i = 1; i <= 7; i++) ids.duanwei[`dw_${i}`] = `${i}段`; for (let i = 0; i <= 9; i++) ids.hewei[`hw_${i}`] = `${i}合尾`; for (let i = 0; i <= 4; i++) { ids.toushuDanshuang[`tds_${i}dan`] = `${i}头单`; ids.toushuDanshuang[`tds_${i}shuang`] = `${i}头双`; } for (const [group, groupIds] of Object.entries(ids)) { for (const [id, label] of Object.entries(groupIds)) { const el = document.getElementById(`config_${id}`); if (!el) continue; const val = el.value.trim(); if (group === 'zodiac' || group === 'wuxing' || group === 'bose' || group === 'banbo' || group === 'danshuang' || group === 'weishu' || group === 'daxiaodanshuang' || group === 'daxiao' || group === 'heshu' || group === 'toushu' || group === 'menshu' || group === 'duanwei' || group === 'hedahexiao' || group === 'weidaweixiao' || group === 'hewei' || group === 'heshudanshuang' || group === 'toushuDanshuang') { configData[group][label] = val.split(/\s+/).filter(n => /^\d+$/.test(n)); } else if (group === 'shengxiaoAttr') { configData[group][label] = val.split(/\s+/); } } } const baseValidCategories = getAllValidCategories(configData); const customCats = loadCustomCategories(); customCats.forEach((cat, idx) => { const el = document.getElementById(`config_custom_${idx}`); if (el) { const val = el.value.trim(); const tokens = val.split(/\s+/); const nums = new Set(); tokens.forEach(token => { if (/^\d+$/.test(token)) { nums.add(token.padStart(2, '0')); } else if (baseValidCategories.has(token)) { const subNums = getNumberListForCategory(token, configData); subNums.forEach(n => nums.add(n)); } }); configData.weishu[cat.label] = [...nums]; } }); return configData; }
 function lockAllInputs() { document.querySelectorAll('.config-input').forEach(el => el.disabled = true); }
 function unlockAllInputs() { document.querySelectorAll('.config-input').forEach(el => el.disabled = false); }
 function initDataConfig() { lockAllInputs(); renderCustomConfigContainer(); }
@@ -791,7 +822,8 @@ async function deleteReportOrderRecordFromIDB(id) { if (!db) return false; const
 // ===== 批量删除函数 =====
 async function batchDeleteOrderRecordFromIDB(ids) { if (!db) return false; try { for (const id of ids) { const record = await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readonly'); const store = tx.objectStore(STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (record) { await moveToRecycleBin(record, 'order'); await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readwrite'); const store = tx.objectStore(STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); } } return true; } catch (e) { console.error('批量删除订单失败', e); return false; } }
 async function batchDeleteReportOrderRecordFromIDB(ids) { if (!db) return false; try { for (const id of ids) { const record = await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readonly'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (record) { await moveToRecycleBin(record, 'report'); await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); } } return true; } catch (e) { console.error('批量删除上报记录失败', e); return false; } }
-    // ===== 清空函数（物理删除，不进入回收站） =====
+
+// ===== 清空函数（物理删除，不进入回收站） =====
 async function clearAllOrderRecordsFromIDB(region = null) { return new Promise((resolve) => { if (!db) resolve(false); const tx = db.transaction([STORE_NAME],'readwrite'); const store = tx.objectStore(STORE_NAME); if (region) { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result.filter(r => r.region === region); records.forEach(r => store.delete(r.id)); resolve(true); }; } else { const req = store.clear(); req.onsuccess = () => resolve(true); } }); }
 async function clearAllReportOrderRecordsFromIDB(region = null) { return new Promise((resolve) => { if (!db) resolve(false); const tx = db.transaction([REPORT_STORE_NAME],'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); if (region) { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result.filter(r => r.region === region); records.forEach(r => store.delete(r.id)); resolve(true); }; } else { const req = store.clear(); req.onsuccess = () => resolve(true); } }); }
 
@@ -1062,7 +1094,8 @@ if (resetBtn) {
 async function resetTable(){ const regionName = currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港'; const confirmed = await confirm(`确定清空当前地区（${regionName}）的所有订单和上报数据吗？此操作不可恢复。`); if (!confirmed) return; const pwd = await prompt("输入清空密码：",""); if (pwd !== PASSWORD) { await alert("密码错误"); return; } clearMemoryData(); await clearAllOrderRecordsFromIDB(currentRegion); await clearAllReportOrderRecordsFromIDB(currentRegion); renderAllTablesPlaceholder(); calculateStorageUsage(); updateAmountDisplays(); showToast(`已清空${regionName}的所有订单和上报记录`); }
 function clearAllInput(){ const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.innerHTML=''; updateOrderTotalDisplay(); }
 async function pasteOrder(){ try{ const text=await navigator.clipboard.readText(); if(text){const si=document.querySelector('.source-order-input');if(si){si.value=text;convertOrderText();}} } catch(err){showToast('无法访问剪贴板');} }
-    // ===== 导出导入（导出全部数据：订单、上报、开奖记录、替换预设、分类缩写、平特肖） =====
+
+// ===== 导出导入（导出全部数据：订单、上报、开奖记录、替换预设、分类缩写、平特肖） =====
 async function exportData(){
   try{
     const orders=await getAllOrdersUnfiltered(); const reports=await getAllReportsUnfiltered();
@@ -1224,11 +1257,32 @@ function updateFilterDateDrawInfo() { const span = document.getElementById('filt
 function getPingtexiaoKey() { const fd = document.getElementById('filterDate')?.value || getTodayCST(); return `pingtexiao_${currentRegion}_${fd}`; }
 function getPingtexiaoData() { try { return JSON.parse(localStorage.getItem(getPingtexiaoKey()) || '{}'); } catch (e) { return {}; } }
 function savePingtexiaoData(data) { localStorage.setItem(getPingtexiaoKey(), JSON.stringify(data)); }
+function getPtParams() {
+  const rebate = parseFloat(document.getElementById('ptRebateInput')?.value) || 0;
+  const multiple = parseFloat(document.getElementById('ptMultipleInput')?.value) || 0;
+  const yearMultiple = parseFloat(document.getElementById('ptYearMultipleInput')?.value) || 0;
+  return { rebate, multiple, yearMultiple };
+}
+function savePtParams() {
+  const r = document.getElementById('ptRebateInput')?.value;
+  const m = document.getElementById('ptMultipleInput')?.value;
+  const y = document.getElementById('ptYearMultipleInput')?.value;
+  localStorage.setItem(`ptParams_${currentRegion}`, JSON.stringify({ rebate: r, multiple: m, yearMultiple: y }));
+}
+function loadPtParams() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`ptParams_${currentRegion}`) || '{}');
+    if (document.getElementById('ptRebateInput') && saved.rebate !== undefined) document.getElementById('ptRebateInput').value = saved.rebate;
+    if (document.getElementById('ptMultipleInput') && saved.multiple !== undefined) document.getElementById('ptMultipleInput').value = saved.multiple;
+    if (document.getElementById('ptYearMultipleInput') && saved.yearMultiple !== undefined) document.getElementById('ptYearMultipleInput').value = saved.yearMultiple;
+  } catch (e) {}
+}
 
 // ========== 渲染平特肖表格（卡片B） ==========
 function renderPingtexiaoTable() {
   const container = document.getElementById('pingtexiaoTableContainer');
   if (!container) return;
+  loadPtParams();
   const data = getPingtexiaoData();
   const leftZodiacs = ['鼠','牛','虎','兔','龙','蛇'];
   const rightZodiacs = ['马','羊','猴','鸡','狗','猪'];
@@ -1245,16 +1299,40 @@ function renderPingtexiaoTable() {
       const d = data[zodiac] || { amount: '', report: '' };
       const amountVal = d.amount !== undefined && d.amount !== '' ? d.amount : '';
       const reportVal = d.report !== undefined && d.report !== '' ? d.report : '';
-      const remain = (amountVal !== '' && reportVal !== '') ? (parseFloat(amountVal) - parseFloat(reportVal)) : '';
+      const remain = (amountVal !== '') ? (parseFloat(amountVal) - (reportVal !== '' ? parseFloat(reportVal) : 0)) : '';
       html += `<td class="${zcm[zodiac] || ''}">${zodiac}</td>`;
-      html += `<td><input type="number" class="pingtexiao-input pingtexiao-amount amount-red-text" data-zodiac="${zodiac}" value="${amountVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" onblur="savePingtexiaoCell()"></td>`;
-      html += `<td><input type="number" class="pingtexiao-input pingtexiao-report pt-report-text" data-zodiac="${zodiac}" value="${reportVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" onblur="savePingtexiaoCell()"></td>`;
-      html += `<td class="pt-remain-text" style="font-size:12px;">${remain !== '' ? remain : ''}</td>`;
+      html += `<td><input type="number" class="pingtexiao-input pingtexiao-amount amount-red-text" data-zodiac="${zodiac}" value="${amountVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" oninput="updatePingtexiaoRemain(this)" onblur="savePingtexiaoCell()"></td>`;
+      html += `<td><input type="number" class="pingtexiao-input pingtexiao-report pt-report-text" data-zodiac="${zodiac}" value="${reportVal}" style="width:45px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;" oninput="updatePingtexiaoRemain(this)" onblur="savePingtexiaoCell()"></td>`;
+      html += `<td class="pt-remain-text" style="font-size:12px;" onclick="togglePingtexiaoHighlight(this)">${remain !== '' ? remain : ''}</td>`;
     });
     html += '</tr>';
   }
   html += '</tbody></table>';
   container.innerHTML = html;
+  updatePingtexiaoTotal();
+}
+
+function updatePingtexiaoRemain(input) {
+  const row = input.closest('tr');
+  if (!row) return;
+  const zodiacInputs = row.querySelectorAll('.pingtexiao-amount, .pingtexiao-report');
+  const remainTd = row.querySelector('.pt-remain-text');
+  if (!remainTd || zodiacInputs.length < 2) return;
+  const amountVal = zodiacInputs[0].value.trim();
+  const reportVal = zodiacInputs[1].value.trim();
+  const a = amountVal !== '' ? parseFloat(amountVal) : 0;
+  const r = reportVal !== '' ? parseFloat(reportVal) : 0;
+  remainTd.textContent = (amountVal !== '') ? (a - r) : '';
+  updatePingtexiaoTotal();
+}
+
+function togglePingtexiaoHighlight(td) {
+  td.classList.toggle('pt-remain-highlight');
+  updatePingtexiaoTotal();
+}
+
+function clearPingtexiaoHighlight() {
+  document.querySelectorAll('.pt-remain-highlight').forEach(td => td.classList.remove('pt-remain-highlight'));
   updatePingtexiaoTotal();
 }
 
@@ -1271,18 +1349,7 @@ function savePingtexiaoCell() {
     data[zodiac].report = input.value.trim();
   });
   savePingtexiaoData(data);
-  // 刷新剩余列
-  document.querySelectorAll('.pingtexiao-remain').forEach(td => {
-    const row = td.closest('tr');
-    if (!row) return;
-    const amountInput = row.querySelector(`.pingtexiao-amount[data-zodiac]`);
-    const reportInput = row.querySelector(`.pingtexiao-report[data-zodiac]`);
-    if (amountInput && reportInput) {
-      const a = amountInput.value.trim();
-      const r = reportInput.value.trim();
-      td.textContent = (a !== '' && r !== '') ? (parseFloat(a) - parseFloat(r)) : '';
-    }
-  });
+  savePtParams();
   updatePingtexiaoTotal();
 }
 
@@ -1296,6 +1363,8 @@ function updatePingtexiaoTotal() {
     const v = parseFloat(input.value.trim());
     if (!isNaN(v)) reportTotal += v;
   });
+
+  // 标题区合计
   const amountBox = document.getElementById('ptAmountTotalBox');
   const amountSpan = document.getElementById('ptAmountTotal');
   const reportBox = document.getElementById('ptReportTotalBox');
@@ -1307,6 +1376,62 @@ function updatePingtexiaoTotal() {
   if (reportBox && reportSpan) {
     if (reportTotal > 0) { reportSpan.textContent = reportTotal; reportBox.style.display = 'inline-flex'; }
     else { reportBox.style.display = 'none'; }
+  }
+
+  // 汇总方框：总额、中奖、盈/亏
+  const sumTotalEl = document.getElementById('ptSumTotal');
+  const sumWinEl = document.getElementById('ptSumWin');
+  const sumPLEl = document.getElementById('ptSumPL');
+  if (!sumTotalEl || !sumWinEl || !sumPLEl) return;
+
+  // 总额 = 所有剩余列之和
+  let sumTotal = 0;
+  document.querySelectorAll('.pt-remain-text').forEach(td => {
+    const v = parseFloat(td.textContent);
+    if (!isNaN(v)) sumTotal += v;
+  });
+  sumTotalEl.textContent = sumTotal;
+
+  // 中奖 = 高亮剩余列之和
+  let sumWin = 0;
+  document.querySelectorAll('.pt-remain-highlight').forEach(td => {
+    const v = parseFloat(td.textContent);
+    if (!isNaN(v)) sumWin += v;
+  });
+  sumWinEl.textContent = sumWin;
+
+  // 盈/亏计算
+  const { rebate, multiple, yearMultiple } = getPtParams();
+  const net = sumTotal - sumTotal * (rebate / 100);
+  // 计算赔付：遍历高亮单元格，判断对应生肖是否为本年肖
+  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
+  let payout = 0;
+  document.querySelectorAll('.pt-remain-highlight').forEach(td => {
+    const row = td.closest('tr');
+    if (!row) return;
+    // 找到该行该侧对应的生肖（通过金额输入框的data-zodiac）
+    const allInputs = row.querySelectorAll('.pingtexiao-amount');
+    for (const inp of allInputs) {
+      // 判断该input所在的td后面是否紧跟着当前高亮的td
+      const parentTd = inp.closest('td');
+      if (parentTd && parentTd.nextElementSibling && parentTd.nextElementSibling.nextElementSibling === td) {
+        const zodiac = inp.dataset.zodiac;
+        const val = parseFloat(td.textContent) || 0;
+        const mult = (zodiac === curYearZodiac) ? yearMultiple : multiple;
+        payout += val * mult;
+        break;
+      }
+    }
+  });
+  const pl = net - payout;
+
+  // 显示盈/亏
+  if (pl > 0) {
+    sumPLEl.innerHTML = `<span class="pt-sum-label">盈/亏：</span><span class="pt-sum-pl-green">盈${Math.round(pl)}</span>`;
+  } else if (pl < 0) {
+    sumPLEl.innerHTML = `<span class="pt-sum-label">盈/亏：</span><span class="pt-sum-pl-red">亏${Math.round(Math.abs(pl))}</span>`;
+  } else {
+    sumPLEl.innerHTML = '';
   }
 }
 
@@ -1404,21 +1529,21 @@ function updateCardA() {
     const zodiacOrderFixed = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
     const zcm = {'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};
 
-    // 生肖次数排行（只显示生肖名）
+    // 生肖次数排行（只显示生肖名，用、隔开）
     const zCountEntries = zodiacOrderFixed.map(z => ({ zodiac: z, cnt: zodiacAmountCount[z] || 0 }));
     zCountEntries.sort((a, b) => b.cnt - a.cnt);
     zCountEntries.forEach((e, idx) => {
       html += `<span class="${zcm[e.zodiac] || ''}">${e.zodiac}</span>`;
-      if (idx < zCountEntries.length - 1) html += ' ';
+      if (idx < zCountEntries.length - 1) html += '、';
     });
     html += '<br>';
 
-    // 生肖金额排行（只显示生肖名）
+    // 生肖金额排行（只显示生肖名，用、隔开）
     const zAmtEntries = zodiacOrderFixed.map(z => ({ zodiac: z, amt: zodiacFilteredAmount[z] || 0 }));
     zAmtEntries.sort((a, b) => b.amt - a.amt);
     zAmtEntries.forEach((e, idx) => {
       html += `<span class="${zcm[e.zodiac] || ''}">${e.zodiac}</span>`;
-      if (idx < zAmtEntries.length - 1) html += ' ';
+      if (idx < zAmtEntries.length - 1) html += '、';
     });
     html += '<br>';
   }
@@ -1426,12 +1551,11 @@ function updateCardA() {
   contentEl.innerHTML = html;
 }
 
-// ========== 复制卡片A各行的号码/生肖串 ==========
+// ========== 复制卡片A各行的号码串 ==========
 function copyCardANumbers(type) {
   const contentEl = document.getElementById('cardAContent');
   if (!contentEl) return;
 
-  // 获取所有 span 和 br 节点，分行
   const lines = [];
   let currentLine = [];
   Array.from(contentEl.childNodes).forEach(node => {
@@ -1440,7 +1564,6 @@ function copyCardANumbers(type) {
   });
   if (currentLine.length > 0) lines.push(currentLine);
 
-  // 确定目标行索引
   const filterText = document.getElementById('filterInputCardA')?.value.trim();
   const topNVal = parseInt(document.getElementById('topNInput')?.value);
   let targetLineIndex = -1;
@@ -1455,11 +1578,6 @@ function copyCardANumbers(type) {
     lineIdx++;
     if (type === 'inactive') targetLineIndex = lineIdx;
     lineIdx++;
-  }
-  // 生肖排行行（如果展开）
-  if (zodiacRankVisible) {
-    // 生肖次数行、生肖金额行（但复制生肖排行时可能不需要，暂不处理，只处理号码行）
-    // 如需复制生肖行，可后续扩展
   }
 
   if (targetLineIndex < 0 || targetLineIndex >= lines.length) {
@@ -1504,6 +1622,7 @@ function copyCardANumbers(type) {
     await originalFn.apply(this, arguments);
     renderPingtexiaoTable();
     updateCardA();
+    loadPtParams();
   };
 })();
 
@@ -1568,6 +1687,7 @@ window.onload = async () => {
   currentZodiacMap = buildZodiacMap(savedZodiac); updateSelects(); renderAllTablesPlaceholder();
   enableRowDragSelect('riskTable'); enableRowDragSelect('reportTable');
   await autoCleanRecycleBin(); setInterval(autoCleanRecycleBin, 24 * 60 * 60 * 1000); updateRecycleCount();
+  loadPtParams();
 
   window._systemReady = async () => {
     await updateTableFromRecords();
