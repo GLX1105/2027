@@ -1263,7 +1263,7 @@ function calcDrawPLForDate(dateStr, savedNumber) {
   return Math.round(reportRisk + ptPL);
 }
 
-// 按日期缓存所有日期的 reportRiskData
+// 按日期缓存所有日期的上报风险数据（应用截断、上报倍数/返水率）
 async function buildReportRiskCache(year) {
   const allOrders = await getAllOrdersUnfiltered();
   const allReports = await getAllReportsUnfiltered();
@@ -1273,14 +1273,21 @@ async function buildReportRiskCache(year) {
   const allDates = new Set();
   filteredOrders.forEach(r => allDates.add(r.date));
   filteredReports.forEach(r => allDates.add(r.date));
-  const mul = parseFloat(document.getElementById('multipleVal')?.value) || 1;
-  const rr = parseFloat(document.getElementById('rebateRate')?.value) || 0;
+  
+  // 读取上报视图的倍数和返水率（与风险卡片下拉框“上报”一致）
+  const mul = parseFloat(document.getElementById('reportMultipleVal')?.value) || 1;
+  const rr = parseFloat(document.getElementById('reportRebateRate')?.value) || 0;
+  // 读取截断阈值
+  const cap = parseFloat(document.getElementById('reportCapInput')?.value);
+
   for (const dateStr of allDates) {
     const dateOrders = filteredOrders.filter(r => r.date === dateStr);
     const dateReports = filteredReports.filter(r => r.date === dateStr);
     const betData = {};
     const cfg = getAllConfigData();
     const keys = getAllValidCategories(cfg);
+    
+    // 处理订单（正常下注）
     dateOrders.forEach(rec => {
       rec.content.split('\n').forEach(line => {
         const { numbers, zodiacs } = countItemsInLine(line, cfg, keys);
@@ -1296,6 +1303,8 @@ async function buildReportRiskCache(year) {
         });
       });
     });
+    
+    // 处理上报（上报金额扣减）
     dateReports.forEach(rec => {
       rec.content.split('\n').forEach(line => {
         const { numbers, zodiacs } = countItemsInLine(line, cfg, keys);
@@ -1311,8 +1320,19 @@ async function buildReportRiskCache(year) {
         });
       });
     });
+    
+    // 应用截断并重新计算总额
+    let totalBet = 0;
+    for (let i = 1; i <= 49; i++) {
+      const num = i.toString().padStart(2, '0');
+      let bet = betData[num] || 0;
+      if (!isNaN(cap) && cap > 0 && bet > cap) bet = cap;
+      betData[num] = bet; // 更新截断后的值
+      totalBet += bet;
+    }
+    
+    // 计算每个号码的风险值
     const riskData = {};
-    const totalBet = Object.values(betData).reduce((s, v) => s + v, 0);
     const reb = totalBet * rr / 100;
     for (let i = 1; i <= 49; i++) {
       const num = i.toString().padStart(2, '0');
@@ -1324,7 +1344,7 @@ async function buildReportRiskCache(year) {
   window._cachedReportRiskByDate = cache;
 }
 
-// 根据日期获取平特肖盈亏
+// 根据日期获取平特肖盈亏（逻辑同平特肖卡片汇总框）
 function getPingtexiaoPLByDate(dateStr) {
   const key = `pingtexiao_${currentRegion}_${dateStr}`;
   let data = {};
@@ -1414,23 +1434,24 @@ async function showDrawRecord() {
   monthlyInnerHtml += `<tr style="border-top:2px solid #333;"><td style="text-align:left;padding:1px 4px;border:none;font-size:11px;">总盈亏</td><td style="text-align:right;padding:1px 4px;border:none;font-size:11px;">${totalText}</td></tr>`;
   monthlyInnerHtml += '</tbody></table>';
 
-  // 生成表格
+  // 生成表格，月度汇总表从第4组第88行开始（让总盈亏对齐第300期）
   let tableHtml = '<div class="draw-table-wrap"><table class="draw-table"><thead><tr>';
   for (let g = 0; g < groups; g++) { tableHtml += '<th>期号</th><th>号码</th><th>生肖</th><th>盈亏</th>'; }
   tableHtml += '</tr></thead><tbody>';
 
-  const monthlyRowsNeeded = 13;
+  const monthlyRowsNeeded = 13; // 12个月+1行总盈亏
+  const startRow = 87; // 第4组第88行（索引从0开始）
 
   for (let r = 0; r < 100; r++) {
     tableHtml += '<tr>';
     for (let g = 0; g < groups; g++) {
       const idx = g * 100 + r;
-      if (g === 3 && r >= 65 && r < 65 + monthlyRowsNeeded) {
-        const monthlyRowIdx = r - 65;
+      if (g === 3 && r >= startRow && r < startRow + monthlyRowsNeeded) {
+        const monthlyRowIdx = r - startRow;
         if (monthlyRowIdx === 0) {
           tableHtml += `<td colspan="4" rowspan="${monthlyRowsNeeded}" style="vertical-align:top;padding:2px;">${monthlyInnerHtml}</td>`;
         }
-      } else if (g === 3 && r >= 65 + monthlyRowsNeeded) {
+      } else if (g === 3 && r >= startRow + monthlyRowsNeeded) {
         tableHtml += '<td></td><td></td><td></td><td></td>';
       } else if (idx < rows.length) {
         const row = rows[idx];
