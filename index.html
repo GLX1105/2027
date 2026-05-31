@@ -1393,6 +1393,7 @@ function onDrawPLInput(input) {
   if (val === '-' || val === '') { input.className = 'draw-pl-input'; input.value = val; return; }
   const numVal = parseFloat(val);
   if (!isNaN(numVal)) {
+    input.value = val;  // 修正后的值写回 input
     if (numVal > 0) input.className = 'draw-pl-input green-text';
     else if (numVal < 0) input.className = 'draw-pl-input red-text';
     else input.className = 'draw-pl-input';
