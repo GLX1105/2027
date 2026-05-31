@@ -1272,7 +1272,8 @@ function formatDateMD(dateStr) { const d = new Date(dateStr + 'T00:00:00'); retu
     }
   };
 })();
-    // ===== 开奖记录窗口（盈亏列手动输入 + 月度汇总嵌入第4组） =====
+
+// ===== 开奖记录窗口（盈亏列手动输入 + 保存后仍可编辑 + 月度汇总嵌入第4组） =====
 function getZodiacColorClass(zodiac) { if (!zodiac) return ''; const redSet = new Set(['鼠','兔','马','鸡']); const blueSet = new Set(['虎','蛇','猴','猪']); const greenSet = new Set(['牛','龙','羊','狗']); if (redSet.has(zodiac)) return 'red-text'; if (blueSet.has(zodiac)) return 'blue-text'; if (greenSet.has(zodiac)) return 'green-text'; return ''; }
 function getNumberColorClass(num) { if (redNumbers.includes(num)) return 'red-text'; if (blueNumbers.includes(num)) return 'blue-text'; if (greenNumbers.includes(num)) return 'green-text'; return ''; }
 
@@ -1329,15 +1330,14 @@ async function showDrawRecord() {
   for (let g = 0; g < groups; g++) { tableHtml += '<th>期号</th><th>号码</th><th>生肖</th><th>盈亏</th>'; }
   tableHtml += '</tr></thead><tbody>';
 
-  const monthlyRowsNeeded = 13; // 12个月+总盈亏
-  const startRow = 87; // 第4组第88行（索引从0开始），总盈亏对齐第300期
+  const monthlyRowsNeeded = 13;
+  const startRow = 87;
 
   for (let r = 0; r < 100; r++) {
     tableHtml += '<tr>';
     for (let g = 0; g < groups; g++) {
       const idx = g * 100 + r;
       if (g === 3 && r >= startRow && r < startRow + monthlyRowsNeeded) {
-        // 第4组空白区域：嵌入月度汇总表
         const monthlyRowIdx = r - startRow;
         if (monthlyRowIdx === 0) {
           tableHtml += `<td colspan="4" rowspan="${monthlyRowsNeeded}" style="vertical-align:top;padding:2px;">${monthlyInnerHtml}</td>`;
@@ -1359,7 +1359,7 @@ async function showDrawRecord() {
         const zodiac = savedNumber ? (currentZodiacMap[numVal] || '') : '';
         const zColorClass = getZodiacColorClass(zodiac);
         tableHtml += `<td><span class="draw-zodiac-${iid} ${zColorClass}">${zodiac}</span></td>`;
-        // 盈亏列改为手动输入框
+        // 盈亏列改为手动输入框（始终可编辑）
         let plColorClass = '';
         if (savedPL !== '') {
           const plVal = parseFloat(savedPL);
@@ -1428,6 +1428,7 @@ async function saveDrawRecord(year) {
   });
   const storageKey = `drawRecord_${currentRegion}_${year}`;
   localStorage.setItem(storageKey, JSON.stringify(data));
+  // 只禁用号码输入框，盈亏输入框保持可编辑
   document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = true);
   updateRecentDrawTexts();
   showToast('保存成功');
@@ -1472,7 +1473,7 @@ function loadPtParams() {
   } catch (e) {}
 }
 
-// ========== 渲染平特肖表格（卡片B）双击编辑 ==========
+// ========== 渲染平特肖表格（卡片B）直接可编辑input ==========
 function renderPingtexiaoTable() {
   const container = document.getElementById('pingtexiaoTableContainer');
   if (!container) return;
@@ -1497,8 +1498,10 @@ function renderPingtexiaoTable() {
       const remain = (amountVal !== '') ? (parseFloat(amountVal) - (reportVal !== '' ? parseFloat(reportVal) : 0)) : '';
       const highlighted = highlightData[zodiac] === true ? ' pt-remain-highlight' : '';
       html += `<td class="${zcm[zodiac] || ''}">${zodiac}</td>`;
-      html += `<td><span class="pt-display-text amount-red-text" data-zodiac="${zodiac}" data-field="amount">${amountVal || ''}</span></td>`;
-      html += `<td><span class="pt-display-text pt-report-text" data-zodiac="${zodiac}" data-field="report">${reportVal || ''}</span></td>`;
+      // 金额列：直接可编辑input
+      html += `<td><input type="number" class="pingtexiao-input pingtexiao-amount amount-red-text" data-zodiac="${zodiac}" value="${amountVal}" oninput="updatePingtexiaoRemain(this)" onblur="savePingtexiaoCell()" style="width:50px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;"></td>`;
+      // 上报列：直接可编辑input
+      html += `<td><input type="number" class="pingtexiao-input pingtexiao-report pt-report-text" data-zodiac="${zodiac}" value="${reportVal}" oninput="updatePingtexiaoRemain(this)" onblur="savePingtexiaoCell()" style="width:50px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;"></td>`;
       html += `<td class="pt-remain-text${highlighted}" style="font-size:12px;" data-zodiac="${zodiac}">${remain !== '' ? remain : ''}</td>`;
     });
     html += '</tr>';
@@ -1506,10 +1509,6 @@ function renderPingtexiaoTable() {
   html += '</tbody></table>';
   container.innerHTML = html;
 
-  // 绑定事件：金额/上报双击编辑
-  container.querySelectorAll('.pt-display-text[data-field="amount"], .pt-display-text[data-field="report"]').forEach(span => {
-    span.ondblclick = function() { editPingtexiaoCell(this); };
-  });
   // 绑定事件：剩余列点击高亮
   container.querySelectorAll('.pt-remain-text').forEach(td => {
     td.onclick = function() { togglePingtexiaoHighlight(this, this.dataset.zodiac); };
@@ -1518,80 +1517,25 @@ function renderPingtexiaoTable() {
   updatePingtexiaoTotal();
 }
 
-function editPingtexiaoCell(span) {
-  const zodiac = span.dataset.zodiac;
-  const field = span.dataset.field;
-  const currentVal = span.textContent.trim();
-  const input = document.createElement('input');
-  input.type = 'number';
-  input.value = currentVal;
-  input.style.width = '45px';
-  input.style.padding = '1px 2px';
-  input.style.fontSize = '12px';
-  input.style.textAlign = 'center';
-  input.style.border = '1px solid #ccc';
-  input.style.borderRadius = '2px';
-  if (field === 'amount') {
-    input.className = 'pingtexiao-input pingtexiao-amount amount-red-text';
-  } else {
-    input.className = 'pingtexiao-input pingtexiao-report pt-report-text';
-  }
-  input.dataset.zodiac = zodiac;
-  input.dataset.field = field;
-  span.replaceWith(input);
-  input.focus();
-  input.select();
-  input.addEventListener('blur', function() { finishEditPingtexiaoCell(input); });
-  input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); finishEditPingtexiaoCell(input); } });
-}
-
-function finishEditPingtexiaoCell(input) {
+function updatePingtexiaoRemain(input) {
+  const row = input.closest('tr');
+  if (!row) return;
   const zodiac = input.dataset.zodiac;
-  const field = input.dataset.field;
-  const newVal = input.value.trim();
-  // 创建新的 span
-  const span = document.createElement('span');
-  span.className = 'pt-display-text';
-  if (field === 'amount') span.className += ' amount-red-text';
-  else span.className += ' pt-report-text';
-  span.dataset.zodiac = zodiac;
-  span.dataset.field = field;
-  span.textContent = newVal;
-  span.ondblclick = function() { editPingtexiaoCell(this); };
-  input.replaceWith(span);
-
-  // 更新同侧的剩余列
-  const row = span.closest('tr');
-  if (row) {
-    const allTds = row.querySelectorAll('td');
-    for (let i = 0; i < allTds.length; i++) {
-      const td = allTds[i];
-      const spansInTd = td.querySelectorAll(`.pt-display-text[data-zodiac="${zodiac}"]`);
-      if (spansInTd.length > 0) {
-        let remainTd;
-        if (field === 'amount') {
-          remainTd = allTds[i + 2];
-        } else {
-          remainTd = allTds[i + 1];
-        }
-        if (remainTd && remainTd.classList.contains('pt-remain-text')) {
-          let amountSpan, reportSpan;
-          if (field === 'amount') {
-            amountSpan = span;
-            reportSpan = allTds[i + 1]?.querySelector('.pt-display-text[data-field="report"]');
-          } else {
-            reportSpan = span;
-            amountSpan = allTds[i - 1]?.querySelector('.pt-display-text[data-field="amount"]');
-          }
-          const a = amountSpan ? (amountSpan.textContent.trim() !== '' ? parseFloat(amountSpan.textContent) : 0) : 0;
-          const r = reportSpan ? (reportSpan.textContent.trim() !== '' ? parseFloat(reportSpan.textContent) : 0) : 0;
-          remainTd.textContent = (amountSpan && amountSpan.textContent.trim() !== '') ? (a - r) : '';
-        }
-        break;
-      }
-    }
+  // 找到同侧的金额和上报 input
+  const allInputs = row.querySelectorAll('.pingtexiao-input');
+  let amountInput, reportInput;
+  for (const inp of allInputs) {
+    if (inp.dataset.zodiac === zodiac && inp.classList.contains('pingtexiao-amount')) amountInput = inp;
+    if (inp.dataset.zodiac === zodiac && inp.classList.contains('pingtexiao-report')) reportInput = inp;
   }
-  savePingtexiaoCell();
+  if (!amountInput || !reportInput) return;
+  const a = amountInput.value.trim() !== '' ? parseFloat(amountInput.value) : 0;
+  const r = reportInput.value.trim() !== '' ? parseFloat(reportInput.value) : 0;
+  const remainTd = row.querySelector(`.pt-remain-text[data-zodiac="${zodiac}"]`);
+  if (remainTd) {
+    remainTd.textContent = (amountInput.value.trim() !== '') ? (a - r) : '';
+  }
+  updatePingtexiaoTotal();
 }
 
 function togglePingtexiaoHighlight(td, zodiac) {
@@ -1610,15 +1554,15 @@ function clearPingtexiaoHighlight() {
 
 function savePingtexiaoCell() {
   const data = getPingtexiaoData();
-  document.querySelectorAll('.pt-display-text[data-field="amount"]').forEach(span => {
-    const zodiac = span.dataset.zodiac;
+  document.querySelectorAll('.pingtexiao-amount').forEach(input => {
+    const zodiac = input.dataset.zodiac;
     if (!data[zodiac]) data[zodiac] = { amount: '', report: '' };
-    data[zodiac].amount = span.textContent.trim();
+    data[zodiac].amount = input.value.trim();
   });
-  document.querySelectorAll('.pt-display-text[data-field="report"]').forEach(span => {
-    const zodiac = span.dataset.zodiac;
+  document.querySelectorAll('.pingtexiao-report').forEach(input => {
+    const zodiac = input.dataset.zodiac;
     if (!data[zodiac]) data[zodiac] = { amount: '', report: '' };
-    data[zodiac].report = span.textContent.trim();
+    data[zodiac].report = input.value.trim();
   });
   savePingtexiaoData(data);
   savePtParams();
@@ -1627,12 +1571,12 @@ function savePingtexiaoCell() {
 
 function updatePingtexiaoTotal() {
   let amountTotal = 0, reportTotal = 0;
-  document.querySelectorAll('.pt-display-text[data-field="amount"]').forEach(span => {
-    const v = parseFloat(span.textContent.trim());
+  document.querySelectorAll('.pingtexiao-amount').forEach(input => {
+    const v = parseFloat(input.value.trim());
     if (!isNaN(v)) amountTotal += v;
   });
-  document.querySelectorAll('.pt-display-text[data-field="report"]').forEach(span => {
-    const v = parseFloat(span.textContent.trim());
+  document.querySelectorAll('.pingtexiao-report').forEach(input => {
+    const v = parseFloat(input.value.trim());
     if (!isNaN(v)) reportTotal += v;
   });
 
@@ -1655,8 +1599,8 @@ function updatePingtexiaoTotal() {
   if (!sumTotalEl || !sumWinEl || !sumPLEl) return;
 
   let hasData = false;
-  document.querySelectorAll('.pt-display-text[data-field="amount"]').forEach(span => { if (span.textContent.trim() !== '') hasData = true; });
-  document.querySelectorAll('.pt-display-text[data-field="report"]').forEach(span => { if (span.textContent.trim() !== '') hasData = true; });
+  document.querySelectorAll('.pingtexiao-amount').forEach(input => { if (input.value.trim() !== '') hasData = true; });
+  document.querySelectorAll('.pingtexiao-report').forEach(input => { if (input.value.trim() !== '') hasData = true; });
 
   if (!hasData) {
     sumTotalEl.textContent = '';
@@ -1684,20 +1628,12 @@ function updatePingtexiaoTotal() {
   const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
   let payout = 0;
   document.querySelectorAll('.pt-remain-highlight').forEach(td => {
-    const row = td.closest('tr');
-    if (!row) return;
     const zodiac = td.dataset.zodiac;
-    const allTds = row.querySelectorAll('td');
-    for (let i = 0; i < allTds.length; i++) {
-      if (allTds[i] === td) {
-        const amountSpan = allTds[i - 2]?.querySelector('.pt-display-text[data-field="amount"]');
-        if (amountSpan && amountSpan.dataset.zodiac === zodiac) {
-          const val = parseFloat(td.textContent) || 0;
-          const mult = (zodiac === curYearZodiac) ? yearMultiple : multiple;
-          payout += val * mult;
-        }
-        break;
-      }
+    const input = document.querySelector(`.pingtexiao-amount[data-zodiac="${zodiac}"]`);
+    if (input) {
+      const val = parseFloat(td.textContent) || 0;
+      const mult = (zodiac === curYearZodiac) ? yearMultiple : multiple;
+      payout += val * mult;
     }
   });
   const pl = Math.round(net - payout);
