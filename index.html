@@ -1272,8 +1272,7 @@ function formatDateMD(dateStr) { const d = new Date(dateStr + 'T00:00:00'); retu
     }
   };
 })();
-
-// ===== 开奖记录窗口（盈亏列手动输入 + 保存后仍可编辑 + 月度汇总嵌入第4组） =====
+// ===== 开奖记录窗口（盈亏列手动输入 + 保存后锁定 + 修改解锁 + 月度汇总嵌入第4组） =====
 function getZodiacColorClass(zodiac) { if (!zodiac) return ''; const redSet = new Set(['鼠','兔','马','鸡']); const blueSet = new Set(['虎','蛇','猴','猪']); const greenSet = new Set(['牛','龙','羊','狗']); if (redSet.has(zodiac)) return 'red-text'; if (blueSet.has(zodiac)) return 'blue-text'; if (greenSet.has(zodiac)) return 'green-text'; return ''; }
 function getNumberColorClass(num) { if (redNumbers.includes(num)) return 'red-text'; if (blueNumbers.includes(num)) return 'blue-text'; if (greenNumbers.includes(num)) return 'green-text'; return ''; }
 
@@ -1359,14 +1358,15 @@ async function showDrawRecord() {
         const zodiac = savedNumber ? (currentZodiacMap[numVal] || '') : '';
         const zColorClass = getZodiacColorClass(zodiac);
         tableHtml += `<td><span class="draw-zodiac-${iid} ${zColorClass}">${zodiac}</span></td>`;
-        // 盈亏列改为手动输入框（始终可编辑）
+        // 盈亏列改为手动输入框
         let plColorClass = '';
+        const plDisabled = isReadOnly ? 'disabled' : '';
         if (savedPL !== '') {
           const plVal = parseFloat(savedPL);
           if (plVal > 0) plColorClass = 'green-text';
           else if (plVal < 0) plColorClass = 'red-text';
         }
-        tableHtml += `<td><input type="text" class="draw-pl-input draw-pl-${iid} ${plColorClass}" value="${savedPL}" oninput="onDrawPLInput(this)" maxlength="7"></td>`;
+        tableHtml += `<td><input type="text" class="draw-pl-input draw-pl-${iid} ${plColorClass}" value="${savedPL}" ${plDisabled} oninput="onDrawPLInput(this)" maxlength="7"></td>`;
       } else {
         tableHtml += '<td></td><td></td><td></td><td></td>';
       }
@@ -1402,7 +1402,7 @@ function onDrawPLInput(input) {
 async function clearAllDrawRecords(year) { if (!(await confirm(`确定清空${currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港'} ${year}年全部开奖号码吗？此操作不可恢复！`))) return; const storageKey = `drawRecord_${currentRegion}_${year}`; localStorage.removeItem(storageKey); showToast('已清空'); showDrawRecord(); updateRecentDrawTexts(); }
 
 function onDrawNumberInput(input, issueId) { let val = input.value.replace(/\D/g, ''); if (val.length > 2) val = val.slice(0, 2); input.value = val; const zodiacSpan = document.querySelector(`.draw-zodiac-${issueId}`); if (!zodiacSpan) return; if (val.length === 2) { const num = val.padStart(2, '0'); const intVal = parseInt(num); if (intVal >= 1 && intVal <= 49) { const zodiac = currentZodiacMap[num] || ''; zodiacSpan.textContent = zodiac; zodiacSpan.className = `draw-zodiac-${issueId} ${getZodiacColorClass(zodiac)}`; input.className = `draw-number-input draw-num-${issueId} ${getNumberColorClass(num)}`; return; } } zodiacSpan.textContent = ''; zodiacSpan.className = `draw-zodiac-${issueId}`; input.className = `draw-number-input draw-num-${issueId}`; }
-function editDrawRecord() { document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = false); showToast('已进入编辑模式，可修改号码'); }
+function editDrawRecord() { document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = false); document.querySelectorAll('.draw-pl-input').forEach(el => el.disabled = false); showToast('已进入编辑模式，可修改号码'); }
 
 async function saveDrawRecord(year) {
   const data = {};
@@ -1428,8 +1428,9 @@ async function saveDrawRecord(year) {
   });
   const storageKey = `drawRecord_${currentRegion}_${year}`;
   localStorage.setItem(storageKey, JSON.stringify(data));
-  // 只禁用号码输入框，盈亏输入框保持可编辑
+  // 保存后禁用号码和盈亏输入框
   document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = true);
+  document.querySelectorAll('.draw-pl-input').forEach(el => el.disabled = true);
   updateRecentDrawTexts();
   showToast('保存成功');
 }
