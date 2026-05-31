@@ -1564,16 +1564,24 @@ function renderPingtexiaoTable() {
       const remain = (amountVal !== '') ? (parseFloat(amountVal) - (reportVal !== '' ? parseFloat(reportVal) : 0)) : '';
       const highlighted = highlightData[zodiac] === true ? ' pt-remain-highlight' : '';
       html += `<td class="${zcm[zodiac] || ''}">${zodiac}</td>`;
-      // 金额列：span 显示，双击变成 input
-      html += `<td><span class="pt-display-text amount-red-text" data-zodiac="${zodiac}" data-field="amount" ondblclick="editPingtexiaoCell(this)">${amountVal || ''}</span></td>`;
-      // 上报列：span 显示，双击变成 input
-      html += `<td><span class="pt-display-text pt-report-text" data-zodiac="${zodiac}" data-field="report" ondblclick="editPingtexiaoCell(this)">${reportVal || ''}</span></td>`;
-      html += `<td class="pt-remain-text${highlighted}" style="font-size:12px;" onclick="togglePingtexiaoHighlight(this, '${zodiac}')">${remain !== '' ? remain : ''}</td>`;
+      html += `<td><span class="pt-display-text amount-red-text" data-zodiac="${zodiac}" data-field="amount">${amountVal || ''}</span></td>`;
+      html += `<td><span class="pt-display-text pt-report-text" data-zodiac="${zodiac}" data-field="report">${reportVal || ''}</span></td>`;
+      html += `<td class="pt-remain-text${highlighted}" style="font-size:12px;" data-zodiac="${zodiac}">${remain !== '' ? remain : ''}</td>`;
     });
     html += '</tr>';
   }
   html += '</tbody></table>';
   container.innerHTML = html;
+
+  // 绑定事件：金额/上报双击编辑
+  container.querySelectorAll('.pt-display-text[data-field="amount"], .pt-display-text[data-field="report"]').forEach(span => {
+    span.ondblclick = function() { editPingtexiaoCell(this); };
+  });
+  // 绑定事件：剩余列点击高亮
+  container.querySelectorAll('.pt-remain-text').forEach(td => {
+    td.onclick = function() { togglePingtexiaoHighlight(this, this.dataset.zodiac); };
+  });
+
   updatePingtexiaoTotal();
 }
 
@@ -1596,21 +1604,19 @@ function editPingtexiaoCell(span) {
     input.className = 'pingtexiao-input pingtexiao-report pt-report-text';
   }
   input.dataset.zodiac = zodiac;
-  span.parentElement.replaceChild(input, span);
+  input.dataset.field = field;
+  span.replaceWith(input);
   input.focus();
   input.select();
-  input.addEventListener('blur', function() {
-    finishEditPingtexiaoCell(input, zodiac, field);
-  });
-  input.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      finishEditPingtexiaoCell(input, zodiac, field);
-    }
-  });
+  input.addEventListener('blur', function() { finishEditPingtexiaoCell(input); });
+  input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); finishEditPingtexiaoCell(input); } });
 }
 
-function finishEditPingtexiaoCell(input, zodiac, field) {
+function finishEditPingtexiaoCell(input) {
+  const zodiac = input.dataset.zodiac;
+  const field = input.dataset.field;
   const newVal = input.value.trim();
+  // 创建新的 span
   const span = document.createElement('span');
   span.className = 'pt-display-text';
   if (field === 'amount') span.className += ' amount-red-text';
@@ -1618,66 +1624,50 @@ function finishEditPingtexiaoCell(input, zodiac, field) {
   span.dataset.zodiac = zodiac;
   span.dataset.field = field;
   span.textContent = newVal;
-  span.setAttribute('ondblclick', `editPingtexiaoCell(this)`);
-  input.parentElement.replaceChild(span, input);
-  // 更新同一行的剩余列
+  span.ondblclick = function() { editPingtexiaoCell(this); };
+  input.replaceWith(span);
+
+  // 更新同侧的剩余列
   const row = span.closest('tr');
   if (row) {
-    const amountSpan = row.querySelector(`.pt-display-text[data-field="amount"][data-zodiac="${zodiac}"]`);
-    const reportSpan = row.querySelector(`.pt-display-text[data-field="report"][data-zodiac="${zodiac}"]`);
-    const remainTd = row.querySelector(`.pt-remain-text`);
-    // 找到同侧的剩余td（通过遍历）
-    const allRemainTds = row.querySelectorAll('.pt-remain-text');
-    // 确定当前是左侧还是右侧
-    const tds = row.querySelectorAll('td');
-    let sideIndex = -1;
-    for (let i = 0; i < tds.length; i++) {
-      if (tds[i].querySelector(`[data-zodiac="${zodiac}"]`)) {
-        // 找到了这个zodiac在哪个td里，然后找它后面的剩余td
+    // 找到同侧的金额span和上报span
+    const allTds = row.querySelectorAll('td');
+    // 遍历找到span所在的td
+    for (let i = 0; i < allTds.length; i++) {
+      const td = allTds[i];
+      const spansInTd = td.querySelectorAll(`.pt-display-text[data-zodiac="${zodiac}"]`);
+      if (spansInTd.length > 0) {
+        // 这个td就是金额或上报所在的td，剩余td在它后面
         // 结构：生肖td, 金额td, 上报td, 剩余td
-        const parentTd = tds[i];
-        const idx = Array.from(row.querySelectorAll('td')).indexOf(parentTd);
-        // 金额td是idx，上报td是idx+1，剩余td是idx+2
-        if (idx >= 0 && idx + 2 < row.querySelectorAll('td').length) {
-          const remainCell = row.querySelectorAll('td')[idx + 2];
-          if (remainCell && remainCell.classList.contains('pt-remain-text')) {
-            const a = amountSpan ? (amountSpan.textContent.trim() !== '' ? parseFloat(amountSpan.textContent) : 0) : 0;
-            const r = reportSpan ? (reportSpan.textContent.trim() !== '' ? parseFloat(reportSpan.textContent) : 0) : 0;
-            remainCell.textContent = (amountSpan && amountSpan.textContent.trim() !== '') ? (a - r) : '';
+        // 当前span在金额td（i）或上报td（i），剩余td是i+2或i+1
+        // 需要判断当前是金额还是上报
+        let remainTd;
+        if (field === 'amount') {
+          // 金额td是i，上报td是i+1，剩余td是i+2
+          remainTd = allTds[i + 2];
+        } else {
+          // 上报td是i，剩余td是i+1
+          remainTd = allTds[i + 1];
+        }
+        if (remainTd && remainTd.classList.contains('pt-remain-text')) {
+          // 找到同侧的金额和上报span
+          let amountSpan, reportSpan;
+          if (field === 'amount') {
+            amountSpan = span;
+            reportSpan = allTds[i + 1]?.querySelector('.pt-display-text[data-field="report"]');
+          } else {
+            reportSpan = span;
+            amountSpan = allTds[i - 1]?.querySelector('.pt-display-text[data-field="amount"]');
           }
+          const a = amountSpan ? (amountSpan.textContent.trim() !== '' ? parseFloat(amountSpan.textContent) : 0) : 0;
+          const r = reportSpan ? (reportSpan.textContent.trim() !== '' ? parseFloat(reportSpan.textContent) : 0) : 0;
+          remainTd.textContent = (amountSpan && amountSpan.textContent.trim() !== '') ? (a - r) : '';
         }
         break;
       }
     }
   }
   savePingtexiaoCell();
-}
-
-function updatePingtexiaoRemain(input) {
-  // 双击编辑模式下此函数仍可用于兼容
-  const row = input.closest('tr');
-  if (!row) return;
-  const td = input.closest('td');
-  if (!td) return;
-  let remainTd;
-  if (input.classList.contains('pingtexiao-amount')) {
-    remainTd = td.nextElementSibling?.nextElementSibling;
-  } else if (input.classList.contains('pingtexiao-report')) {
-    remainTd = td.nextElementSibling;
-  }
-  if (!remainTd || !remainTd.classList.contains('pt-remain-text')) return;
-  let amountInput, reportInput;
-  if (input.classList.contains('pingtexiao-amount')) {
-    amountInput = input;
-    reportInput = td.nextElementSibling?.querySelector('.pingtexiao-report');
-  } else {
-    reportInput = input;
-    amountInput = td.previousElementSibling?.querySelector('.pingtexiao-amount');
-  }
-  const a = amountInput ? (amountInput.value.trim() !== '' ? parseFloat(amountInput.value) : 0) : 0;
-  const r = reportInput ? (reportInput.value.trim() !== '' ? parseFloat(reportInput.value) : 0) : 0;
-  remainTd.textContent = (amountInput && amountInput.value.trim() !== '') ? (a - r) : '';
-  updatePingtexiaoTotal();
 }
 
 function togglePingtexiaoHighlight(td, zodiac) {
@@ -1772,14 +1762,18 @@ function updatePingtexiaoTotal() {
   document.querySelectorAll('.pt-remain-highlight').forEach(td => {
     const row = td.closest('tr');
     if (!row) return;
-    const allSpans = row.querySelectorAll('.pt-display-text[data-field="amount"]');
-    for (const span of allSpans) {
-      const parentTd = span.closest('td');
-      if (parentTd && parentTd.nextElementSibling && parentTd.nextElementSibling.nextElementSibling === td) {
-        const zodiac = span.dataset.zodiac;
-        const val = parseFloat(td.textContent) || 0;
-        const mult = (zodiac === curYearZodiac) ? yearMultiple : multiple;
-        payout += val * mult;
+    const zodiac = td.dataset.zodiac;
+    // 找同侧的金额span
+    const allTds = row.querySelectorAll('td');
+    for (let i = 0; i < allTds.length; i++) {
+      if (allTds[i] === td) {
+        // 剩余td是i，金额td是i-2，上报td是i-1
+        const amountSpan = allTds[i - 2]?.querySelector('.pt-display-text[data-field="amount"]');
+        if (amountSpan && amountSpan.dataset.zodiac === zodiac) {
+          const val = parseFloat(td.textContent) || 0;
+          const mult = (zodiac === curYearZodiac) ? yearMultiple : multiple;
+          payout += val * mult;
+        }
         break;
       }
     }
@@ -1794,8 +1788,7 @@ function updatePingtexiaoTotal() {
     sumPLEl.innerHTML = '';
   }
 }
-
-// ========== 卡片 A：自定义筛选 ==========
+    // ========== 卡片 A：自定义筛选 ==========
 let zodiacRankVisible = false;
 function toggleZodiacRank() {
   zodiacRankVisible = !zodiacRankVisible;
@@ -1809,7 +1802,6 @@ function updateCardA() {
 
   let html = '';
 
-  // ===== 第一行：风险号码串 =====
   const filterInput = document.getElementById('filterInputCardA');
   const filterText = filterInput ? filterInput.value.trim() : '';
   if (filterText) {
@@ -1848,7 +1840,6 @@ function updateCardA() {
     }
   }
 
-  // ===== 第二、三行：活跃/不活跃前N名 =====
   const topNInput = document.getElementById('topNInput');
   const nVal = topNInput ? parseInt(topNInput.value) : NaN;
   if (!isNaN(nVal) && nVal > 0) {
@@ -1880,7 +1871,6 @@ function updateCardA() {
     html += '<br>';
   }
 
-  // ===== 生肖排行（切换显示） =====
   if (zodiacRankVisible) {
     const zodiacOrderFixed = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
     const zcm = {'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'};
@@ -1905,7 +1895,6 @@ function updateCardA() {
   contentEl.innerHTML = html;
 }
 
-// ========== 复制卡片A各行的号码串 ==========
 function copyCardANumbers(type) {
   const contentEl = document.getElementById('cardAContent');
   if (!contentEl) return;
@@ -1950,7 +1939,6 @@ function copyCardANumbers(type) {
   });
 }
 
-// ========== 重写 generateReportTable 追加卡片更新 ==========
 (function() {
   const originalFn = generateReportTable;
   generateReportTable = function() {
@@ -1959,7 +1947,6 @@ function copyCardANumbers(type) {
   };
 })();
 
-// ========== 重写 updateTableFromRecords 追加平特肖刷新 ==========
 (function() {
   const originalFn = updateTableFromRecords;
   updateTableFromRecords = async function() {
@@ -1969,7 +1956,6 @@ function copyCardANumbers(type) {
   };
 })();
 
-// ========== 重写 switchRegion 追加平特肖刷新 ==========
 (function() {
   const originalFn = switchRegion;
   switchRegion = async function(region) {
@@ -1980,7 +1966,6 @@ function copyCardANumbers(type) {
   };
 })();
 
-// ========== 对奖输入框颜色渲染（在 applyPrizeFilter 中追加） ==========
 (function() {
   const originalApplyPrizeFilter = applyPrizeFilter;
   applyPrizeFilter = async function() {
@@ -2002,7 +1987,6 @@ function copyCardANumbers(type) {
   };
 })();
 
-// ========== 页面初始化 ==========
 window.onload = async () => {
   setCurrentRegion(currentRegion); await initIndexedDB(); initDataConfig();
 
