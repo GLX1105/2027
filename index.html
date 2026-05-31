@@ -1290,7 +1290,7 @@ async function showDrawRecord() {
   const storageKey = `drawRecord_${currentRegion}_${year}`;
   let savedData = {}; try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) {}
 
-  // 先计算月度汇总（从手动输入的盈亏值累加）
+  // 计算月度汇总
   const monthlyPL = new Array(12).fill(0);
   for (const iid in savedData) {
     const entry = savedData[iid];
@@ -1308,7 +1308,7 @@ async function showDrawRecord() {
   let totalPLSum = 0;
   for (let m = 0; m < 12; m++) totalPLSum += monthlyPL[m];
 
-  // 生成月度汇总表HTML（嵌入第4组空白区域）
+  // 生成月度汇总表HTML
   let monthlyInnerHtml = '';
   monthlyInnerHtml += '<table class="monthly-summary-table" style="width:100%;margin:0;border:none;"><tbody>';
   for (let m = 0; m < 12; m++) {
@@ -1324,7 +1324,7 @@ async function showDrawRecord() {
   monthlyInnerHtml += `<tr style="border-top:2px solid #333;"><td style="text-align:left;padding:1px 4px;border:none;font-size:11px;">总盈亏</td><td style="text-align:right;padding:1px 4px;border:none;font-size:11px;">${totalText}</td></tr>`;
   monthlyInnerHtml += '</tbody></table>';
 
-  // 生成表格（一次性，干净结构）
+  // 生成表格
   let tableHtml = '<div class="draw-table-wrap"><table class="draw-table"><thead><tr>';
   for (let g = 0; g < groups; g++) { tableHtml += '<th>期号</th><th>号码</th><th>生肖</th><th>盈亏</th>'; }
   tableHtml += '</tr></thead><tbody>';
@@ -1358,7 +1358,7 @@ async function showDrawRecord() {
         const zodiac = savedNumber ? (currentZodiacMap[numVal] || '') : '';
         const zColorClass = getZodiacColorClass(zodiac);
         tableHtml += `<td><span class="draw-zodiac-${iid} ${zColorClass}">${zodiac}</span></td>`;
-        // 盈亏列改为手动输入框
+        // 盈亏列：手动输入框
         let plColorClass = '';
         const plDisabled = isReadOnly ? 'disabled' : '';
         if (savedPL !== '') {
@@ -1388,12 +1388,11 @@ async function showDrawRecord() {
 
 function onDrawPLInput(input) {
   let val = input.value.replace(/[^\d-]/g, '');
-  // 只允许在开头有一个负号
   if (val.indexOf('-') > 0) val = val.replace(/-/g, '').replace(/^/, '-');
   if (val === '-' || val === '') { input.className = 'draw-pl-input'; input.value = val; return; }
   const numVal = parseFloat(val);
   if (!isNaN(numVal)) {
-    input.value = val;  // 修正后的值写回 input
+    input.value = val;
     if (numVal > 0) input.className = 'draw-pl-input green-text';
     else if (numVal < 0) input.className = 'draw-pl-input red-text';
     else input.className = 'draw-pl-input';
@@ -1403,28 +1402,29 @@ function onDrawPLInput(input) {
 async function clearAllDrawRecords(year) { if (!(await confirm(`确定清空${currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港'} ${year}年全部开奖号码吗？此操作不可恢复！`))) return; const storageKey = `drawRecord_${currentRegion}_${year}`; localStorage.removeItem(storageKey); showToast('已清空'); showDrawRecord(); updateRecentDrawTexts(); }
 
 function onDrawNumberInput(input, issueId) { let val = input.value.replace(/\D/g, ''); if (val.length > 2) val = val.slice(0, 2); input.value = val; const zodiacSpan = document.querySelector(`.draw-zodiac-${issueId}`); if (!zodiacSpan) return; if (val.length === 2) { const num = val.padStart(2, '0'); const intVal = parseInt(num); if (intVal >= 1 && intVal <= 49) { const zodiac = currentZodiacMap[num] || ''; zodiacSpan.textContent = zodiac; zodiacSpan.className = `draw-zodiac-${issueId} ${getZodiacColorClass(zodiac)}`; input.className = `draw-number-input draw-num-${issueId} ${getNumberColorClass(num)}`; return; } } zodiacSpan.textContent = ''; zodiacSpan.className = `draw-zodiac-${issueId}`; input.className = `draw-number-input draw-num-${issueId}`; }
-function editDrawRecord() { document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = false); document.querySelectorAll('.draw-pl-input').forEach(el => el.disabled = false); showToast('已进入编辑模式，可修改号码'); }
+function editDrawRecord() { document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = false); document.querySelectorAll('.draw-pl-input').forEach(el => el.disabled = false); showToast('已进入编辑模式，可修改号码和盈亏'); }
 
 async function saveDrawRecord(year) {
   const data = {};
+  // 优先读取盈亏输入框，确保 pl 值被正确写入
+  const plInputs = document.querySelectorAll('.draw-pl-input');
+  plInputs.forEach(input => {
+    const issueId = input.className.match(/draw-pl-(\d+)/)?.[1];
+    if (issueId) {
+      const plVal = input.value.trim();
+      data[issueId] = { number: '', pl: plVal };
+    }
+  });
+  // 再读取号码输入框
   const numberInputs = document.querySelectorAll('.draw-number-input');
   numberInputs.forEach(input => {
     const issueId = input.className.match(/draw-num-(\d+)/)?.[1];
     if (issueId) {
       let num = input.value.trim();
       if (/^\d$/.test(num)) num = '0' + num;
-      if (/^\d{2}$/.test(num) && parseInt(num) >= 1 && parseInt(num) <= 49) {} else if (num === '') {} else { num = ''; }
-      data[issueId] = { number: num, pl: '' };
-    }
-  });
-  // 读取盈亏输入框的值
-  const plInputs = document.querySelectorAll('.draw-pl-input');
-  plInputs.forEach(input => {
-    const issueId = input.className.match(/draw-pl-(\d+)/)?.[1];
-    if (issueId) {
-      const plVal = input.value.trim();
-      if (!data[issueId]) data[issueId] = { number: '', pl: '' };
-      data[issueId].pl = plVal;
+      if (!/^\d{2}$/.test(num) || parseInt(num) < 1 || parseInt(num) > 49) num = '';
+      if (!data[issueId]) data[issueId] = { number: num, pl: '' };
+      else data[issueId].number = num;
     }
   });
   const storageKey = `drawRecord_${currentRegion}_${year}`;
