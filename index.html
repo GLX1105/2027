@@ -1272,7 +1272,6 @@ function formatDateMD(dateStr) { const d = new Date(dateStr + 'T00:00:00'); retu
     }
   };
 })();
-// ===== 开奖记录窗口（盈亏列手动输入 + 保存后锁定 + 修改解锁 + 月度汇总嵌入第4组） =====
 function getZodiacColorClass(zodiac) { if (!zodiac) return ''; const redSet = new Set(['鼠','兔','马','鸡']); const blueSet = new Set(['虎','蛇','猴','猪']); const greenSet = new Set(['牛','龙','羊','狗']); if (redSet.has(zodiac)) return 'red-text'; if (blueSet.has(zodiac)) return 'blue-text'; if (greenSet.has(zodiac)) return 'green-text'; return ''; }
 function getNumberColorClass(num) { if (redNumbers.includes(num)) return 'red-text'; if (blueNumbers.includes(num)) return 'blue-text'; if (greenNumbers.includes(num)) return 'green-text'; return ''; }
 
@@ -1308,9 +1307,8 @@ async function showDrawRecord() {
   let totalPLSum = 0;
   for (let m = 0; m < 12; m++) totalPLSum += monthlyPL[m];
 
-  // 生成月度汇总表HTML
-  let monthlyInnerHtml = '';
-  monthlyInnerHtml += '<table class="monthly-summary-table" style="width:100%;margin:0;border:none;"><tbody>';
+  // 月度汇总HTML
+  let monthlyInnerHtml = '<table class="monthly-summary-table" style="width:100%;margin:0;border:none;"><tbody>';
   for (let m = 0; m < 12; m++) {
     const val = monthlyPL[m];
     let valText = '';
@@ -1337,8 +1335,7 @@ async function showDrawRecord() {
     for (let g = 0; g < groups; g++) {
       const idx = g * 100 + r;
       if (g === 3 && r >= startRow && r < startRow + monthlyRowsNeeded) {
-        const monthlyRowIdx = r - startRow;
-        if (monthlyRowIdx === 0) {
+        if (r === startRow) {
           tableHtml += `<td colspan="4" rowspan="${monthlyRowsNeeded}" style="vertical-align:top;padding:2px;">${monthlyInnerHtml}</td>`;
         }
       } else if (g === 3 && r >= startRow + monthlyRowsNeeded) {
@@ -1358,15 +1355,8 @@ async function showDrawRecord() {
         const zodiac = savedNumber ? (currentZodiacMap[numVal] || '') : '';
         const zColorClass = getZodiacColorClass(zodiac);
         tableHtml += `<td><span class="draw-zodiac-${iid} ${zColorClass}">${zodiac}</span></td>`;
-        // 盈亏列：手动输入框
-        let plColorClass = '';
-        const plDisabled = isReadOnly ? 'disabled' : '';
-        if (savedPL !== '') {
-          const plVal = parseFloat(savedPL);
-          if (plVal > 0) plColorClass = 'green-text';
-          else if (plVal < 0) plColorClass = 'red-text';
-        }
-        tableHtml += `<td><input type="text" class="draw-pl-input draw-pl-${iid} ${plColorClass}" value="${savedPL}" ${plDisabled} oninput="onDrawPLInput(this)" maxlength="7"></td>`;
+        // 盈亏列：纯净输入框
+        tableHtml += `<td><input type="text" class="draw-pl-input draw-pl-${iid}" value="${savedPL}" ${inputDisabled} maxlength="7"></td>`;
       } else {
         tableHtml += '<td></td><td></td><td></td><td></td>';
       }
@@ -1386,36 +1376,18 @@ async function showDrawRecord() {
   updateRecentDrawTexts();
 }
 
-function onDrawPLInput(input) {
-  let val = input.value.replace(/[^\d-]/g, '');
-  if (val.indexOf('-') > 0) val = val.replace(/-/g, '').replace(/^/, '-');
-  if (val === '-' || val === '') { input.className = 'draw-pl-input'; input.value = val; return; }
-  const numVal = parseFloat(val);
-  if (!isNaN(numVal)) {
-    input.value = val;
-    if (numVal > 0) input.className = 'draw-pl-input green-text';
-    else if (numVal < 0) input.className = 'draw-pl-input red-text';
-    else input.className = 'draw-pl-input';
-  }
-}
-
 async function clearAllDrawRecords(year) { if (!(await confirm(`确定清空${currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港'} ${year}年全部开奖号码吗？此操作不可恢复！`))) return; const storageKey = `drawRecord_${currentRegion}_${year}`; localStorage.removeItem(storageKey); showToast('已清空'); showDrawRecord(); updateRecentDrawTexts(); }
 
 function onDrawNumberInput(input, issueId) { let val = input.value.replace(/\D/g, ''); if (val.length > 2) val = val.slice(0, 2); input.value = val; const zodiacSpan = document.querySelector(`.draw-zodiac-${issueId}`); if (!zodiacSpan) return; if (val.length === 2) { const num = val.padStart(2, '0'); const intVal = parseInt(num); if (intVal >= 1 && intVal <= 49) { const zodiac = currentZodiacMap[num] || ''; zodiacSpan.textContent = zodiac; zodiacSpan.className = `draw-zodiac-${issueId} ${getZodiacColorClass(zodiac)}`; input.className = `draw-number-input draw-num-${issueId} ${getNumberColorClass(num)}`; return; } } zodiacSpan.textContent = ''; zodiacSpan.className = `draw-zodiac-${issueId}`; input.className = `draw-number-input draw-num-${issueId}`; }
-function editDrawRecord() { document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = false); document.querySelectorAll('.draw-pl-input').forEach(el => el.disabled = false); showToast('已进入编辑模式，可修改号码和盈亏'); }
+function editDrawRecord() { document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = false); document.querySelectorAll('.draw-pl-input').forEach(el => el.disabled = false); showToast('已进入编辑模式'); }
 
 async function saveDrawRecord(year) {
   const data = {};
-  // 优先读取盈亏输入框，确保 pl 值被正确写入
   const plInputs = document.querySelectorAll('.draw-pl-input');
   plInputs.forEach(input => {
     const issueId = input.className.match(/draw-pl-(\d+)/)?.[1];
-    if (issueId) {
-      const plVal = input.value.trim();
-      data[issueId] = { number: '', pl: plVal };
-    }
+    if (issueId) { data[issueId] = { number: '', pl: input.value.trim() }; }
   });
-  // 再读取号码输入框
   const numberInputs = document.querySelectorAll('.draw-number-input');
   numberInputs.forEach(input => {
     const issueId = input.className.match(/draw-num-(\d+)/)?.[1];
@@ -1429,14 +1401,13 @@ async function saveDrawRecord(year) {
   });
   const storageKey = `drawRecord_${currentRegion}_${year}`;
   localStorage.setItem(storageKey, JSON.stringify(data));
-  // 保存后禁用号码和盈亏输入框
   document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = true);
   document.querySelectorAll('.draw-pl-input').forEach(el => el.disabled = true);
   updateRecentDrawTexts();
   showToast('保存成功');
 }
 
-function saveRecentDrawCount() { const input = document.getElementById('recentDrawCountInput'); if (!input) return; const rawVal = input.value.trim(); if (rawVal === '') { localStorage.removeItem(`recentDrawCount_${currentRegion}`); updateRecentDrawTexts(); showToast('已清空期数设置，不再显示近期文本'); return; } const val = parseInt(rawVal); if (isNaN(val) || val < 1) { showToast('请输入有效的期数（≥1），或留空清空设置'); return; } localStorage.setItem(`recentDrawCount_${currentRegion}`, val.toString()); updateRecentDrawTexts(); showToast(`已设置显示最近${val}期`); }
+function saveRecentDrawCount() { const input = document.getElementById('recentDrawCountInput'); if (!input) return; const rawVal = input.value.trim(); if (rawVal === '') { localStorage.removeItem(`recentDrawCount_${currentRegion}`); updateRecentDrawTexts(); showToast('已清空期数设置'); return; } const val = parseInt(rawVal); if (isNaN(val) || val < 1) { showToast('请输入有效的期数'); return; } localStorage.setItem(`recentDrawCount_${currentRegion}`, val.toString()); updateRecentDrawTexts(); showToast(`已设置显示最近${val}期`); }
 
 function getCurrentIssueNumber(year, targetDateStr) { const target = new Date(targetDateStr + 'T00:00:00'); const start = new Date(year, 0, 1); if (isNaN(target) || isNaN(start)) return null; if (target < start) return null; const diff = target - start; const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1; return dayOfYear; }
 
@@ -1889,3 +1860,4 @@ window.onload = async () => {
 </script>
 </body>
 </html>
+    
