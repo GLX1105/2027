@@ -1473,7 +1473,7 @@ function loadPtParams() {
   } catch (e) {}
 }
 
-// ========== 渲染平特肖表格（卡片B）直接可编辑input ==========
+// ========== 渲染平特肖表格（直接可编辑input） ==========
 function renderPingtexiaoTable() {
   const container = document.getElementById('pingtexiaoTableContainer');
   if (!container) return;
@@ -1498,9 +1498,7 @@ function renderPingtexiaoTable() {
       const remain = (amountVal !== '') ? (parseFloat(amountVal) - (reportVal !== '' ? parseFloat(reportVal) : 0)) : '';
       const highlighted = highlightData[zodiac] === true ? ' pt-remain-highlight' : '';
       html += `<td class="${zcm[zodiac] || ''}">${zodiac}</td>`;
-      // 金额列：直接可编辑input
       html += `<td><input type="number" class="pingtexiao-input pingtexiao-amount amount-red-text" data-zodiac="${zodiac}" value="${amountVal}" oninput="updatePingtexiaoRemain(this)" onblur="savePingtexiaoCell()" style="width:50px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;"></td>`;
-      // 上报列：直接可编辑input
       html += `<td><input type="number" class="pingtexiao-input pingtexiao-report pt-report-text" data-zodiac="${zodiac}" value="${reportVal}" oninput="updatePingtexiaoRemain(this)" onblur="savePingtexiaoCell()" style="width:50px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid #ccc;border-radius:2px;"></td>`;
       html += `<td class="pt-remain-text${highlighted}" style="font-size:12px;" data-zodiac="${zodiac}">${remain !== '' ? remain : ''}</td>`;
     });
@@ -1509,7 +1507,6 @@ function renderPingtexiaoTable() {
   html += '</tbody></table>';
   container.innerHTML = html;
 
-  // 绑定事件：剩余列点击高亮
   container.querySelectorAll('.pt-remain-text').forEach(td => {
     td.onclick = function() { togglePingtexiaoHighlight(this, this.dataset.zodiac); };
   });
@@ -1521,7 +1518,6 @@ function updatePingtexiaoRemain(input) {
   const row = input.closest('tr');
   if (!row) return;
   const zodiac = input.dataset.zodiac;
-  // 找到同侧的金额和上报 input
   const allInputs = row.querySelectorAll('.pingtexiao-input');
   let amountInput, reportInput;
   for (const inp of allInputs) {
