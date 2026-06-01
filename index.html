@@ -2154,7 +2154,6 @@ function renderSmartDecision() {
   const currentIssue = getCurrentIssueNumber(year, fd);
   if (!currentIssue) { container.innerHTML = ''; return; }
 
-  // 收集最近N期开奖号码（按时间顺序，最近的在数组末尾）
   const drawList = [];
   const numCount = {};
   for (let i = currentIssue - period; i < currentIssue; i++) {
@@ -2184,7 +2183,6 @@ function renderSmartDecision() {
   let danCount = 0, shuangCount = 0;
   let xiaoCount = 0, daCount = 0;
 
-  // 每个维度的序列（按时间顺序，最近的在数组末尾）
   const zodiacSeq = [];
   const boseSeq = [];
   const weishuSeq = [];
@@ -2224,107 +2222,56 @@ function renderSmartDecision() {
     dxSeq.push(dx);
   });
 
-  // 分析连续函数：返回 { currentStreak, currentItem, prevStreakInfo }
-  function analyzeStreak(seq) {
-    if (seq.length === 0) return { currentStreak: 0, currentItem: '', prevStreakInfo: '' };
-    const lastItem = seq[seq.length - 1];
-    let streak = 0;
-    for (let i = seq.length - 1; i >= 0; i--) {
-      if (seq[i] === lastItem) streak++;
-      else break;
-    }
-    // 往前找上一轮连续（同样的item）
-    let prevStreakInfo = '';
-    let prevStart = -1, prevEnd = -1;
-    for (let i = seq.length - 1 - streak; i >= 0; i--) {
-      if (seq[i] === lastItem) {
-        if (prevEnd === -1) prevEnd = i;
-        prevStart = i;
-      } else if (prevEnd !== -1) {
-        break;
-      }
-    }
-    if (prevStart !== -1 && prevEnd !== -1) {
-      const prevLen = prevEnd - prevStart + 1;
-      const gapFromEnd = seq.length - 1 - prevEnd;
-      prevStreakInfo = `${gapFromEnd}期前连续${prevLen}期`;
-    }
-    return { currentStreak: streak, currentItem: lastItem, prevStreakInfo };
+  // 找出旺的维度（出现次数≥平均×1.5 或排名前3）
+  function getHotItems(countMap, allKeys) {
+    const items = allKeys.map(k => ({ name: k, cnt: countMap[k] || 0 }));
+    const avg = drawList.length / allKeys.length;
+    const hot = items.filter(item => item.cnt >= Math.max(avg * 1.5, 2));
+    hot.sort((a, b) => b.cnt - a.cnt);
+    return hot;
   }
 
-  function formatStreakText(name, seq, label) {
-    const { currentStreak, currentItem, prevStreakInfo } = analyzeStreak(seq);
-    let html = '';
-    if (currentStreak >= 4) {
-      html += `<span style="color:#e74c3c;font-weight:bold;">⚠ ${label}${currentStreak}连${currentItem}</span>`;
-    } else if (currentStreak >= 2) {
-      html += `<span style="color:#f39c12;">📈 ${label}${currentStreak}连${currentItem}</span>`;
-    } else {
-      html += `<span style="color:#888;">${label}${currentItem}</span>`;
-    }
-    if (prevStreakInfo) {
-      html += ` <span style="color:#aaa;font-size:10px;">(上轮${prevStreakInfo})</span>`;
-    } else if (currentStreak >= 2) {
-      html += ` <span style="color:#aaa;font-size:10px;">(近期首次连续)</span>`;
-    }
-    return html;
-  }
+  const hotZodiacs = getHotItems(zodiacCountLocal, ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪']);
+  const hotBoses = getHotItems(boseCount, ['红波','蓝波','绿波']);
+  const hotWeishus = getHotItems(weishuCount, ['0尾','1尾','2尾','3尾','4尾','5尾','6尾','7尾','8尾','9尾']);
+  const hotToushus = getHotItems(toushuCount, ['0头','1头','2头','3头','4头']);
+  const hotDS = getHotItems({'单':danCount,'双':shuangCount}, ['单','双']);
+  const hotJYSX = getHotItems({'家禽':jiaqinCount,'野兽':yeshouCount}, ['家禽','野兽']);
 
-  // 判定旺/冷
-  function getHotCold(items, avg) {
-    return items.map(item => {
-      if (item.cnt >= Math.max(avg * 1.5, 3)) return { ...item, tag: 'hot' };
-      if (item.cnt === 0) return { ...item, tag: 'cold' };
-      return { ...item, tag: '' };
+  // 辅助：从维度名获取号码列表
+  function getNumsByZodiac(z) { return (cfg.zodiac[z] || []).map(n => n.padStart(2, '0')); }
+  function getNumsByBose(b) { return (cfg.bose[b] || []).map(n => n.padStart(2, '0')); }
+  function getNumsByWeishu(w) { const d = w.replace('尾',''); return Array.from({length:5}, (_,i) => (i*10+parseInt(d)).toString().padStart(2,'0')).filter(n => parseInt(n)>=1 && parseInt(n)<=49); }
+  function getNumsByToushu(t) { const d = t.replace('头',''); return Array.from({length:10}, (_,i) => (parseInt(d)*10+i+1).toString().padStart(2,'0')).filter(n => parseInt(n)>=1 && parseInt(n)<=49); }
+  function getNumsByDS(ds) { const result = []; for (let i=1;i<=49;i++) { const n=i.toString().padStart(2,'0'); if ((ds==='单'&&i%2===1)||(ds==='双'&&i%2===0)) result.push(n); } return result; }
+  function getNumsByJYSX(jy) { const zs = cfg.shengxiaoAttr[jy] || []; const result = []; zs.forEach(z => { result.push(...getNumsByZodiac(z)); }); return [...new Set(result)]; }
+
+  // 收集旺维度对应的号码集合
+  function collectHotNums(hotItems, getNumsFn) {
+    const allNums = new Set();
+    hotItems.forEach(item => {
+      getNumsFn(item.name).forEach(n => allNums.add(n));
     });
+    return [...allNums];
   }
 
-  // 生肖
-  const zodiacItems = [];
-  const zodiacAll = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
-  zodiacAll.forEach(z => zodiacItems.push({ name: z, cnt: zodiacCountLocal[z] || 0 }));
-  const zodiacAnalyzed = getHotCold(zodiacItems, drawList.length / 12);
-  zodiacAnalyzed.sort((a, b) => b.cnt - a.cnt);
+  const hotNumsByZBW = new Set();
+  hotNumsByZBW.add(...collectHotNums(hotZodiacs, getNumsByZodiac));
+  hotNumsByZBW.add(...collectHotNums(hotBoses, getNumsByBose));
+  hotNumsByZBW.add(...collectHotNums(hotWeishus, getNumsByWeishu));
 
-  // 波色
-  const boseItems = ['红波','蓝波','绿波'].map(b => ({ name: b, cnt: boseCount[b] || 0 }));
-  const boseAnalyzed = getHotCold(boseItems, drawList.length / 3);
-  boseAnalyzed.sort((a, b) => b.cnt - a.cnt);
-
-  // 尾数
-  const weishuItems = [];
-  for (let i = 0; i <= 9; i++) weishuItems.push({ name: i + '尾', cnt: weishuCount[i + '尾'] || 0 });
-  const weishuAnalyzed = getHotCold(weishuItems, drawList.length / 10);
-  weishuAnalyzed.sort((a, b) => b.cnt - a.cnt);
-
-  // 头数
-  const toushuItems = [];
-  for (let i = 0; i <= 4; i++) toushuItems.push({ name: i + '头', cnt: toushuCount[i + '头'] || 0 });
-  const toushuAnalyzed = getHotCold(toushuItems, drawList.length / 5);
-  toushuAnalyzed.sort((a, b) => b.cnt - a.cnt);
-
-  // 家禽/野兽
-  const jysxItems = [
-    { name: '家禽', cnt: jiaqinCount },
-    { name: '野兽', cnt: yeshouCount }
-  ];
-  const jysxAnalyzed = getHotCold(jysxItems, drawList.length / 2);
-
-  // 单双
-  const dsItems = [
-    { name: '单', cnt: danCount },
-    { name: '双', cnt: shuangCount }
-  ];
-  const dsAnalyzed = getHotCold(dsItems, drawList.length / 2);
-
-  // 大小
-  const dxItems = [
-    { name: '小', cnt: xiaoCount },
-    { name: '大', cnt: daCount }
-  ];
-  const dxAnalyzed = getHotCold(dxItems, drawList.length / 2);
+  const hotNumsByTDJ = new Set();
+  hotNumsByTDJ.add(...collectHotNums(hotToushus, getNumsByToushu));
+  hotNumsByTDJ.add(...collectHotNums(hotDS, getNumsByDS));
+  hotNumsByTDJ.add(...collectHotNums(hotJYSX, getNumsByJYSX));
 
   // 渲染辅助
+  function getNumCls(n) {
+    if (redNumbers.includes(n)) return 'red-text';
+    if (blueNumbers.includes(n)) return 'blue-text';
+    if (greenNumbers.includes(n)) return 'green-text';
+    return '';
+  }
   function getZodiacCls(z) {
     const redSet = new Set(['鼠','兔','马','鸡']);
     const blueSet = new Set(['虎','蛇','猴','猪']);
@@ -2340,154 +2287,248 @@ function renderSmartDecision() {
     if (b === '绿波') return 'green-text';
     return '';
   }
-  function renderItem(item, clsFn) {
-    const cls = typeof clsFn === 'function' ? clsFn(item.name) : '';
-    const tagClass = item.tag === 'hot' ? 'hot-item' : (item.tag === 'cold' ? 'cold-item' : 'normal-item');
-    const prefix = item.tag === 'hot' ? '🔥' : (item.tag === 'cold' ? '❄️' : '');
-    return `<span class="${tagClass} ${cls}">${prefix}${item.name}(${item.cnt}次)</span>`;
+
+  // 生成建议
+  // 📊 总风险预警：旺生肖/波色/尾数 → 总风险表格中下注最高的号码
+  function getTopByTable(nums, table, sortDir, limit) {
+    const candidates = nums.filter(n => table[n] && table[n] > 0);
+    if (sortDir === 'desc') candidates.sort((a, b) => (table[b]||0) - (table[a]||0));
+    else candidates.sort((a, b) => (table[a]||0) - (table[b]||0));
+    return candidates.slice(0, limit || 10);
+  }
+  function getTopByReportRisk(nums, limit) {
+    const candidates = nums.filter(n => reportRiskData[n] !== undefined && reportRiskData[n] < 0);
+    candidates.sort((a, b) => (reportRiskData[a]||0) - (reportRiskData[b]||0));
+    return candidates.slice(0, limit || 10);
+  }
+
+  const hotZbwNums = [...hotNumsByZBW];
+  const hotTdjNums = [...hotNumsByTDJ];
+
+  const totalWarnNums = getTopByTable(hotZbwNums, tableBetData, 'desc', 10);
+  const urgentNums = getTopByReportRisk(hotZbwNums, 10);
+  const totalMonitorNums = getTopByTable(hotTdjNums, tableBetData, 'desc', 10);
+  const reportMonitorNums = getTopByReportRisk(hotTdjNums, 10);
+
+  // 📈 加注建议：风险≥0 + 冷
+  const betNums = [];
+  for (let i = 1; i <= 49; i++) {
+    const n = i.toString().padStart(2, '0');
+    const risk = reportRiskData[n];
+    const heat = numCount[n] || 0;
+    if ((risk === undefined || risk >= 0) && heat === 0) {
+      betNums.push(n);
+    }
+  }
+
+  // 统计建议中的生肖/波色
+  function countZodiacs(nums) {
+    const counts = {};
+    nums.forEach(n => { const z = currentZodiacMap[n] || ''; if (z) counts[z] = (counts[z] || 0) + 1; });
+    return Object.entries(counts).filter(([z, cnt]) => cnt >= 2).sort((a, b) => b[1] - a[1]);
+  }
+  function countBoses(nums) {
+    const counts = { '红波': 0, '蓝波': 0, '绿波': 0 };
+    nums.forEach(n => {
+      if (redNumbers.includes(n)) counts['红波']++;
+      else if (blueNumbers.includes(n)) counts['蓝波']++;
+      else if (greenNumbers.includes(n)) counts['绿波']++;
+    });
+    return Object.entries(counts).filter(([b, cnt]) => cnt >= 3).sort((a, b) => b[1] - a[1]);
   }
 
   // 构建HTML
   let html = '<div style="font-size:11px;">';
   html += `<div style="margin-bottom:4px;color:#666;">📊 开奖热度分析（最近${actualPeriod}期，共${drawList.length}条记录）</div>`;
 
-  // 生肖行
+  function formatStreakText(name, seq) {
+    if (seq.length === 0) return '';
+    const lastItem = seq[seq.length - 1];
+    let streak = 0;
+    for (let i = seq.length - 1; i >= 0; i--) {
+      if (seq[i] === lastItem) streak++;
+      else break;
+    }
+    if (streak >= 4) return `<span style="color:#e74c3c;font-weight:bold;">⚠ ${name}${streak}连${lastItem}</span>`;
+    if (streak >= 2) return `<span style="color:#f39c12;">📈 ${name}${streak}连${lastItem}</span>`;
+    return `<span style="color:#888;">${name}${lastItem}</span>`;
+  }
+
+  // 热度分析 - 生肖
   html += '<div style="margin-bottom:4px;"><b>生肖：</b>';
-  zodiacAnalyzed.forEach(item => { html += renderItem(item, getZodiacCls) + ' '; });
+  const zodiacAll = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+  const zodiacItems = zodiacAll.map(z => ({ name: z, cnt: zodiacCountLocal[z] || 0 }));
+  const zodiacAvg = drawList.length / 12;
+  zodiacItems.forEach(item => {
+    const tag = item.cnt >= Math.max(zodiacAvg * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
+    const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
+    const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
+    html += `<span class="${tagClass} ${getZodiacCls(item.name)}">${prefix}${item.name}(${item.cnt}次)</span> `;
+  });
   html += '</div>';
-  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('生肖', zodiacSeq, '生肖') + '</div>';
+  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('生肖', zodiacSeq) + '</div>';
 
-  // 波色行
+  // 热度分析 - 波色
   html += '<div style="margin-bottom:4px;"><b>波色：</b>';
-  boseAnalyzed.forEach(item => { html += renderItem(item, getBoseCls) + ' '; });
+  ['红波','蓝波','绿波'].forEach(b => {
+    const cnt = boseCount[b] || 0;
+    const tag = cnt >= Math.max(drawList.length/3 * 1.5, 3) ? 'hot' : (cnt === 0 ? 'cold' : '');
+    const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
+    const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
+    html += `<span class="${tagClass} ${getBoseCls(b)}">${prefix}${b}(${cnt}次)</span> `;
+  });
   html += '</div>';
-  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('波色', boseSeq, '波色') + '</div>';
+  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('波色', boseSeq) + '</div>';
 
-  // 尾数行
+  // 热度分析 - 尾数
   html += '<div style="margin-bottom:4px;"><b>尾数：</b>';
-  weishuAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  for (let i = 0; i <= 9; i++) {
+    const w = i + '尾'; const cnt = weishuCount[w] || 0;
+    const tag = cnt >= Math.max(drawList.length/10 * 1.5, 3) ? 'hot' : (cnt === 0 ? 'cold' : '');
+    const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
+    const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
+    html += `<span class="${tagClass}">${prefix}${w}(${cnt}次)</span> `;
+  }
   html += '</div>';
-  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('尾数', weishuSeq, '尾数') + '</div>';
+  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('尾数', weishuSeq) + '</div>';
 
-  // 头数行
+  // 热度分析 - 头数
   html += '<div style="margin-bottom:4px;"><b>头数：</b>';
-  toushuAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  for (let i = 0; i <= 4; i++) {
+    const t = i + '头'; const cnt = toushuCount[t] || 0;
+    const tag = cnt >= Math.max(drawList.length/5 * 1.5, 3) ? 'hot' : (cnt === 0 ? 'cold' : '');
+    const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
+    const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
+    html += `<span class="${tagClass}">${prefix}${t}(${cnt}次)</span> `;
+  }
   html += '</div>';
-  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('头数', toushuSeq, '头数') + '</div>';
+  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('头数', toushuSeq) + '</div>';
 
-  // 家禽/野兽行
+  // 热度分析 - 家禽/野兽
   html += '<div style="margin-bottom:4px;"><b>家禽/野兽：</b>';
-  jysxAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  [{name:'家禽',cnt:jiaqinCount},{name:'野兽',cnt:yeshouCount}].forEach(item => {
+    const tag = item.cnt >= Math.max(drawList.length/2 * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
+    const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
+    const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
+    html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
+  });
   html += '</div>';
-  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('家禽/野兽', jysxSeq, '') + '</div>';
+  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('', jysxSeq) + '</div>';
 
-  // 单双行
+  // 热度分析 - 单双
   html += '<div style="margin-bottom:4px;"><b>单双：</b>';
-  dsAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  [{name:'单',cnt:danCount},{name:'双',cnt:shuangCount}].forEach(item => {
+    const tag = item.cnt >= Math.max(drawList.length/2 * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
+    const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
+    const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
+    html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
+  });
   html += '</div>';
-  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('单双', dsSeq, '') + '</div>';
+  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('', dsSeq) + '</div>';
 
-  // 大小行
+  // 热度分析 - 大小
   html += '<div style="margin-bottom:4px;"><b>大小：</b>';
-  dxAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  [{name:'小',cnt:xiaoCount},{name:'大',cnt:daCount}].forEach(item => {
+    const tag = item.cnt >= Math.max(drawList.length/2 * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
+    const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
+    const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
+    html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
+  });
   html += '</div>';
-  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('大小', dxSeq, '') + '</div>';
+  html += '<div style="margin-bottom:6px;font-size:10px;color:#666;">' + formatStreakText('', dxSeq) + '</div>';
 
   // 智能建议
   html += '<div style="margin-top:8px;font-size:11px;">';
   html += '<div style="margin-bottom:2px;color:#666;">🎯 智能建议</div>';
 
-  const urgentNums = [];
-  const monitorNums = [];
-  const betNums = [];
-  for (let i = 1; i <= 49; i++) {
-    const n = i.toString().padStart(2, '0');
-    const risk = reportRiskData[n];
-    const heat = numCount[n] || 0;
-    if (risk !== undefined && risk < 0 && heat >= 2) {
-      urgentNums.push({ num: n, risk, heat });
-    } else if (risk !== undefined && risk < 0 && heat === 0) {
-      monitorNums.push({ num: n, risk, heat });
-    } else if ((risk === undefined || risk >= 0) && heat === 0) {
-      betNums.push({ num: n, risk: risk || 0, heat });
-    }
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+  // 第一行：总风险预警 + 紧急抛售
+  html += '<tr>';
+  // 📊 总风险预警
+  html += '<td style="width:50%;vertical-align:top;padding:4px;border:1px solid #eee;">';
+  html += '<div class="advice-urgent" style="margin-bottom:0;">';
+  html += '<b>📊 总风险预警（旺生肖/波色/尾数 → 总下注最高）</b><br>';
+  if (totalWarnNums.length > 0) {
+    html += '号码：' + totalWarnNums.map(n => `<span class="advice-num ${getNumCls(n)}" onclick="insertNumToRecognize('${n}')">${n}</span>`).join(' ') + ' ';
+    html += `<button class="copy-advice-btn" onclick="copyNumsToClipboard([${totalWarnNums.map(n=>"'"+n+"'").join(',')}])">📋复制</button><br>`;
+    const zc = countZodiacs(totalWarnNums);
+    const bc = countBoses(totalWarnNums);
+    if (zc.length > 0) html += '生肖：' + zc.map(([z,cnt]) => `<span class="${getZodiacCls(z)}">${z}</span>(含${cnt}个)`) .join('、') + '<br>';
+    if (bc.length > 0) html += '波色：' + bc.map(([b,cnt]) => `<span class="${getBoseCls(b)}">${b}</span>(含${cnt}个)`).join('、');
+  } else {
+    html += '<span style="color:#888;">暂无</span>';
   }
-  // 按下注数（风险绝对值）从大到小排列
-  urgentNums.sort((a, b) => a.risk - b.risk);
-
-  const zodiacUrgent = {};
-  const boseUrgent = {};
-  urgentNums.forEach(item => {
-    const z = currentZodiacMap[item.num] || '';
-    if (z) zodiacUrgent[z] = (zodiacUrgent[z] || 0) + 1;
-    if (redNumbers.includes(item.num)) boseUrgent['红波'] = (boseUrgent['红波'] || 0) + 1;
-    else if (blueNumbers.includes(item.num)) boseUrgent['蓝波'] = (boseUrgent['蓝波'] || 0) + 1;
-    else if (greenNumbers.includes(item.num)) boseUrgent['绿波'] = (boseUrgent['绿波'] || 0) + 1;
-  });
-  const zodiacAdvice = Object.entries(zodiacUrgent).filter(([z, cnt]) => cnt >= 2).sort((a, b) => b[1] - a[1]);
-  const boseAdvice = Object.entries(boseUrgent).filter(([b, cnt]) => cnt >= 3).sort((a, b) => b[1] - a[1]);
-
-  function getNumCls(n) {
-    if (redNumbers.includes(n)) return 'red-text';
-    if (blueNumbers.includes(n)) return 'blue-text';
-    if (greenNumbers.includes(n)) return 'green-text';
-    return '';
-  }
-
+  html += '</div>';
+  html += '</td>';
+  // 🚨 紧急抛售
+  html += '<td style="width:50%;vertical-align:top;padding:4px;border:1px solid #eee;">';
+  html += '<div class="advice-urgent" style="margin-bottom:0;">';
+  html += '<b>🚨 紧急抛售（旺生肖/波色/尾数 → 上报风险最高）</b><br>';
   if (urgentNums.length > 0) {
-    html += '<div class="advice-urgent">';
-    html += '<b>🚨 紧急抛售（高风险+旺）</b><br>';
-    html += '号码：' + urgentNums.map(item => {
-      const cls = getNumCls(item.num);
-      return `<span class="advice-num ${cls}" onclick="insertNumToRecognize('${item.num}')" title="点击填入识别弹窗">${item.num}</span>`;
-    }).join(' ') + ' ';
-    html += `<button class="copy-advice-btn" onclick="copyUrgentNums()">📋复制</button><br>`;
-    if (zodiacAdvice.length > 0) {
-      html += '生肖：' + zodiacAdvice.map(([z, cnt]) => {
-        const cls = getZodiacCls(z);
-        return `<span class="${cls}">${z}</span>(含${cnt}个紧急号)`;
-      }).join('、') + '<br>';
-    }
-    if (boseAdvice.length > 0) {
-      html += '波色：' + boseAdvice.map(([b, cnt]) => {
-        const cls = getBoseCls(b);
-        return `<span class="${cls}">${b}</span>(含${cnt}个紧急号)`;
-      }).join('、');
-    }
-    html += '</div>';
+    html += '号码：' + urgentNums.map(n => `<span class="advice-num ${getNumCls(n)}" onclick="insertNumToRecognize('${n}')">${n}</span>`).join(' ') + ' ';
+    html += `<button class="copy-advice-btn" onclick="copyNumsToClipboard([${urgentNums.map(n=>"'"+n+"'").join(',')}])">📋复制</button><br>`;
+    const zc = countZodiacs(urgentNums);
+    const bc = countBoses(urgentNums);
+    if (zc.length > 0) html += '生肖：' + zc.map(([z,cnt]) => `<span class="${getZodiacCls(z)}">${z}</span>(含${cnt}个)`) .join('、') + '<br>';
+    if (bc.length > 0) html += '波色：' + bc.map(([b,cnt]) => `<span class="${getBoseCls(b)}">${b}</span>(含${cnt}个)`).join('、');
+  } else {
+    html += '<span style="color:#888;">暂无</span>';
   }
+  html += '</div>';
+  html += '</td>';
+  html += '</tr>';
 
-  if (monitorNums.length > 0) {
-    html += '<div class="advice-monitor">';
-    html += '<b>🔍 重点监控（高风险+冷）</b><br>';
-    html += '号码：' + monitorNums.map(item => {
-      const cls = getNumCls(item.num);
-      return `<span class="${cls}">${item.num}</span>`;
-    }).join(' ') + '<br>';
-    html += '<span style="color:#888;">⚠ 暂时安全，如转旺需立即处理</span>';
-    html += '</div>';
+  // 第二行：总风险监控 + 重点监控
+  html += '<tr>';
+  // 📋 总风险监控
+  html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;">';
+  html += '<div class="advice-monitor" style="margin-bottom:0;">';
+  html += '<b>📋 总风险监控（旺头数/单双/家禽野兽 → 总下注最高）</b><br>';
+  if (totalMonitorNums.length > 0) {
+    html += '号码：' + totalMonitorNums.map(n => `<span class="${getNumCls(n)}">${n}</span>`).join(' ') + '<br>';
+    const zc = countZodiacs(totalMonitorNums);
+    const bc = countBoses(totalMonitorNums);
+    if (zc.length > 0) html += '生肖：' + zc.map(([z,cnt]) => `<span class="${getZodiacCls(z)}">${z}</span>(含${cnt}个)`) .join('、') + '<br>';
+    if (bc.length > 0) html += '波色：' + bc.map(([b,cnt]) => `<span class="${getBoseCls(b)}">${b}</span>(含${cnt}个)`).join('、');
+  } else {
+    html += '<span style="color:#888;">暂无</span>';
   }
+  html += '</div>';
+  html += '</td>';
+  // 🔍 重点监控
+  html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;">';
+  html += '<div class="advice-monitor" style="margin-bottom:0;">';
+  html += '<b>🔍 重点监控（旺头数/单双/家禽野兽 → 上报风险最高）</b><br>';
+  if (reportMonitorNums.length > 0) {
+    html += '号码：' + reportMonitorNums.map(n => `<span class="${getNumCls(n)}">${n}</span>`).join(' ') + '<br>';
+    const zc = countZodiacs(reportMonitorNums);
+    const bc = countBoses(reportMonitorNums);
+    if (zc.length > 0) html += '生肖：' + zc.map(([z,cnt]) => `<span class="${getZodiacCls(z)}">${z}</span>(含${cnt}个)`) .join('、') + '<br>';
+    if (bc.length > 0) html += '波色：' + bc.map(([b,cnt]) => `<span class="${getBoseCls(b)}">${b}</span>(含${cnt}个)`).join('、');
+  } else {
+    html += '<span style="color:#888;">暂无</span>';
+  }
+  html += '</div>';
+  html += '</td>';
+  html += '</tr>';
+  html += '</table>';
 
+  // 📈 加注建议
+  html += '<div style="margin-top:6px;">';
+  html += '<div class="advice-bet">';
+  html += '<b>📈 加注建议（正常风险+冷）</b><br>';
   if (betNums.length > 0) {
-    html += '<div class="advice-bet">';
-    html += '<b>📈 加注建议（正常风险+冷）</b><br>';
-    html += '号码：' + betNums.slice(0, 10).map(item => {
-      const cls = getNumCls(item.num);
-      return `<span class="${cls}">${item.num}</span>`;
-    }).join(' ') + '<br>';
-    html += '<span style="color:#888;">💡 可考虑适当加注，博反弹机会</span>';
-    html += '</div>';
+    html += '号码：' + betNums.slice(0, 10).map(n => `<span class="${getNumCls(n)}">${n}</span>`).join(' ');
+  } else {
+    html += '<span style="color:#888;">暂无</span>';
   }
-
-  if (urgentNums.length === 0 && monitorNums.length === 0 && betNums.length === 0) {
-    html += '<div class="advice-none">✅ 当前风险可控，无需抛售建议</div>';
-  }
-
   html += '</div>';
   html += '</div>';
+
+  html += '</div>'; // 建议区域结束
+  html += '</div>'; // 整体结束
 
   container.innerHTML = html;
-  window._urgentNums = urgentNums.map(item => item.num);
 }
 
 function insertNumToRecognize(num) {
@@ -2505,9 +2546,8 @@ function insertNumToRecognize(num) {
   showToast('已填入号码：' + num);
 }
 
-function copyUrgentNums() {
-  const nums = window._urgentNums || [];
-  if (nums.length === 0) { showToast('暂无紧急号码'); return; }
+function copyNumsToClipboard(nums) {
+  if (!nums || nums.length === 0) { showToast('暂无号码'); return; }
   navigator.clipboard.writeText(nums.join('-')).then(() => {
     showToast('已复制：' + nums.join('-'));
   }).catch(() => { showToast('复制失败'); });
