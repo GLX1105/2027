@@ -1136,7 +1136,7 @@ async function screenshotTable(tid){ const tbl=document.getElementById(tid); if(
 function renderReportAmountTable(){ const tbl=document.getElementById('reportAmountTable'); if(!tbl)return; tbl.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>金额</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const a=reportAmountData[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${a||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; tbl.innerHTML=th+tb; updateReportAmountTotal(); }
 function renderFrequencyCards(){ const nt=document.getElementById('numberFreqTable'); if(!nt)return; nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const cnt=numberCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; nt.innerHTML=th+tb; const zt=document.getElementById('zodiacFreqTable'); if(!zt)return; zt.innerHTML=''; const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪']; const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let zth='<thead><tr><th>生肖</th><th>次数</th><th>金额</th><th>上报</th><th>生肖</th><th>次数</th><th>金额</th><th>上报</th></tr></thead>',ztb='<tbody>'; for(let r=0;r<6;r++){ const l=lz[r],r2=rz[r]; const lc=zodiacCount[l]||0,rc=zodiacCount[r2]||0; const la=zodiacDirectAmount[l]||0,ra=zodiacDirectAmount[r2]||0; const lrp=zodiacReportAmount[l]||0,rrp=zodiacReportAmount[r2]||0; ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="amount-red-text">${la||''}</td><td class="report-red-text">${lrp||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td><td class="amount-red-text">${ra||''}</td><td class="report-red-text">${rrp||''}</td></tr>`; } ztb+='</tbody>'; zt.innerHTML=zth+ztb; }
 function renderAmountFrequencyCards(){ const nt=document.getElementById('numberAmountFreqTable'); if(!nt)return; nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</table></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; nt.innerHTML=th+tb; const zt=document.getElementById('zodiacAmountFreqTable'); if(!zt)return; zt.innerHTML=''; const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪']; const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let zth='<thead><tr><th>生肖</th><th>次数</th><th>金额</th><th>上报</th><th>生肖</th><th>次数</th><th>金额</th><th>上报</th></tr></thead>',ztb='<tbody>'; for(let r=0;r<6;r++){ const l=lz[r],r2=rz[r]; const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0; const la=zodiacFilteredAmount[l]||0,ra=zodiacFilteredAmount[r2]||0; const lrp=zodiacFilteredReportAmount[l]||0,rrp=zodiacFilteredReportAmount[r2]||0; ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="amount-red-text">${la||''}</td><td class="report-red-text">${lrp||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td><td class="amount-red-text">${ra||''}</td><td class="report-red-text">${rrp||''}</td></tr>`; } ztb+='</tbody>'; zt.innerHTML=zth+ztb; }
-    function getNumberListForCategory(cat,cfg){
+function getNumberListForCategory(cat,cfg){
   const nums=[];
   if(cat==='蓝大'||cat==='蓝波大'){ const lanbo = cfg.bose['蓝波']||[]; const dashu = cfg.daxiao['大']||[]; lanbo.forEach(n=>{ if(dashu.includes(n)) nums.push(n.padStart(2,'0')); }); return [...new Set(nums)]; }
   if(cat==='蓝小'||cat==='蓝波小'){ const lanbo = cfg.bose['蓝波']||[]; const xiao = cfg.daxiao['小']||[]; lanbo.forEach(n=>{ if(xiao.includes(n)) nums.push(n.padStart(2,'0')); }); return [...new Set(nums)]; }
@@ -2133,9 +2133,9 @@ function renderSmartDecision() {
   const container = document.getElementById('smartDecisionContent');
   if (!container) return;
 
-  // 获取分析期数（优先使用卡片内的输入框，其次用开奖记录的设置）
+  // 获取分析期数
   const periodInput = document.getElementById('smartPeriodInput');
-  let period = 10; // 默认10期
+  let period = 10;
   if (periodInput && periodInput.value.trim()) {
     period = parseInt(periodInput.value) || 10;
   } else {
@@ -2154,12 +2154,9 @@ function renderSmartDecision() {
   try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) {}
 
   const currentIssue = getCurrentIssueNumber(year, fd);
-  if (!currentIssue) {
-    container.innerHTML = '<div style="text-align:center;color:#666;padding:10px;">暂无开奖数据，请先录入开奖记录</div>';
-    return;
-  }
+  if (!currentIssue) { container.innerHTML = ''; return; }
 
-  // 收集最近N期有开奖记录的号码
+  // 收集最近N期开奖号码
   const drawList = [];
   for (let i = currentIssue - period; i < currentIssue; i++) {
     if (i < 1) continue;
@@ -2173,16 +2170,12 @@ function renderSmartDecision() {
     }
   }
 
-  if (drawList.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:#666;padding:10px;">最近' + period + '期暂无开奖数据</div>';
-    return;
-  }
+  if (drawList.length === 0) { container.innerHTML = ''; return; }
 
-  // 计算实际分析的期数
   const actualPeriod = Math.min(period, currentIssue - 1);
   const cfg = getAllConfigData();
 
-  // 统计各维度出现次数
+  // 统计各维度（不含号码展示，但保留numCount用于建议计算）
   const numCount = {};
   const zodiacCountLocal = {};
   const boseCount = {};
@@ -2193,30 +2186,22 @@ function renderSmartDecision() {
   let xiaoCount = 0, daCount = 0;
 
   drawList.forEach(num => {
-    // 号码
     numCount[num] = (numCount[num] || 0) + 1;
-    // 生肖
     const z = currentZodiacMap[num] || '';
     if (z) zodiacCountLocal[z] = (zodiacCountLocal[z] || 0) + 1;
-    // 波色
     if (redNumbers.includes(num)) boseCount['红波'] = (boseCount['红波'] || 0) + 1;
     else if (blueNumbers.includes(num)) boseCount['蓝波'] = (boseCount['蓝波'] || 0) + 1;
     else if (greenNumbers.includes(num)) boseCount['绿波'] = (boseCount['绿波'] || 0) + 1;
-    // 尾数
     const ws = num.slice(-1) + '尾';
     weishuCount[ws] = (weishuCount[ws] || 0) + 1;
-    // 头数
     const ts = num[0] + '头';
     toushuCount[ts] = (toushuCount[ts] || 0) + 1;
-    // 家禽/野兽
     const jiaqinZodiacs = cfg.shengxiaoAttr['家禽'] || [];
     if (z && jiaqinZodiacs.includes(z)) jiaqinCount++;
     else yeshouCount++;
-    // 单双
     const intNum = parseInt(num);
     if (intNum % 2 === 1) danCount++;
     else shuangCount++;
-    // 大小
     if (intNum <= 24) xiaoCount++;
     else daCount++;
   });
@@ -2230,18 +2215,7 @@ function renderSmartDecision() {
     });
   }
 
-  // 号码维度（只显示有出现的）
-  const numItems = [];
-  for (let i = 1; i <= 49; i++) {
-    const n = i.toString().padStart(2, '0');
-    numItems.push({ name: n, cnt: numCount[n] || 0 });
-  }
-  const numAvg = drawList.length / 49;
-  const numAnalyzed = getHotCold(numItems, numAvg).filter(item => item.cnt > 0 || item.tag === 'cold');
-  numAnalyzed.sort((a, b) => b.cnt - a.cnt);
-  const numDisplay = numAnalyzed.slice(0, 15);
-
-  // 生肖维度
+  // 生肖
   const zodiacItems = Object.keys(zodiacCountLocal).map(z => ({ name: z, cnt: zodiacCountLocal[z] }));
   const zodiacAll = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
   zodiacAll.forEach(z => { if (!zodiacCountLocal[z]) zodiacItems.push({ name: z, cnt: 0 }); });
@@ -2249,28 +2223,22 @@ function renderSmartDecision() {
   const zodiacAnalyzed = getHotCold(zodiacItems, zodiacAvg);
   zodiacAnalyzed.sort((a, b) => b.cnt - a.cnt);
 
-  // 波色维度
+  // 波色
   const boseItems = ['红波','蓝波','绿波'].map(b => ({ name: b, cnt: boseCount[b] || 0 }));
   const boseAvg = drawList.length / 3;
   const boseAnalyzed = getHotCold(boseItems, boseAvg);
   boseAnalyzed.sort((a, b) => b.cnt - a.cnt);
 
-  // 尾数维度
+  // 尾数
   const weishuItems = [];
-  for (let i = 0; i <= 9; i++) {
-    const w = i + '尾';
-    weishuItems.push({ name: w, cnt: weishuCount[w] || 0 });
-  }
+  for (let i = 0; i <= 9; i++) weishuItems.push({ name: i + '尾', cnt: weishuCount[i + '尾'] || 0 });
   const weishuAvg = drawList.length / 10;
   const weishuAnalyzed = getHotCold(weishuItems, weishuAvg);
   weishuAnalyzed.sort((a, b) => b.cnt - a.cnt);
 
-  // 头数维度
+  // 头数
   const toushuItems = [];
-  for (let i = 0; i <= 4; i++) {
-    const t = i + '头';
-    toushuItems.push({ name: t, cnt: toushuCount[t] || 0 });
-  }
+  for (let i = 0; i <= 4; i++) toushuItems.push({ name: i + '头', cnt: toushuCount[i + '头'] || 0 });
   const toushuAvg = drawList.length / 5;
   const toushuAnalyzed = getHotCold(toushuItems, toushuAvg);
   toushuAnalyzed.sort((a, b) => b.cnt - a.cnt);
@@ -2299,13 +2267,7 @@ function renderSmartDecision() {
   const dxAvg = drawList.length / 2;
   const dxAnalyzed = getHotCold(dxItems, dxAvg);
 
-  // 渲染颜色辅助函数
-  function getNumCls(n) {
-    if (redNumbers.includes(n)) return 'red-text';
-    if (blueNumbers.includes(n)) return 'blue-text';
-    if (greenNumbers.includes(n)) return 'green-text';
-    return '';
-  }
+  // 渲染辅助
   function getZodiacCls(z) {
     const redSet = new Set(['鼠','兔','马','鸡']);
     const blueSet = new Set(['虎','蛇','猴','猪']);
@@ -2321,14 +2283,10 @@ function renderSmartDecision() {
     if (b === '绿波') return 'green-text';
     return '';
   }
-
   function renderItem(item, clsFn) {
     const cls = typeof clsFn === 'function' ? clsFn(item.name) : '';
     const tagClass = item.tag === 'hot' ? 'hot-item' : (item.tag === 'cold' ? 'cold-item' : 'normal-item');
     const prefix = item.tag === 'hot' ? '🔥' : (item.tag === 'cold' ? '❄️' : '');
-    if (item.name.match(/^\d{2}$/)) {
-      return `<span class="${tagClass} ${cls}" onclick="insertNumToRecognize('${item.name}')" title="点击填入识别弹窗">${prefix}${item.name}(${item.cnt}次)</span>`;
-    }
     return `<span class="${tagClass} ${cls}">${prefix}${item.name}(${item.cnt}次)</span>`;
   }
 
@@ -2337,11 +2295,7 @@ function renderSmartDecision() {
   html += `<div style="margin-bottom:4px;color:#666;">📊 开奖热度分析（最近${actualPeriod}期，共${drawList.length}条记录）</div>`;
 
   html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
-  // 第一行：号码 + 生肖
   html += '<tr>';
-  html += '<td style="width:25%;vertical-align:top;padding:4px;border:1px solid #eee;"><b>号码</b><br>';
-  numDisplay.forEach(item => { html += renderItem(item, getNumCls) + ' '; });
-  html += '</td>';
   html += '<td style="width:25%;vertical-align:top;padding:4px;border:1px solid #eee;"><b>生肖</b><br>';
   zodiacAnalyzed.forEach(item => { html += renderItem(item, getZodiacCls) + ' '; });
   html += '</td>';
@@ -2351,12 +2305,11 @@ function renderSmartDecision() {
   html += '<td style="width:25%;vertical-align:top;padding:4px;border:1px solid #eee;"><b>尾数</b><br>';
   weishuAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
   html += '</td>';
-  html += '</tr>';
-  // 第二行：头数 + 家禽/野兽 + 单双 + 大小
-  html += '<tr>';
-  html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;"><b>头数</b><br>';
+  html += '<td style="width:25%;vertical-align:top;padding:4px;border:1px solid #eee;"><b>头数</b><br>';
   toushuAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
   html += '</td>';
+  html += '</tr>';
+  html += '<tr>';
   html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;"><b>家禽/野兽</b><br>';
   jysxAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
   html += '</td>';
@@ -2366,6 +2319,7 @@ function renderSmartDecision() {
   html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;"><b>大小</b><br>';
   dxAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
   html += '</td>';
+  html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;"></td>';
   html += '</tr>';
   html += '</table>';
 
@@ -2373,7 +2327,6 @@ function renderSmartDecision() {
   html += '<div style="margin-top:8px;font-size:11px;">';
   html += '<div style="margin-bottom:2px;color:#666;">🎯 智能建议</div>';
 
-  // 紧急抛售：reportRiskData[num] < 0 且 drawList中出现次数 >= 2
   const urgentNums = [];
   const monitorNums = [];
   const betNums = [];
@@ -2391,7 +2344,6 @@ function renderSmartDecision() {
   }
   urgentNums.sort((a, b) => a.risk - b.risk);
 
-  // 统计生肖和波色
   const zodiacUrgent = {};
   const boseUrgent = {};
   urgentNums.forEach(item => {
@@ -2453,12 +2405,10 @@ function renderSmartDecision() {
     html += '<div class="advice-none">✅ 当前风险可控，无需抛售建议</div>';
   }
 
-  html += '</div>'; // 建议区域结束
-  html += '</div>'; // 整体结束
+  html += '</div>';
+  html += '</div>';
 
   container.innerHTML = html;
-
-  // 存储紧急号码供复制使用
   window._urgentNums = urgentNums.map(item => item.num);
 }
 
@@ -2469,19 +2419,12 @@ function insertNumToRecognize(num) {
     showRecognizeModal();
     setTimeout(() => {
       const ta2 = document.querySelector('.source-order-input');
-      if (ta2) {
-        ta2.value = num;
-        convertOrderText();
-      }
+      if (ta2) { ta2.value = num; convertOrderText(); }
     }, 300);
     return;
   }
   const currentVal = ta.value.trim();
-  if (currentVal) {
-    ta.value = currentVal + '-' + num;
-  } else {
-    ta.value = num;
-  }
+  ta.value = currentVal ? currentVal + '-' + num : num;
   convertOrderText();
   showToast('已填入号码：' + num);
 }
@@ -2489,16 +2432,10 @@ function insertNumToRecognize(num) {
 // 复制紧急号码
 function copyUrgentNums() {
   const nums = window._urgentNums || [];
-  if (nums.length === 0) {
-    showToast('暂无紧急号码');
-    return;
-  }
-  const text = nums.join('-');
-  navigator.clipboard.writeText(text).then(() => {
-    showToast('已复制：' + text);
-  }).catch(() => {
-    showToast('复制失败');
-  });
+  if (nums.length === 0) { showToast('暂无紧急号码'); return; }
+  navigator.clipboard.writeText(nums.join('-')).then(() => {
+    showToast('已复制：' + nums.join('-'));
+  }).catch(() => { showToast('复制失败'); });
 }
 
 // ========== 重写 generateReportTable 追加卡片更新 ==========
@@ -2626,94 +2563,54 @@ window.onload = async () => {
     const activeEl = document.activeElement;
     const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
 
-    // Alt+1：打开/关闭识别弹窗
     if (e.altKey && e.key === '1') {
       e.preventDefault();
-      if (recognizeWin) {
-        closeRecognizeModal();
-      } else {
-        showRecognizeModal();
-      }
+      if (recognizeWin) { closeRecognizeModal(); } else { showRecognizeModal(); }
       return;
     }
-
-    // Alt+2：保存上报（仅在识别弹窗打开时）
     if (e.altKey && e.key === '2') {
       e.preventDefault();
-      if (recognizeWin) {
-        saveReportOrder();
-      }
+      if (recognizeWin) { saveReportOrder(); }
       return;
     }
-
-    // Alt+3：保存下单（仅在识别弹窗打开时）
     if (e.altKey && e.key === '3') {
       e.preventDefault();
-      if (recognizeWin) {
-        saveOrder();
-      }
+      if (recognizeWin) { saveOrder(); }
       return;
     }
-
-    // Alt+4：聚焦订单输入框（仅在识别弹窗打开时）
     if (e.altKey && e.key === '4') {
       e.preventDefault();
-      if (recognizeWin) {
-        const ta = document.querySelector('.source-order-input');
-        if (ta) ta.focus();
-      }
+      if (recognizeWin) { const ta = document.querySelector('.source-order-input'); if (ta) ta.focus(); }
       return;
     }
-
-    // Esc：关闭当前最上层的弹窗（不在输入框中时）
     if (e.key === 'Escape' && !isInputFocused) {
-      if (closeTopWindow()) {
-        e.preventDefault();
-      }
+      if (closeTopWindow()) { e.preventDefault(); }
       return;
     }
-
-    // Ctrl+V：粘贴订单（仅在识别弹窗打开时）
     if (e.ctrlKey && e.key === 'v') {
-      if (recognizeWin && !isInputFocused) {
-        e.preventDefault();
-        pasteOrder();
-      }
+      if (recognizeWin && !isInputFocused) { e.preventDefault(); pasteOrder(); }
       return;
     }
-
-    // Ctrl+Delete：清空输入框（仅在识别弹窗打开时）
     if (e.ctrlKey && e.key === 'Delete') {
-      if (recognizeWin) {
-        e.preventDefault();
-        clearAllInput();
-      }
+      if (recognizeWin) { e.preventDefault(); clearAllInput(); }
       return;
     }
-
-    // F5：刷新当前数据（阻止浏览器刷新）
     if (e.key === 'F5') {
       e.preventDefault();
       updateTableFromRecords();
       showToast('数据已刷新');
       return;
     }
-
-    // Ctrl+E：导出数据
     if (e.ctrlKey && e.key === 'e') {
       e.preventDefault();
       exportData();
       return;
     }
-
-    // Ctrl+I：导入数据
     if (e.ctrlKey && e.key === 'i') {
       e.preventDefault();
       importData();
       return;
     }
-
-    // Ctrl+D：打开数据库配置
     if (e.ctrlKey && e.key === 'd') {
       e.preventDefault();
       showDatabase();
@@ -2723,4 +2620,4 @@ window.onload = async () => {
 };
 </script>
 </body>
-</html>
+</html>   
