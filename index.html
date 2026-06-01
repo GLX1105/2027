@@ -1141,7 +1141,7 @@ async function screenshotTable(tid){ const tbl=document.getElementById(tid); if(
 function renderReportAmountTable(){ const tbl=document.getElementById('reportAmountTable'); if(!tbl)return; tbl.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>金额</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const a=reportAmountData[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${a||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; tbl.innerHTML=th+tb; updateReportAmountTotal(); }
 function renderFrequencyCards(){ const nt=document.getElementById('numberFreqTable'); if(!nt)return; nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</tr></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const cnt=numberCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; nt.innerHTML=th+tb; const zt=document.getElementById('zodiacFreqTable'); if(!zt)return; zt.innerHTML=''; const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪']; const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let zth='<thead><tr><th>生肖</th><th>次数</th><th>金额</th><th>上报</th><th>生肖</th><th>次数</th><th>金额</th><th>上报</th></tr></thead>',ztb='<tbody>'; for(let r=0;r<6;r++){ const l=lz[r],r2=rz[r]; const lc=zodiacCount[l]||0,rc=zodiacCount[r2]||0; const la=zodiacDirectAmount[l]||0,ra=zodiacDirectAmount[r2]||0; const lrp=zodiacReportAmount[l]||0,rrp=zodiacReportAmount[r2]||0; ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="amount-red-text">${la||''}</td><td class="report-red-text">${lrp||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td><td class="amount-red-text">${ra||''}</td><td class="report-red-text">${rrp||''}</td></tr>`; } ztb+='</tbody>'; zt.innerHTML=zth+ztb; }
 function renderAmountFrequencyCards(){ const nt=document.getElementById('numberAmountFreqTable'); if(!nt)return; nt.innerHTML=''; const cols=[...Array(5)].map((_,c)=>Array.from({length:c===4?9:10},(_,r)=>(c*10+r+1).toString().padStart(2,'0'))); let th='<thead><tr>'; for(let c=0;c<5;c++)th+='<th>号码</th><th>次数</th>'; th+='</table></thead>'; let tb='<tbody>'; for(let r=0;r<10;r++){ tb+='<tr>'; for(let c=0;c<5;c++){ const n=cols[c][r]||''; if(n){ const cnt=numberAmountCount[n]||0; const cls=redNumbers.includes(n)?'red-text':(blueNumbers.includes(n)?'blue-text':'green-text'); tb+=`<td class="${cls}">${n}</td><td class="black-text">${cnt||''}</td>`; }else{tb+='<td></td><td></td>';} } tb+='</tr>'; } tb+='</tbody>'; nt.innerHTML=th+tb; const zt=document.getElementById('zodiacAmountFreqTable'); if(!zt)return; zt.innerHTML=''; const lz=['鼠','牛','虎','兔','龙','蛇'],rz=['马','羊','猴','鸡','狗','猪']; const zcm={'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let zth='<thead><tr><th>生肖</th><th>次数</th><th>金额</th><th>上报</th><th>生肖</th><th>次数</th><th>金额</th><th>上报</th></tr></thead>',ztb='<tbody>'; for(let r=0;r<6;r++){ const l=lz[r],r2=rz[r]; const lc=zodiacAmountCount[l]||0,rc=zodiacAmountCount[r2]||0; const la=zodiacFilteredAmount[l]||0,ra=zodiacFilteredAmount[r2]||0; const lrp=zodiacFilteredReportAmount[l]||0,rrp=zodiacFilteredReportAmount[r2]||0; ztb+=`<tr><td class="${zcm[l]}">${l}</td><td class="black-text">${lc||''}</td><td class="amount-red-text">${la||''}</td><td class="report-red-text">${lrp||''}</td><td class="${zcm[r2]}">${r2}</td><td class="black-text">${rc||''}</td><td class="amount-red-text">${ra||''}</td><td class="report-red-text">${rrp||''}</td></tr>`; } ztb+='</tbody>'; zt.innerHTML=zth+ztb; }
-    function getNumberListForCategory(cat,cfg){
+ function getNumberListForCategory(cat,cfg){
   const nums=[];
   if(cat==='蓝大'||cat==='蓝波大'){ const lanbo = cfg.bose['蓝波']||[]; const dashu = cfg.daxiao['大']||[]; lanbo.forEach(n=>{ if(dashu.includes(n)) nums.push(n.padStart(2,'0')); }); return [...new Set(nums)]; }
   if(cat==='蓝小'||cat==='蓝波小'){ const lanbo = cfg.bose['蓝波']||[]; const xiao = cfg.daxiao['小']||[]; lanbo.forEach(n=>{ if(xiao.includes(n)) nums.push(n.padStart(2,'0')); }); return [...new Set(nums)]; }
@@ -2010,31 +2010,34 @@ async function updateSingleBetDisplay() {
   if (!singleBetVisible) { row.style.display = 'none'; return; }
 
   const orders = await getOrderRecords();
-  const singleNums = new Set();
+  const fd = document.getElementById('filterDate')?.value || getTodayCST();
+  const filteredOrders = orders.filter(r => r.date === fd);
+  const singleCount = {};
 
-  orders.forEach(order => {
+  filteredOrders.forEach(order => {
     const lines = order.content.split('\n').filter(l => l.trim());
-    const validLines = lines.filter(l => {
-      const m = l.match(/^(.+?)\s+各数\s+(\d+)$/);
-      return m && parseInt(m[2]) > 0;
-    });
-    validLines.forEach(l => {
+    lines.forEach(l => {
       const m = l.match(/^(\d{2})\s+各数\s+(\d+)$/);
-      if (m && validLines.length === 1) {
-        singleNums.add(m[1]);
+      if (m && parseInt(m[2]) > 0) {
+        singleCount[m[1]] = (singleCount[m[1]] || 0) + 1;
       }
     });
   });
 
-  if (singleNums.size > 0) {
-    const sorted = [...singleNums].sort((a, b) => parseInt(a) - parseInt(b));
+  const singleNums = Object.keys(singleCount);
+
+  if (singleNums.length > 0) {
+    const sorted = singleNums.sort((a, b) => parseInt(a) - parseInt(b));
     function getNumCls(n) {
       if (redNumbers.includes(n)) return 'red-text';
       if (blueNumbers.includes(n)) return 'blue-text';
       if (greenNumbers.includes(n)) return 'green-text';
       return '';
     }
-    display.innerHTML = sorted.map(n => `<span class="${getNumCls(n)}">${n}</span>`).join(' ');
+    display.innerHTML = sorted.map(n => {
+      const cnt = singleCount[n];
+      return `<span class="${getNumCls(n)}">${n}${cnt >= 2 ? '(' + cnt + '次)' : ''}</span>`;
+    }).join(' ');
     row.style.display = '';
   } else {
     display.innerHTML = '<span style="color:#888;">暂无</span>';
@@ -2046,7 +2049,7 @@ function copySingleBetNums() {
   const display = document.getElementById('singleBetDisplay');
   if (!display) return;
   const spans = display.querySelectorAll('span');
-  const nums = Array.from(spans).map(s => s.textContent.trim()).filter(t => /^\d{2}$/.test(t));
+  const nums = Array.from(spans).map(s => s.textContent.replace(/\(\d+次\)/, '').trim()).filter(t => /^\d{2}$/.test(t));
   if (nums.length === 0) { showToast('暂无号码'); return; }
   navigator.clipboard.writeText(nums.join('-')).then(() => {
     showToast('已复制：' + nums.join('-'));
@@ -2303,6 +2306,79 @@ function renderSmartDecision() {
     dxSeq.push(dx);
   });
 
+  // 收集冷维度（次数为0的维度名）
+  function getColdItems(countMap, allKeys) {
+    return allKeys.filter(k => (countMap[k] || 0) === 0);
+  }
+
+  const coldZodiacs = getColdItems(zodiacCountLocal, ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪']);
+  const coldBoses = getColdItems(boseCount, ['红波','蓝波','绿波']);
+  const coldWeishus = getColdItems(weishuCount, Array.from({length:10}, (_,i) => i+'尾'));
+  const coldToushus = getColdItems(toushuCount, Array.from({length:5}, (_,i) => i+'头'));
+  const coldJYSX = getColdItems({'家禽':jiaqinCount,'野兽':yeshouCount}, ['家禽','野兽']);
+  const coldDS = getColdItems({'单':danCount,'双':shuangCount}, ['单','双']);
+  const coldDX = getColdItems({'小':xiaoCount,'大':daCount}, ['小','大']);
+
+  // 辅助：根据维度名获取号码集合
+  function getNumsByZodiac(z) { return (cfg.zodiac[z] || []).map(n => n.padStart(2, '0')); }
+  function getNumsByBose(b) { return (cfg.bose[b] || []).map(n => n.padStart(2, '0')); }
+  function getNumsByWeishu(w) { const d = w.replace('尾',''); return Array.from({length:5}, (_,i) => (i*10+parseInt(d)).toString().padStart(2,'0')).filter(n => parseInt(n)>=1 && parseInt(n)<=49); }
+  function getNumsByToushu(t) { const d = t.replace('头',''); return Array.from({length:10}, (_,i) => (parseInt(d)*10+i+1).toString().padStart(2,'0')).filter(n => parseInt(n)>=1 && parseInt(n)<=49); }
+  function getNumsByDS(ds) { const result = []; for (let i=1;i<=49;i++) { const n=i.toString().padStart(2,'0'); if ((ds==='单'&&i%2===1)||(ds==='双'&&i%2===0)) result.push(n); } return result; }
+  function getNumsByJYSX(jy) { const zs = cfg.shengxiaoAttr[jy] || []; const result = []; zs.forEach(z => { result.push(...getNumsByZodiac(z)); }); return [...new Set(result)]; }
+  function getNumsByDX(dx) { const result = []; for (let i=1;i<=49;i++) { const n=i.toString().padStart(2,'0'); if ((dx==='小'&&i<=24)||(dx==='大'&&i>=25)) result.push(n); } return result; }
+
+  // 构建冷门监控行
+  function buildColdRow(label, coldItems, getNumsFn) {
+    let rowHtml = '';
+    for (const item of coldItems) {
+      const nums = getNumsFn(item);
+      const riskNums = nums.filter(n => reportRiskData[n] !== undefined && reportRiskData[n] < 0);
+      if (riskNums.length > 0) {
+        riskNums.sort((a, b) => (reportRiskData[a] || 0) - (reportRiskData[b] || 0));
+        const numSpans = riskNums.map(n => {
+          const cls = (redNumbers.includes(n) ? 'red-text' : (blueNumbers.includes(n) ? 'blue-text' : 'green-text'));
+          return `<span class="${cls}">${n}</span>`;
+        }).join(' ');
+        const numsForCopy = riskNums.join('-');
+        rowHtml += `<div style="margin-bottom:4px;"><b>${label}-${item}：</b>${numSpans} <button class="copy-advice-btn" onclick="copyNumsToClipboard('${numsForCopy}')">📋复制</button></div>`;
+      }
+    }
+    return rowHtml;
+  }
+
+  let coldMonitorHtml = '';
+  coldMonitorHtml += buildColdRow('冷生肖', coldZodiacs, getNumsByZodiac);
+  coldMonitorHtml += buildColdRow('冷波色', coldBoses, getNumsByBose);
+  coldMonitorHtml += buildColdRow('冷尾数', coldWeishus, getNumsByWeishu);
+  coldMonitorHtml += buildColdRow('冷头数', coldToushus, getNumsByToushu);
+  coldMonitorHtml += buildColdRow('冷家禽野兽', coldJYSX, getNumsByJYSX);
+  coldMonitorHtml += buildColdRow('冷单双', coldDS, getNumsByDS);
+  coldMonitorHtml += buildColdRow('冷大小', coldDX, getNumsByDX);
+
+  // 如果有冷门数据，添加复制全部按钮
+  let allColdNums = [];
+  const coldPairs = [
+    { items: coldZodiacs, fn: getNumsByZodiac },
+    { items: coldBoses, fn: getNumsByBose },
+    { items: coldWeishus, fn: getNumsByWeishu },
+    { items: coldToushus, fn: getNumsByToushu },
+    { items: coldJYSX, fn: getNumsByJYSX },
+    { items: coldDS, fn: getNumsByDS },
+    { items: coldDX, fn: getNumsByDX }
+  ];
+  coldPairs.forEach(pair => {
+    pair.items.forEach(item => {
+      const nums = pair.fn(item);
+      allColdNums.push(...nums.filter(n => reportRiskData[n] !== undefined && reportRiskData[n] < 0));
+    });
+  });
+  allColdNums = [...new Set(allColdNums)];
+  if (allColdNums.length > 0) {
+    coldMonitorHtml += `<div style="margin-top:6px;"><button class="copy-advice-btn" onclick="copyNumsToClipboard('${allColdNums.join('-')}')">📋复制全部冷门号码</button></div>`;
+  }
+
+  // 连续分析辅助函数
   function analyzeStreak(seq, name, clsFn) {
     if (seq.length === 0) return '';
     const lastItem = seq[seq.length - 1];
@@ -2343,6 +2419,7 @@ function renderSmartDecision() {
     return '';
   }
 
+  // 构建热度分析HTML
   let html = '<div style="font-size:11px;">';
   html += `<div style="margin-bottom:4px;color:#666;">📊 开奖热度分析（最近${actualPeriod}期，共${drawList.length}条记录）</div>`;
 
@@ -2436,6 +2513,7 @@ function renderSmartDecision() {
   });
   html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(dxSeq, '', '') + '</div>';
 
+  // 智能建议区域（两列布局）
   html += '<div style="margin-top:8px;font-size:11px;">';
   html += '<div style="margin-bottom:2px;color:#666;">🎯 智能建议</div>';
 
@@ -2496,6 +2574,12 @@ function renderSmartDecision() {
     }
   }
 
+  // 两列表格
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;"><tr>';
+  
+  // 左列
+  html += '<td style="width:50%;vertical-align:top;padding:4px;border:1px solid #eee;">';
+  
   html += '<div class="advice-urgent" style="margin-bottom:6px;">';
   html += `<b>🚨 紧急抛售（倍数：<input type="number" id="urgentMultiplierInput" value="${multiplier}" min="0.1" step="0.1" style="width:45px;padding:1px 3px;font-size:11px;border:1px solid #ccc;border-radius:3px;" onchange="renderSmartDecision()"> 均值：${avgBet.toFixed(0)}）</b><br>`;
   if (urgentNums.length > 0) {
@@ -2517,7 +2601,7 @@ function renderSmartDecision() {
   }
   html += '</div>';
 
-  html += '<div class="advice-bet">';
+  html += '<div class="advice-bet" style="margin-bottom:6px;">';
   html += '<b>📈 加注建议（正常风险+冷）</b><br>';
   if (betNums.length > 0) {
     html += '号码：' + betNums.slice(0, 10).map(n => `<span class="${getNumCls(n)}">${n}</span>`).join(' ');
@@ -2525,9 +2609,25 @@ function renderSmartDecision() {
     html += '<span style="color:#888;">暂无</span>';
   }
   html += '</div>';
+  
+  html += '</td>';
+  
+  // 右列
+  html += '<td style="width:50%;vertical-align:top;padding:4px;border:1px solid #eee;">';
+  html += '<div class="advice-monitor" style="margin-bottom:6px;">';
+  html += '<b>❄️ 冷门监控（冷维度 × 上报风险负数）</b><br>';
+  if (coldMonitorHtml) {
+    html += coldMonitorHtml;
+  } else {
+    html += '<span style="color:#888;">暂无冷门风险号码</span>';
+  }
+  html += '</div>';
+  html += '</td>';
+  
+  html += '</tr></table>';
 
-  html += '</div>';
-  html += '</div>';
+  html += '</div>'; // 建议区域结束
+  html += '</div>'; // 整体结束
 
   container.innerHTML = html;
 }
@@ -2549,8 +2649,9 @@ function insertNumToRecognize(num) {
 
 function copyNumsToClipboard(nums) {
   if (!nums || nums.length === 0) { showToast('暂无号码'); return; }
-  navigator.clipboard.writeText(nums.join('-')).then(() => {
-    showToast('已复制：' + nums.join('-'));
+  const str = Array.isArray(nums) ? nums.join('-') : nums;
+  navigator.clipboard.writeText(str).then(() => {
+    showToast('已复制：' + str);
   }).catch(() => { showToast('复制失败'); });
 }
 
@@ -2736,4 +2837,4 @@ window.onload = async () => {
 };
 </script>
 </body>
-</html>
+</html>   
