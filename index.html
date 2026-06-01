@@ -10,7 +10,7 @@
 body {background:#f5f7fa;font-size:14px;line-height:1.4;overflow-x:hidden;position:relative;}
 
 @media screen and (max-width: 768px) {
-    .container {flex-direction:column!important;padding:10px!important;gap:10px!important;}
+    .container {flex-direction:column!important;padding:10px!important;}
     .recognize-wrap {width:100%!important;order:1;margin-right:0!important;}
     .risk-report-area {width:100%!important;position:relative!important;top:auto!important;flex:none!important;order:2;margin-top:0!important;}
     .summary-row {display:flex!important;flex-wrap:wrap!important;justify-content:space-between!important;gap:5px!important;}
@@ -90,6 +90,7 @@ input[type="number"]{-moz-appearance:textfield;}
 .btn-recognize{background:#27ae60!important;border-color:#2ecc71!important;color:#fff!important;}
 .btn-recognize:hover{background:#2ecc71!important;}
 
+/* ===== 修改后的布局容器 ===== */
 .container{
     width:100%;
     padding:10px;
@@ -480,7 +481,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
     </div>
   </div>
 </div>
-<div class="storage-info" id="storageInfo">
+    <div class="storage-info" id="storageInfo">
   <p><span class="label">今日数量：</span><span class="value" id="todayOrderCount">0</span></p>
   <p><span class="label">订单数量：</span><span class="value" id="orderCount">0</span></p>
   <p><span class="label">已用空间：</span><span class="value" id="usedSpace">0 MB</span></p>
@@ -1237,7 +1238,7 @@ async function resetTable(){
 function clearAllInput(){ const si=document.querySelector('.source-order-input'); if(si)si.value=''; const re=document.getElementById('orderResult'); if(re)re.innerHTML=''; updateOrderTotalDisplay(); }
 async function pasteOrder(){ try{ const text=await navigator.clipboard.readText(); if(text){const si=document.querySelector('.source-order-input');if(si){si.value=text;convertOrderText();}} } catch(err){showToast('无法访问剪贴板');} }
 
-// ===== 导出导入（修复盈亏导入合并逻辑） =====
+// ===== 导出导入 =====
 async function exportData(){
   try{
     const orders=await getAllOrdersUnfiltered(); const reports=await getAllReportsUnfiltered();
@@ -1519,7 +1520,6 @@ function copyCardANumbers(type) { const contentEl = document.getElementById('car
   function closeTopWindow() { const topWin = getTopFloatingWindow(); if (!topWin) return; const closeBtn = topWin.querySelector('.window-controls button:last-child') || topWin.querySelector('.close-database-btn'); if (closeBtn) { closeBtn.click(); } else { topWin.remove(); } }
   function focusOrOpenRecognize() { let win = document.getElementById('recognizeWin'); if (!win) { showRecognizeModal(); } else { highestZ += 1; win.style.zIndex = highestZ; const textarea = win.querySelector('.source-order-input'); if (textarea) textarea.focus(); } }
 
-  // 回车行为：各弹窗/卡片中按回车，触发对应添加或失焦
   document.addEventListener('keydown', (e) => {
     const key = e.key; const alt = e.altKey; const target = e.target;
 
@@ -1535,25 +1535,15 @@ function copyCardANumbers(type) { const contentEl = document.getElementById('car
     // 回车行为（焦点在可编辑元素上时）
     if (key === 'Enter' && isEditable(target)) {
       const el = target;
-      // 添加用户弹窗
       if (el.id === 'newUserName') { e.preventDefault(); addUserAction(); return; }
-      // 替换预设
       if (el.id === 'presetOld' || el.id === 'presetNew') { e.preventDefault(); addReplacePreset(); return; }
-      // 分类缩写
       if (el.id === 'aliasOld' || el.id === 'aliasNew') { e.preventDefault(); addCategoryAlias(); return; }
-      // 前缀管理
       if (el.id === 'newPrefix') { e.preventDefault(); addPrefix(); return; }
-      // 金额前缀
       if (el.id === 'newAmountPrefix') { e.preventDefault(); addAmountPrefix(); return; }
-      // 金额后缀
       if (el.id === 'newAmountSuffix') { e.preventDefault(); addAmountSuffix(); return; }
-      // 数据库配置输入框回车跳转到下一个输入框
       if (el.classList.contains('config-input')) { e.preventDefault(); const allInputs = [...document.querySelectorAll('.config-input')]; const idx = allInputs.indexOf(el); if (idx >= 0 && idx < allInputs.length - 1) { allInputs[idx + 1].focus(); allInputs[idx + 1].select(); } return; }
-      // 开奖记录号码框回车跳转到同期盈亏框
       if (el.classList.contains('draw-number-input')) { e.preventDefault(); const match = el.className.match(/draw-num-(\d+)/); if (match) { const plInput = document.querySelector(`.draw-pl-${match[1]}`); if (plInput) plInput.focus(); } return; }
-      // 开奖记录盈亏框回车跳转到下一期号码框
       if (el.classList.contains('draw-pl-input')) { e.preventDefault(); const match = el.className.match(/draw-pl-(\d+)/); if (match) { const currentIssue = parseInt(match[1]); const allNumInputs = [...document.querySelectorAll('.draw-number-input')]; const next = allNumInputs.map(inp => parseInt(inp.className.match(/draw-num-(\d+)/)?.[1] || '0')).filter(id => id > currentIssue).sort((a,b) => a-b)[0]; if (next) { const nextInput = document.querySelector(`.draw-num-${next}`); if (nextInput) nextInput.focus(); } else { const saveBtn = document.querySelector('#drawRecordWin .btn-save-order'); if (saveBtn) saveBtn.click(); } } return; }
-      // 以下输入框回车直接失焦
       if (el.classList.contains('pt-edit-input') || el.classList.contains('pt-small-input') || el.classList.contains('small-input') || el.classList.contains('range-input') || el.id === 'prizeNumberInput' || el.id === 'filterInputCardA' || el.id === 'topNInput') { e.preventDefault(); el.blur(); return; }
     }
   });
