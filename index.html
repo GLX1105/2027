@@ -1346,7 +1346,7 @@ function formatDateMD(dateStr) { const d = new Date(dateStr + 'T00:00:00'); retu
     }
   };
 })();
-  // ===== 开奖记录窗口（盈亏列颜色渲染 + 月度汇总按月统计 + 保存后实时更新汇总） =====
+    // ===== 开奖记录窗口（盈亏列颜色渲染 + 月度汇总按月统计 + 保存后实时更新汇总） =====
 function getZodiacColorClass(zodiac) { if (!zodiac) return ''; const redSet = new Set(['鼠','兔','马','鸡']); const blueSet = new Set(['虎','蛇','猴','猪']); const greenSet = new Set(['牛','龙','羊','狗']); if (redSet.has(zodiac)) return 'red-text'; if (blueSet.has(zodiac)) return 'blue-text'; if (greenSet.has(zodiac)) return 'green-text'; return ''; }
 function getNumberColorClass(num) { if (redNumbers.includes(num)) return 'red-text'; if (blueNumbers.includes(num)) return 'blue-text'; if (greenNumbers.includes(num)) return 'green-text'; return ''; }
 
@@ -2036,4 +2036,4 @@ window.onload = async () => {
 };
 </script>
 </body>
-</html>  
+</html>
