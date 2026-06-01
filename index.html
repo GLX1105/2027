@@ -174,11 +174,11 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .result-area-new{flex:1;}
 .result-content{width:100%;height:100%;border:none;padding:8px;resize:none;font-size:13px;outline:none;overflow-y:auto;}
 
-/* 右侧存储抽屉 - 固定在右下角最底部 */
+/* 右侧存储抽屉 - 透明面板，固定在右下角底部 */
 .storage-drawer{position:fixed;right:0;bottom:20px;z-index:1500;display:flex;align-items:flex-end;}
 .storage-tab{background:#2c3e50;color:#fff;writing-mode:vertical-rl;padding:10px 6px;border-radius:8px 0 0 8px;cursor:pointer;font-size:13px;letter-spacing:2px;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:none;}
 .storage-tab:hover{background:#1a252f;}
-.storage-panel{display:none;background:rgba(255,255,255,0.9);backdrop-filter:blur(10px);border:1px solid #eee;border-radius:12px 0 0 12px;padding:12px 16px;width:170px;box-shadow:-2px 2px 12px rgba(0,0,0,0.1);font-size:12px;color:#333;position:relative;}
+.storage-panel{display:none;background:none;backdrop-filter:none;border:1px solid rgba(238,238,238,0.5);border-radius:12px 0 0 12px;padding:12px 16px;width:170px;box-shadow:-2px 2px 12px rgba(0,0,0,0.1);font-size:12px;color:#333;position:relative;}
 .storage-panel.show{display:block;}
 .storage-panel p{margin:4px 0;display:flex;justify-content:space-between;}
 .storage-panel .label{color:#000;}
@@ -833,6 +833,7 @@ function showRecognizeModal() {
   const textarea = win.querySelector('.source-order-input');
   if (textarea) { const draftKey = `recognizeDraft_${currentRegion}`; const draft = localStorage.getItem(draftKey); if (draft) { textarea.value = draft; convertOrderText(); } textarea.addEventListener('dragover', (e) => { e.preventDefault(); }); textarea.addEventListener('drop', (e) => { e.preventDefault(); const data = e.dataTransfer.getData('text/plain'); if (data) { textarea.value = data; convertOrderText(); showToast('已拖入文本'); } }); }
   makeWindowDraggable('recognizeWin'); highestZ += 1; win.style.zIndex = highestZ;
+  win.setAttribute('data-window-type', 'recognize');
 }
 
 function closeRecognizeModal() { const textarea = document.querySelector('.source-order-input'); if (textarea) { const draftKey = `recognizeDraft_${currentRegion}`; localStorage.setItem(draftKey, textarea.value); } const win = document.getElementById('recognizeWin'); if (win) win.remove(); }
@@ -2076,6 +2077,137 @@ window.onload = async () => {
     if (isAdmin()) document.getElementById('cardMgrBtn').style.display = '';
     await window._systemReady();
   }
+
+  // ===== 全局快捷键 =====
+  function closeTopWindow() {
+    const recognizeWin = document.getElementById('recognizeWin');
+    if (recognizeWin) { closeRecognizeModal(); return true; }
+    const orderWin = document.getElementById('orderWin');
+    if (orderWin) { orderWin.remove(); return true; }
+    const reportWin = document.getElementById('reportWin');
+    if (reportWin) { reportWin.remove(); return true; }
+    const drawWin = document.getElementById('drawRecordWin');
+    if (drawWin) { drawWin.remove(); return true; }
+    const recycleWin = document.getElementById('recycleWin');
+    if (recycleWin) { recycleWin.remove(); return true; }
+    const databaseModal = document.getElementById('databaseModal');
+    if (databaseModal && databaseModal.style.display === 'flex') { hideDatabase(); return true; }
+    const prefixWin = document.getElementById('prefixWin');
+    if (prefixWin) { prefixWin.remove(); return true; }
+    const amountPrefixWin = document.getElementById('amountPrefixWin');
+    if (amountPrefixWin) { amountPrefixWin.remove(); return true; }
+    const amountSuffixWin = document.getElementById('amountSuffixWin');
+    if (amountSuffixWin) { amountSuffixWin.remove(); return true; }
+    const categoryAliasWin = document.getElementById('categoryAliasWin');
+    if (categoryAliasWin) { categoryAliasWin.remove(); return true; }
+    const replacePresetWin = document.getElementById('replacePresetWin');
+    if (replacePresetWin) { replacePresetWin.remove(); return true; }
+    const cardManagerWin = document.getElementById('cardManagerWin');
+    if (cardManagerWin) { cardManagerWin.remove(); return true; }
+    const userManagerWin = document.getElementById('userManagerWin');
+    if (userManagerWin) { userManagerWin.remove(); return true; }
+    return false;
+  }
+
+  document.addEventListener('keydown', function(e) {
+    const recognizeWin = document.getElementById('recognizeWin');
+    const activeEl = document.activeElement;
+    const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+
+    // Alt+1：打开/关闭识别弹窗
+    if (e.altKey && e.key === '1') {
+      e.preventDefault();
+      if (recognizeWin) {
+        closeRecognizeModal();
+      } else {
+        showRecognizeModal();
+      }
+      return;
+    }
+
+    // Alt+2：保存上报（仅在识别弹窗打开时）
+    if (e.altKey && e.key === '2') {
+      e.preventDefault();
+      if (recognizeWin) {
+        saveReportOrder();
+      }
+      return;
+    }
+
+    // Alt+3：保存下单（仅在识别弹窗打开时）
+    if (e.altKey && e.key === '3') {
+      e.preventDefault();
+      if (recognizeWin) {
+        saveOrder();
+      }
+      return;
+    }
+
+    // Alt+4：聚焦订单输入框（仅在识别弹窗打开时）
+    if (e.altKey && e.key === '4') {
+      e.preventDefault();
+      if (recognizeWin) {
+        const ta = document.querySelector('.source-order-input');
+        if (ta) ta.focus();
+      }
+      return;
+    }
+
+    // Esc：关闭当前最上层的弹窗（不在输入框中时）
+    if (e.key === 'Escape' && !isInputFocused) {
+      if (closeTopWindow()) {
+        e.preventDefault();
+      }
+      return;
+    }
+
+    // Ctrl+V：粘贴订单（仅在识别弹窗打开时）
+    if (e.ctrlKey && e.key === 'v') {
+      if (recognizeWin && !isInputFocused) {
+        e.preventDefault();
+        pasteOrder();
+      }
+      return;
+    }
+
+    // Ctrl+Delete：清空输入框（仅在识别弹窗打开时）
+    if (e.ctrlKey && e.key === 'Delete') {
+      if (recognizeWin) {
+        e.preventDefault();
+        clearAllInput();
+      }
+      return;
+    }
+
+    // F5：刷新当前数据（阻止浏览器刷新）
+    if (e.key === 'F5') {
+      e.preventDefault();
+      updateTableFromRecords();
+      showToast('数据已刷新');
+      return;
+    }
+
+    // Ctrl+E：导出数据
+    if (e.ctrlKey && e.key === 'e') {
+      e.preventDefault();
+      exportData();
+      return;
+    }
+
+    // Ctrl+I：导入数据
+    if (e.ctrlKey && e.key === 'i') {
+      e.preventDefault();
+      importData();
+      return;
+    }
+
+    // Ctrl+D：打开数据库配置
+    if (e.ctrlKey && e.key === 'd') {
+      e.preventDefault();
+      showDatabase();
+      return;
+    }
+  });
 };
 </script>
 </body>
