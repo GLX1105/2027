@@ -10,9 +10,9 @@
 body {background:#f5f7fa;font-size:14px;line-height:1.4;overflow-x:hidden;position:relative;}
 
 @media screen and (max-width: 768px) {
-    .container {flex-direction:column!important;padding:10px!important;}
+    .container {flex-direction:column!important;padding:10px!important;gap:10px!important;}
     .recognize-wrap {width:100%!important;order:1;margin-right:0!important;}
-    .risk-report-area {width:100%!important;position:relative!important;top:auto!important;flex:none!important;order:2;margin-top:0!important;margin-left:0!important;}
+    .risk-report-area {width:100%!important;position:relative!important;top:auto!important;flex:none!important;order:2;margin-top:0!important;}
     .summary-row {display:flex!important;flex-wrap:wrap!important;justify-content:space-between!important;gap:5px!important;}
     .summary-item {width:48%!important;margin-bottom:0!important;font-size:12px!important;padding:6px 8px!important;}
     .summary-item label {display:block!important;text-align:left!important;margin-bottom:2px!important;}
@@ -90,24 +90,23 @@ input[type="number"]{-moz-appearance:textfield;}
 .btn-recognize{background:#27ae60!important;border-color:#2ecc71!important;color:#fff!important;}
 .btn-recognize:hover{background:#2ecc71!important;}
 
-.container {
-    width: 100%;
-    padding: 10px;
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
+.container{
+    width:100%;
+    padding:10px;
+    display:flex;
+    flex-direction:row;
+    align-items:flex-start;
 }
-.recognize-wrap {
-    flex: 1;
-    min-width: 0;
-    margin-right: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+.recognize-wrap{
+    flex:1;
+    min-width:0;
+    margin-right:10px;
+    display:flex;
+    flex-direction:column;
+    gap:15px;
 }
-.risk-report-area {
-    flex: 0 0 420px;
-    margin-left: 0;
+.risk-report-area{
+    flex:0 0 420px;
 }
 
 .card{background:#fff;border:1px solid #eee;border-radius:14px;padding:15px;box-shadow:0 4px 12px rgba(0,0,0,0.08);transition:all 0.25s ease;}
@@ -481,7 +480,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
     </div>
   </div>
 </div>
-    <div class="storage-info" id="storageInfo">
+<div class="storage-info" id="storageInfo">
   <p><span class="label">今日数量：</span><span class="value" id="todayOrderCount">0</span></p>
   <p><span class="label">订单数量：</span><span class="value" id="orderCount">0</span></p>
   <p><span class="label">已用空间：</span><span class="value" id="usedSpace">0 MB</span></p>
