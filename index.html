@@ -194,6 +194,17 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
     -webkit-touch-callout: none;
 }
 
+/* 智能决策卡片样式 */
+.hot-item{background:#ffe0e0;font-weight:bold;display:inline-block;padding:1px 4px;border-radius:3px;margin:1px;cursor:pointer;}
+.cold-item{background:#e0e8ff;font-weight:bold;display:inline-block;padding:1px 4px;border-radius:3px;margin:1px;cursor:pointer;}
+.normal-item{display:inline-block;padding:1px 4px;border-radius:3px;margin:1px;}
+.advice-urgent{border:2px solid #e74c3c;background:#ffeaea;padding:8px;border-radius:6px;margin-bottom:6px;}
+.advice-monitor{border:2px solid #f39c12;background:#fff8e1;padding:8px;border-radius:6px;margin-bottom:6px;}
+.advice-bet{border:2px solid #27ae60;background:#e8f5e9;padding:8px;border-radius:6px;margin-bottom:6px;}
+.advice-none{border:2px solid #ddd;background:#fafafa;padding:8px;border-radius:6px;margin-bottom:6px;}
+.copy-advice-btn{padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;background:#8e44ad;color:#fff;border:none;cursor:pointer;margin-left:6px;}
+.advice-num{cursor:pointer;text-decoration:underline;}
+
 /* 其他原有卡片内部并列样式 */
 .freq-container{display:flex;gap:15px;flex-wrap:wrap;}
 .freq-card{flex:1;min-width:220px;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:10px;}
@@ -375,7 +386,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
         </div>
       </div>
 
-      <!-- 上报控制卡片保持不变 -->
+      <!-- 上报控制卡片：截断阈值 + 智能决策中心 -->
       <div class="card" style="margin-top:0;">
         <div class="card-title">上报控制</div>
         <div class="freq-container">
@@ -390,6 +401,14 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
               <div id="reportCapInfo" style="font-size:12px;color:#333;line-height:1.6; white-space:pre-wrap; word-break:break-word; flex-shrink:0;"></div>
               <span id="parseResultArea" class="parse-inline" style="flex:1; min-width:0;"></span>
             </div>
+          </div>
+          <!-- 智能决策中心 -->
+          <div class="freq-card" id="smartDecisionCard">
+            <div class="freq-title">
+              🧠 智能决策中心
+              <span style="font-size:11px;font-weight:normal;margin-left:8px;">期数：<input type="number" id="smartPeriodInput" class="range-input" value="" placeholder="10" min="1" style="width:50px;" onchange="renderSmartDecision()"></span>
+            </div>
+            <div id="smartDecisionContent" style="font-size:12px;line-height:1.6;"></div>
           </div>
         </div>
       </div>
@@ -772,7 +791,7 @@ async function switchRegion(region) {
   }
   const orderWin = document.getElementById('orderWin'); if (orderWin) orderWin.remove();
   const reportWin = document.getElementById('reportWin'); if (reportWin) reportWin.remove();
-  setCurrentRegion(region); clearMemoryData(); await updateTableFromRecords(); updateSelects(); updateRecycleCount(); updateRecentDrawTexts();
+  setCurrentRegion(region); clearMemoryData(); await updateTableFromRecords(); updateSelects(); updateRecycleCount(); updateRecentDrawTexts(); renderSmartDecision();
   showToast(`已切换至${region === 'macau' ? '澳门' : region === 'hongkong' ? '香港' : '粤港'}`);
 }
 
@@ -801,7 +820,7 @@ function insertCategoryText(text) {
   ta.setSelectionRange(start + text.length, start + text.length);
   convertOrderText();
 }
- // ===== 识别弹窗（标题显示当前地区） =====
+    // ===== 识别弹窗（标题显示当前地区） =====
 function showRecognizeModal() {
   if (document.getElementById('recognizeWin')) return;
   const regionLabel = currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港';
@@ -987,8 +1006,8 @@ function tokenizeAndJoin(content) { const cfg = getAllConfigData(); const vc = g
 
 function getAllValidCategories(cfg) { const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); s.add('蓝大'); s.add('蓝小'); s.add('红大'); s.add('红小'); s.add('绿大'); s.add('绿小'); s.add('蓝波大'); s.add('蓝波小'); s.add('红波大'); s.add('红波小'); s.add('绿波大'); s.add('绿波小'); return s; }
 
-async function saveOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:''; const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText; if(!textToUse)return; const vl=textToUse.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,true,date); const si=document.querySelector('.source-order-input'); if(si)si.value=''; if(resultEl)resultEl.innerHTML=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); calculateStorageUsage(); showStorageDrawerTemporary(5000); }
-async function saveReportOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:''; const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText; if(!textToUse)return; const vl=textToUse.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveReportOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,false,date); const si=document.querySelector('.source-order-input'); if(si)si.value=''; if(resultEl)resultEl.innerHTML=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); calculateStorageUsage(); showStorageDrawerTemporary(5000); }
+async function saveOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:''; const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText; if(!textToUse)return; const vl=textToUse.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,true,date); const si=document.querySelector('.source-order-input'); if(si)si.value=''; if(resultEl)resultEl.innerHTML=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); calculateStorageUsage(); showStorageDrawerTemporary(5000); renderSmartDecision(); }
+async function saveReportOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:''; const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText; if(!textToUse)return; const vl=textToUse.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveReportOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,false,date); const si=document.querySelector('.source-order-input'); if(si)si.value=''; if(resultEl)resultEl.innerHTML=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); calculateStorageUsage(); showStorageDrawerTemporary(5000); renderSmartDecision(); }
 function countItemsInLine(line,cfg,keys){ const m=line.match(/([\u4e00-\u9fa5\d\-]+)\s+各数\s+(\d+)/); if(!m)return{numbers:[],zodiacs:[],amount:0}; let cont=m[1]; const amt=parseInt(m[2])||0; const items=cont.split('-').map(i=>i.trim()).filter(i=>i); const nums=[],zods=[]; items.forEach(item=>{ if(/^\d+$/.test(item))nums.push(item.padStart(2,'0')); else if(cfg.shengxiaoAttr[item]){ const zs=cfg.shengxiaoAttr[item]||[]; zs.forEach(z=>zods.push(z)); } else if(cfg.zodiac[item])zods.push(item); else if(cfg.toushuDanshuang&&cfg.toushuDanshuang[item]){ (cfg.toushuDanshuang[item]||[]).forEach(n=>nums.push(n.padStart(2,'0'))); } else { const nl=getNumberListForCategory(item,cfg); if(nl&&nl.length>0)nl.forEach(n=>nums.push(n.padStart(2,'0'))); } }); return{numbers:nums,zodiacs:zods,amount:amt}; }
 function processCurrentOrder(input,user,isNormal,date=null){ const cfg=getAllConfigData(); const keys=getAllValidCategories(cfg); const lines=input.split('\n').filter(l=>l.trim()); if(!userBetData[user])userBetData[user]={}; const curZod=localStorage.getItem('selectedStartZodiac')||'马'; lines.forEach(line=>{ const{numbers,zodiacs,amount}=countItemsInLine(line,cfg,keys); const nMin=parseInt(document.getElementById('numAmountMin')?.value)||1,nMax=parseInt(document.getElementById('numAmountMax')?.value)||50000; const zMin=parseInt(document.getElementById('zodiacAmountMin')?.value)||1,zMax=parseInt(document.getElementById('zodiacAmountMax')?.value)||50000; if(isNormal){ if(zodiacs.length>0){ zodiacs.forEach(z=>{ const w=z===curZod?5:4; zodiacWeightedTotal+=amount*w; }); }else if(numbers.length>0){ numberOrderTotal+=numbers.length*amount; } } numbers.forEach(num=>{ if(isNormal){ userBetData[user][num]=(userBetData[user][num]||0)+amount; tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount; numberCount[num]=(numberCount[num]||0)+1; if(amount>=nMin&&amount<=nMax)numberAmountCount[num]=(numberAmountCount[num]||0)+1; originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount; if(zodiacs.length === 0) directOrderAmount[num] = (directOrderAmount[num]||0) + amount; } else { userBetData[user][num]=(userBetData[user][num]||0)-amount; reportBetData[num]=(reportBetData[num]||0)-amount; reportAmountData[num]=(reportAmountData[num]||0)+amount; if(zodiacs.length === 0) directReportAmount[num] = (directReportAmount[num]||0) + amount; } }); if(isNormal){ zodiacs.forEach(z=>{ zodiacCount[z]=(zodiacCount[z]||0)+1; zodiacDirectAmount[z]=(zodiacDirectAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0); if(amount>=zMin&&amount<=zMax){zodiacAmountCount[z]=(zodiacAmountCount[z]||0)+1; zodiacFilteredAmount[z]=(zodiacFilteredAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);} (cfg.zodiac[z]||[]).forEach(n=>{ const num=n.padStart(2,'0'); userBetData[user][num]=(userBetData[user][num]||0)+amount; tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount; originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount; }); }); } else { zodiacs.forEach(z=>{ zodiacReportAmount[z]=(zodiacReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0); if(amount>=zMin&&amount<=zMax){ zodiacFilteredReportAmount[z]=(zodiacFilteredReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);} (cfg.zodiac[z]||[]).forEach(n=>{ const num=n.padStart(2,'0'); userBetData[user][num]=(userBetData[user][num]||0)-amount; reportBetData[num]=(reportBetData[num]||0)-amount; reportAmountData[num]=(reportAmountData[num]||0)+amount; }); }); } }); generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards(); renderReportAmountTable(); renderOriginalAmountTable(); updateReportAmountTotal(); updateAmountDisplays(); }
     
@@ -1073,7 +1092,7 @@ async function updateTableFromRecords(){
 
     generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards();
     renderReportAmountTable(); renderOriginalAmountTable(); updateReportAmountTotal(); updateAmountDisplays();
-    calculateStorageUsage();
+    calculateStorageUsage(); renderSmartDecision();
   }catch(e){}
 }
 
@@ -1314,7 +1333,7 @@ async function importData(){
         if (data.replacePresets && Array.isArray(data.replacePresets)) { const currentPresets = getReplacePresets(); data.replacePresets.forEach(p => { if (!currentPresets.some(x => x.old === p.old)) { currentPresets.push(p); presetImported++; } }); localStorage.setItem('replacePresets', JSON.stringify(currentPresets)); }
         if (data.categoryAliases && Array.isArray(data.categoryAliases)) { const currentAliases = getCategoryAliases(); data.categoryAliases.forEach(a => { if (!currentAliases.some(x => x.alias === a.alias)) { currentAliases.push(a); aliasImported++; } }); localStorage.setItem('categoryAliases', JSON.stringify(currentAliases)); }
 
-        await updateTableFromRecords(); calculateStorageUsage(); renderPingtexiaoTable(); updateCardA();
+        await updateTableFromRecords(); calculateStorageUsage(); renderPingtexiaoTable(); updateCardA(); renderSmartDecision();
         let msg = `成功导入 ${no+nr} 条订单/上报记录，${dcImported} 组开奖记录。`;
         if (ptImported > 0) msg += `\n导入平特肖数据 ${ptImported} 组。`;
         if (ptSkipped > 0) msg += `\n跳过平特肖数据 ${ptSkipped} 组（已存在）。`;
@@ -1345,7 +1364,120 @@ async function addUserAction() { const name = document.getElementById('newUserNa
 async function deleteUserAction(name) { if (!(await confirm(`确定删除用户"${name}"及其数据吗？`))) return; deleteUser(name); renderUserList(); updateSelects(); showToast('用户已删除'); }
 
 window.dragSelectionActive = false;
-function enableRowDragSelect(tableId) { const tbody = document.getElementById(tableId === 'riskTable' ? 'tableBody' : 'reportTableBody'); if (!tbody) return; let startRow = null; let endRow = null; function clearSelection() { tbody.querySelectorAll('tr.selected-row').forEach(tr => tr.classList.remove('selected-row')); } function selectRows(row1, row2) { if (!row1 || !row2) return; const rows = Array.from(tbody.querySelectorAll('tr')); const idx1 = rows.indexOf(row1); const idx2 = rows.indexOf(row2); if (idx1 === -1 || idx2 === -1) return; const minIdx = Math.min(idx1, idx2); const maxIdx = Math.max(idx1, idx2); for (let i = minIdx; i <= maxIdx; i++) { rows[i].classList.add('selected-row'); } } tbody.addEventListener('mousedown', (e) => { if (e.button !== 0) return; if (e.ctrlKey || e.shiftKey) return; const targetRow = e.target.closest('tr'); if (!targetRow) return; window.dragSelectionActive = true; clearSelection(); startRow = targetRow; endRow = targetRow; targetRow.classList.add('selected-row'); e.preventDefault(); }); document.addEventListener('mousemove', (e) => { if (!window.dragSelectionActive) return; const target = document.elementFromPoint(e.clientX, e.clientY); if (!target) return; const tr = target.closest('tr'); if (!tr || tr.parentElement !== tbody) return; if (tr !== endRow) { endRow = tr; clearSelection(); selectRows(startRow, endRow); } }); document.addEventListener('mouseup', () => { if (window.dragSelectionActive) { window.dragSelectionActive = false; startRow = null; endRow = null; } }); let longPressTimer = null; let longPressTriggered = false; let touchStartY = 0; let touchMoved = false; tbody.addEventListener('touchstart', (e) => { const targetRow = e.target.closest('tr'); if (!targetRow) return; touchMoved = false; touchStartY = e.touches[0].clientY; longPressTriggered = false; longPressTimer = setTimeout(() => { longPressTriggered = true; window.dragSelectionActive = true; clearSelection(); startRow = targetRow; endRow = targetRow; targetRow.classList.add('selected-row'); }, 1000); e.preventDefault(); }, { passive: false }); tbody.addEventListener('touchmove', (e) => { const deltaY = Math.abs(e.touches[0].clientY - touchStartY); if (deltaY > 10) { touchMoved = true; if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; } } if (!longPressTriggered) return; if (!window.dragSelectionActive) return; const touch = e.touches[0]; const target = document.elementFromPoint(touch.clientX, touch.clientY); if (!target) return; const tr = target.closest('tr'); if (!tr || tr.parentElement !== tbody) return; if (tr !== endRow) { endRow = tr; clearSelection(); selectRows(startRow, endRow); } e.preventDefault(); }, { passive: false }); tbody.addEventListener('touchend', () => { if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; } if (window.dragSelectionActive) { window.dragSelectionActive = false; startRow = null; endRow = null; } longPressTriggered = false; }); }
+function enableRowDragSelect(tableId) {
+  const tbody = document.getElementById(tableId === 'riskTable' ? 'tableBody' : 'reportTableBody');
+  if (!tbody) return;
+  let startRow = null;
+  let endRow = null;
+  function clearSelection() {
+    tbody.querySelectorAll('tr.selected-row').forEach(tr => tr.classList.remove('selected-row'));
+  }
+  function selectRows(row1, row2) {
+    if (!row1 || !row2) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const idx1 = rows.indexOf(row1);
+    const idx2 = rows.indexOf(row2);
+    if (idx1 === -1 || idx2 === -1) return;
+    const minIdx = Math.min(idx1, idx2);
+    const maxIdx = Math.max(idx1, idx2);
+    for (let i = minIdx; i <= maxIdx; i++) {
+      rows[i].classList.add('selected-row');
+    }
+  }
+
+  tbody.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (e.ctrlKey || e.shiftKey) return;
+    const targetRow = e.target.closest('tr');
+    if (!targetRow) return;
+    window.dragSelectionActive = true;
+    clearSelection();
+    startRow = targetRow;
+    endRow = targetRow;
+    targetRow.classList.add('selected-row');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!window.dragSelectionActive) return;
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    if (!target) return;
+    const tr = target.closest('tr');
+    if (!tr || tr.parentElement !== tbody) return;
+    if (tr !== endRow) {
+      endRow = tr;
+      clearSelection();
+      selectRows(startRow, endRow);
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    if (window.dragSelectionActive) {
+      window.dragSelectionActive = false;
+      startRow = null;
+      endRow = null;
+    }
+  });
+
+  let longPressTimer = null;
+  let longPressTriggered = false;
+  let touchStartY = 0;
+  let touchStartX = 0;
+
+  tbody.addEventListener('touchstart', (e) => {
+    const targetRow = e.target.closest('tr');
+    if (!targetRow) return;
+    longPressTriggered = false;
+    touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
+    if (longPressTimer) clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => {
+      longPressTriggered = true;
+      window.dragSelectionActive = true;
+      clearSelection();
+      startRow = targetRow;
+      endRow = targetRow;
+      targetRow.classList.add('selected-row');
+    }, 1000);
+  }, { passive: true });
+
+  tbody.addEventListener('touchmove', (e) => {
+    if (!longPressTriggered) {
+      const dy = Math.abs(e.touches[0].clientY - touchStartY);
+      const dx = Math.abs(e.touches[0].clientX - touchStartX);
+      if (dy > 10 || dx > 10) {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }
+      return;
+    }
+    if (!window.dragSelectionActive) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!target) return;
+    const tr = target.closest('tr');
+    if (!tr || tr.parentElement !== tbody) return;
+    if (tr !== endRow) {
+      endRow = tr;
+      clearSelection();
+      selectRows(startRow, endRow);
+    }
+  }, { passive: false });
+
+  tbody.addEventListener('touchend', () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    if (window.dragSelectionActive) {
+      window.dragSelectionActive = false;
+      startRow = null;
+      endRow = null;
+    }
+    longPressTriggered = false;
+  });
+}
 function copySelectedNumbers(tableId) { const tbody = document.getElementById(tableId === 'riskTable' ? 'tableBody' : 'reportTableBody'); if (!tbody) return; const selectedRows = Array.from(tbody.querySelectorAll('tr.selected-row')); if (selectedRows.length === 0) { showToast('请先选择号码'); return; } const ids = selectedRows.map(row => { const cells = row.querySelectorAll('td'); return cells[3] ? cells[3].textContent.trim() : ''; }).filter(id => id && /^\d+$/.test(id)); if (ids.length === 0) { showToast('无有效号码'); return; } const uniqueIds = [...new Set(ids)]; const text = uniqueIds.join('-'); navigator.clipboard.writeText(text).then(() => { showToast('已复制: ' + text); }).catch(() => { showToast('复制失败'); }); }
 
 document.getElementById('rebateRate')?.addEventListener('input', generateRiskTable);
@@ -1530,7 +1662,7 @@ function updatePlColor(input) {
   input.className = 'draw-pl-input' + (issueClass ? ' ' + issueClass : '') + colorClass;
 }
 
-async function clearAllDrawRecords(year) { if (!(await confirm(`确定清空${currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港'} ${year}年全部开奖号码吗？此操作不可恢复！`))) return; const storageKey = `drawRecord_${currentRegion}_${year}`; localStorage.removeItem(storageKey); showToast('已清空'); showDrawRecord(); updateRecentDrawTexts(); }
+async function clearAllDrawRecords(year) { if (!(await confirm(`确定清空${currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港'} ${year}年全部开奖号码吗？此操作不可恢复！`))) return; const storageKey = `drawRecord_${currentRegion}_${year}`; localStorage.removeItem(storageKey); showToast('已清空'); showDrawRecord(); updateRecentDrawTexts(); renderSmartDecision(); }
 
 function onDrawNumberInput(input, issueId) { let val = input.value.replace(/\D/g, ''); if (val.length > 2) val = val.slice(0, 2); input.value = val; const zodiacSpan = document.querySelector(`.draw-zodiac-${issueId}`); if (!zodiacSpan) return; if (val.length === 2) { const num = val.padStart(2, '0'); const intVal = parseInt(num); if (intVal >= 1 && intVal <= 49) { const zodiac = currentZodiacMap[num] || ''; zodiacSpan.textContent = zodiac; zodiacSpan.className = `draw-zodiac-${issueId} ${getZodiacColorClass(zodiac)}`; input.className = `draw-number-input draw-num-${issueId} ${getNumberColorClass(num)}`; return; } } zodiacSpan.textContent = ''; zodiacSpan.className = `draw-zodiac-${issueId}`; input.className = `draw-number-input draw-num-${issueId}`; }
 function editDrawRecord() { document.querySelectorAll('.draw-number-input').forEach(el => el.disabled = false); document.querySelectorAll('.draw-pl-input').forEach(el => el.disabled = false); showToast('已进入编辑模式'); }
@@ -1595,10 +1727,11 @@ async function saveDrawRecord(year) {
   }
 
   updateRecentDrawTexts();
+  renderSmartDecision();
   showToast('保存成功');
 }
 
-function saveRecentDrawCount() { const input = document.getElementById('recentDrawCountInput'); if (!input) return; const rawVal = input.value.trim(); if (rawVal === '') { localStorage.removeItem(`recentDrawCount_${currentRegion}`); updateRecentDrawTexts(); showToast('已清空期数设置'); return; } const val = parseInt(rawVal); if (isNaN(val) || val < 1) { showToast('请输入有效的期数'); return; } localStorage.setItem(`recentDrawCount_${currentRegion}`, val.toString()); updateRecentDrawTexts(); showToast(`已设置显示最近${val}期`); }
+function saveRecentDrawCount() { const input = document.getElementById('recentDrawCountInput'); if (!input) return; const rawVal = input.value.trim(); if (rawVal === '') { localStorage.removeItem(`recentDrawCount_${currentRegion}`); updateRecentDrawTexts(); renderSmartDecision(); showToast('已清空期数设置'); return; } const val = parseInt(rawVal); if (isNaN(val) || val < 1) { showToast('请输入有效的期数'); return; } localStorage.setItem(`recentDrawCount_${currentRegion}`, val.toString()); updateRecentDrawTexts(); renderSmartDecision(); showToast(`已设置显示最近${val}期`); }
 
 function getCurrentIssueNumber(year, targetDateStr) { const target = new Date(targetDateStr + 'T00:00:00'); const start = new Date(year, 0, 1); if (isNaN(target) || isNaN(start)) return null; if (target < start) return null; const diff = target - start; const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1; return dayOfYear; }
 
@@ -1995,12 +2128,386 @@ function copyCardANumbers(type) {
   });
 }
 
+// ========== 智能决策中心核心函数 ==========
+function renderSmartDecision() {
+  const container = document.getElementById('smartDecisionContent');
+  if (!container) return;
+
+  // 获取分析期数（优先使用卡片内的输入框，其次用开奖记录的设置）
+  const periodInput = document.getElementById('smartPeriodInput');
+  let period = 10; // 默认10期
+  if (periodInput && periodInput.value.trim()) {
+    period = parseInt(periodInput.value) || 10;
+  } else {
+    const savedCount = localStorage.getItem(`recentDrawCount_${currentRegion}`);
+    if (savedCount) period = parseInt(savedCount) || 10;
+    if (periodInput) periodInput.value = period;
+  }
+
+  // 读取开奖记录
+  const fd = document.getElementById('filterDate')?.value || getTodayCST();
+  let year = new Date().getFullYear();
+  const m = fd.match(/^(\d{4})/);
+  if (m) year = parseInt(m[1]);
+  const storageKey = `drawRecord_${currentRegion}_${year}`;
+  let savedData = {};
+  try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) {}
+
+  const currentIssue = getCurrentIssueNumber(year, fd);
+  if (!currentIssue) {
+    container.innerHTML = '<div style="text-align:center;color:#666;padding:10px;">暂无开奖数据，请先录入开奖记录</div>';
+    return;
+  }
+
+  // 收集最近N期有开奖记录的号码
+  const drawList = [];
+  for (let i = currentIssue - period; i < currentIssue; i++) {
+    if (i < 1) continue;
+    const issueId = i.toString().padStart(2, '0');
+    const entry = savedData[issueId];
+    if (entry && entry.number && entry.number.trim()) {
+      const num = entry.number.trim().padStart(2, '0');
+      if (/^\d{2}$/.test(num) && parseInt(num) >= 1 && parseInt(num) <= 49) {
+        drawList.push(num);
+      }
+    }
+  }
+
+  if (drawList.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#666;padding:10px;">最近' + period + '期暂无开奖数据</div>';
+    return;
+  }
+
+  // 计算实际分析的期数
+  const actualPeriod = Math.min(period, currentIssue - 1);
+  const cfg = getAllConfigData();
+
+  // 统计各维度出现次数
+  const numCount = {};
+  const zodiacCountLocal = {};
+  const boseCount = {};
+  const weishuCount = {};
+  const toushuCount = {};
+  let jiaqinCount = 0, yeshouCount = 0;
+  let danCount = 0, shuangCount = 0;
+  let xiaoCount = 0, daCount = 0;
+
+  drawList.forEach(num => {
+    // 号码
+    numCount[num] = (numCount[num] || 0) + 1;
+    // 生肖
+    const z = currentZodiacMap[num] || '';
+    if (z) zodiacCountLocal[z] = (zodiacCountLocal[z] || 0) + 1;
+    // 波色
+    if (redNumbers.includes(num)) boseCount['红波'] = (boseCount['红波'] || 0) + 1;
+    else if (blueNumbers.includes(num)) boseCount['蓝波'] = (boseCount['蓝波'] || 0) + 1;
+    else if (greenNumbers.includes(num)) boseCount['绿波'] = (boseCount['绿波'] || 0) + 1;
+    // 尾数
+    const ws = num.slice(-1) + '尾';
+    weishuCount[ws] = (weishuCount[ws] || 0) + 1;
+    // 头数
+    const ts = num[0] + '头';
+    toushuCount[ts] = (toushuCount[ts] || 0) + 1;
+    // 家禽/野兽
+    const jiaqinZodiacs = cfg.shengxiaoAttr['家禽'] || [];
+    if (z && jiaqinZodiacs.includes(z)) jiaqinCount++;
+    else yeshouCount++;
+    // 单双
+    const intNum = parseInt(num);
+    if (intNum % 2 === 1) danCount++;
+    else shuangCount++;
+    // 大小
+    if (intNum <= 24) xiaoCount++;
+    else daCount++;
+  });
+
+  // 判定旺/冷
+  function getHotCold(items, avg) {
+    return items.map(item => {
+      if (item.cnt >= Math.max(avg * 1.5, 3)) return { ...item, tag: 'hot' };
+      if (item.cnt === 0) return { ...item, tag: 'cold' };
+      return { ...item, tag: '' };
+    });
+  }
+
+  // 号码维度（只显示有出现的）
+  const numItems = [];
+  for (let i = 1; i <= 49; i++) {
+    const n = i.toString().padStart(2, '0');
+    numItems.push({ name: n, cnt: numCount[n] || 0 });
+  }
+  const numAvg = drawList.length / 49;
+  const numAnalyzed = getHotCold(numItems, numAvg).filter(item => item.cnt > 0 || item.tag === 'cold');
+  numAnalyzed.sort((a, b) => b.cnt - a.cnt);
+  const numDisplay = numAnalyzed.slice(0, 15);
+
+  // 生肖维度
+  const zodiacItems = Object.keys(zodiacCountLocal).map(z => ({ name: z, cnt: zodiacCountLocal[z] }));
+  const zodiacAll = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+  zodiacAll.forEach(z => { if (!zodiacCountLocal[z]) zodiacItems.push({ name: z, cnt: 0 }); });
+  const zodiacAvg = drawList.length / 12;
+  const zodiacAnalyzed = getHotCold(zodiacItems, zodiacAvg);
+  zodiacAnalyzed.sort((a, b) => b.cnt - a.cnt);
+
+  // 波色维度
+  const boseItems = ['红波','蓝波','绿波'].map(b => ({ name: b, cnt: boseCount[b] || 0 }));
+  const boseAvg = drawList.length / 3;
+  const boseAnalyzed = getHotCold(boseItems, boseAvg);
+  boseAnalyzed.sort((a, b) => b.cnt - a.cnt);
+
+  // 尾数维度
+  const weishuItems = [];
+  for (let i = 0; i <= 9; i++) {
+    const w = i + '尾';
+    weishuItems.push({ name: w, cnt: weishuCount[w] || 0 });
+  }
+  const weishuAvg = drawList.length / 10;
+  const weishuAnalyzed = getHotCold(weishuItems, weishuAvg);
+  weishuAnalyzed.sort((a, b) => b.cnt - a.cnt);
+
+  // 头数维度
+  const toushuItems = [];
+  for (let i = 0; i <= 4; i++) {
+    const t = i + '头';
+    toushuItems.push({ name: t, cnt: toushuCount[t] || 0 });
+  }
+  const toushuAvg = drawList.length / 5;
+  const toushuAnalyzed = getHotCold(toushuItems, toushuAvg);
+  toushuAnalyzed.sort((a, b) => b.cnt - a.cnt);
+
+  // 家禽/野兽
+  const jysxItems = [
+    { name: '家禽', cnt: jiaqinCount },
+    { name: '野兽', cnt: yeshouCount }
+  ];
+  const jysxAvg = drawList.length / 2;
+  const jysxAnalyzed = getHotCold(jysxItems, jysxAvg);
+
+  // 单双
+  const dsItems = [
+    { name: '单', cnt: danCount },
+    { name: '双', cnt: shuangCount }
+  ];
+  const dsAvg = drawList.length / 2;
+  const dsAnalyzed = getHotCold(dsItems, dsAvg);
+
+  // 大小
+  const dxItems = [
+    { name: '小', cnt: xiaoCount },
+    { name: '大', cnt: daCount }
+  ];
+  const dxAvg = drawList.length / 2;
+  const dxAnalyzed = getHotCold(dxItems, dxAvg);
+
+  // 渲染颜色辅助函数
+  function getNumCls(n) {
+    if (redNumbers.includes(n)) return 'red-text';
+    if (blueNumbers.includes(n)) return 'blue-text';
+    if (greenNumbers.includes(n)) return 'green-text';
+    return '';
+  }
+  function getZodiacCls(z) {
+    const redSet = new Set(['鼠','兔','马','鸡']);
+    const blueSet = new Set(['虎','蛇','猴','猪']);
+    const greenSet = new Set(['牛','龙','羊','狗']);
+    if (redSet.has(z)) return 'red-text';
+    if (blueSet.has(z)) return 'blue-text';
+    if (greenSet.has(z)) return 'green-text';
+    return '';
+  }
+  function getBoseCls(b) {
+    if (b === '红波') return 'red-text';
+    if (b === '蓝波') return 'blue-text';
+    if (b === '绿波') return 'green-text';
+    return '';
+  }
+
+  function renderItem(item, clsFn) {
+    const cls = typeof clsFn === 'function' ? clsFn(item.name) : '';
+    const tagClass = item.tag === 'hot' ? 'hot-item' : (item.tag === 'cold' ? 'cold-item' : 'normal-item');
+    const prefix = item.tag === 'hot' ? '🔥' : (item.tag === 'cold' ? '❄️' : '');
+    if (item.name.match(/^\d{2}$/)) {
+      return `<span class="${tagClass} ${cls}" onclick="insertNumToRecognize('${item.name}')" title="点击填入识别弹窗">${prefix}${item.name}(${item.cnt}次)</span>`;
+    }
+    return `<span class="${tagClass} ${cls}">${prefix}${item.name}(${item.cnt}次)</span>`;
+  }
+
+  // 构建HTML
+  let html = '<div style="font-size:11px;">';
+  html += `<div style="margin-bottom:4px;color:#666;">📊 开奖热度分析（最近${actualPeriod}期，共${drawList.length}条记录）</div>`;
+
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+  // 第一行：号码 + 生肖
+  html += '<tr>';
+  html += '<td style="width:25%;vertical-align:top;padding:4px;border:1px solid #eee;"><b>号码</b><br>';
+  numDisplay.forEach(item => { html += renderItem(item, getNumCls) + ' '; });
+  html += '</td>';
+  html += '<td style="width:25%;vertical-align:top;padding:4px;border:1px solid #eee;"><b>生肖</b><br>';
+  zodiacAnalyzed.forEach(item => { html += renderItem(item, getZodiacCls) + ' '; });
+  html += '</td>';
+  html += '<td style="width:25%;vertical-align:top;padding:4px;border:1px solid #eee;"><b>波色</b><br>';
+  boseAnalyzed.forEach(item => { html += renderItem(item, getBoseCls) + ' '; });
+  html += '</td>';
+  html += '<td style="width:25%;vertical-align:top;padding:4px;border:1px solid #eee;"><b>尾数</b><br>';
+  weishuAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  html += '</td>';
+  html += '</tr>';
+  // 第二行：头数 + 家禽/野兽 + 单双 + 大小
+  html += '<tr>';
+  html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;"><b>头数</b><br>';
+  toushuAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  html += '</td>';
+  html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;"><b>家禽/野兽</b><br>';
+  jysxAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  html += '</td>';
+  html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;"><b>单双</b><br>';
+  dsAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  html += '</td>';
+  html += '<td style="vertical-align:top;padding:4px;border:1px solid #eee;"><b>大小</b><br>';
+  dxAnalyzed.forEach(item => { html += renderItem(item, '') + ' '; });
+  html += '</td>';
+  html += '</tr>';
+  html += '</table>';
+
+  // 智能建议
+  html += '<div style="margin-top:8px;font-size:11px;">';
+  html += '<div style="margin-bottom:2px;color:#666;">🎯 智能建议</div>';
+
+  // 紧急抛售：reportRiskData[num] < 0 且 drawList中出现次数 >= 2
+  const urgentNums = [];
+  const monitorNums = [];
+  const betNums = [];
+  for (let i = 1; i <= 49; i++) {
+    const n = i.toString().padStart(2, '0');
+    const risk = reportRiskData[n];
+    const heat = numCount[n] || 0;
+    if (risk !== undefined && risk < 0 && heat >= 2) {
+      urgentNums.push({ num: n, risk, heat });
+    } else if (risk !== undefined && risk < 0 && heat === 0) {
+      monitorNums.push({ num: n, risk, heat });
+    } else if ((risk === undefined || risk >= 0) && heat === 0) {
+      betNums.push({ num: n, risk: risk || 0, heat });
+    }
+  }
+  urgentNums.sort((a, b) => a.risk - b.risk);
+
+  // 统计生肖和波色
+  const zodiacUrgent = {};
+  const boseUrgent = {};
+  urgentNums.forEach(item => {
+    const z = currentZodiacMap[item.num] || '';
+    if (z) zodiacUrgent[z] = (zodiacUrgent[z] || 0) + 1;
+    if (redNumbers.includes(item.num)) boseUrgent['红波'] = (boseUrgent['红波'] || 0) + 1;
+    else if (blueNumbers.includes(item.num)) boseUrgent['蓝波'] = (boseUrgent['蓝波'] || 0) + 1;
+    else if (greenNumbers.includes(item.num)) boseUrgent['绿波'] = (boseUrgent['绿波'] || 0) + 1;
+  });
+  const zodiacAdvice = Object.entries(zodiacUrgent).filter(([z, cnt]) => cnt >= 2).sort((a, b) => b[1] - a[1]);
+  const boseAdvice = Object.entries(boseUrgent).filter(([b, cnt]) => cnt >= 3).sort((a, b) => b[1] - a[1]);
+
+  if (urgentNums.length > 0) {
+    html += '<div class="advice-urgent">';
+    html += '<b>🚨 紧急抛售（高风险+旺）</b><br>';
+    html += '号码：' + urgentNums.map(item => {
+      const cls = getNumCls(item.num);
+      return `<span class="advice-num ${cls}" onclick="insertNumToRecognize('${item.num}')" title="点击填入识别弹窗">${item.num}</span>`;
+    }).join(' ') + ' ';
+    html += `<button class="copy-advice-btn" onclick="copyUrgentNums()">📋复制</button><br>`;
+    if (zodiacAdvice.length > 0) {
+      html += '生肖：' + zodiacAdvice.map(([z, cnt]) => {
+        const cls = getZodiacCls(z);
+        return `<span class="${cls}">${z}</span>(含${cnt}个紧急号)`;
+      }).join('、') + '<br>';
+    }
+    if (boseAdvice.length > 0) {
+      html += '波色：' + boseAdvice.map(([b, cnt]) => {
+        const cls = getBoseCls(b);
+        return `<span class="${cls}">${b}</span>(含${cnt}个紧急号)`;
+      }).join('、');
+    }
+    html += '</div>';
+  }
+
+  if (monitorNums.length > 0) {
+    html += '<div class="advice-monitor">';
+    html += '<b>🔍 重点监控（高风险+冷）</b><br>';
+    html += '号码：' + monitorNums.map(item => {
+      const cls = getNumCls(item.num);
+      return `<span class="${cls}">${item.num}</span>`;
+    }).join(' ') + '<br>';
+    html += '<span style="color:#888;">⚠ 暂时安全，如转旺需立即处理</span>';
+    html += '</div>';
+  }
+
+  if (betNums.length > 0) {
+    html += '<div class="advice-bet">';
+    html += '<b>📈 加注建议（正常风险+冷）</b><br>';
+    html += '号码：' + betNums.slice(0, 10).map(item => {
+      const cls = getNumCls(item.num);
+      return `<span class="${cls}">${item.num}</span>`;
+    }).join(' ') + '<br>';
+    html += '<span style="color:#888;">💡 可考虑适当加注，博反弹机会</span>';
+    html += '</div>';
+  }
+
+  if (urgentNums.length === 0 && monitorNums.length === 0 && betNums.length === 0) {
+    html += '<div class="advice-none">✅ 当前风险可控，无需抛售建议</div>';
+  }
+
+  html += '</div>'; // 建议区域结束
+  html += '</div>'; // 整体结束
+
+  container.innerHTML = html;
+
+  // 存储紧急号码供复制使用
+  window._urgentNums = urgentNums.map(item => item.num);
+}
+
+// 点击号码填入识别弹窗
+function insertNumToRecognize(num) {
+  const ta = document.querySelector('.source-order-input');
+  if (!ta) {
+    showRecognizeModal();
+    setTimeout(() => {
+      const ta2 = document.querySelector('.source-order-input');
+      if (ta2) {
+        ta2.value = num;
+        convertOrderText();
+      }
+    }, 300);
+    return;
+  }
+  const currentVal = ta.value.trim();
+  if (currentVal) {
+    ta.value = currentVal + '-' + num;
+  } else {
+    ta.value = num;
+  }
+  convertOrderText();
+  showToast('已填入号码：' + num);
+}
+
+// 复制紧急号码
+function copyUrgentNums() {
+  const nums = window._urgentNums || [];
+  if (nums.length === 0) {
+    showToast('暂无紧急号码');
+    return;
+  }
+  const text = nums.join('-');
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('已复制：' + text);
+  }).catch(() => {
+    showToast('复制失败');
+  });
+}
+
 // ========== 重写 generateReportTable 追加卡片更新 ==========
 (function() {
   const originalFn = generateReportTable;
   generateReportTable = function() {
     originalFn.apply(this, arguments);
     updateCardA();
+    renderSmartDecision();
   };
 })();
 
@@ -2011,6 +2518,7 @@ function copyCardANumbers(type) {
     await originalFn.apply(this, arguments);
     renderPingtexiaoTable();
     updateCardA();
+    renderSmartDecision();
   };
 })();
 
@@ -2022,6 +2530,7 @@ function copyCardANumbers(type) {
     renderPingtexiaoTable();
     updateCardA();
     loadPtParams();
+    renderSmartDecision();
   };
 })();
 
@@ -2074,6 +2583,7 @@ window.onload = async () => {
     updateRecentDrawTexts();
     renderPingtexiaoTable();
     updateCardA();
+    renderSmartDecision();
   };
   if (!checkCurrentAccess()) { showLoginScreen(); } else {
     if (isAdmin()) document.getElementById('cardMgrBtn').style.display = '';
