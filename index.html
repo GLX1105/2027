@@ -2158,6 +2158,7 @@ function renderSmartDecision() {
 
   // 收集最近N期开奖号码
   const drawList = [];
+  const numCount = {};
   for (let i = currentIssue - period; i < currentIssue; i++) {
     if (i < 1) continue;
     const issueId = i.toString().padStart(2, '0');
@@ -2166,6 +2167,7 @@ function renderSmartDecision() {
       const num = entry.number.trim().padStart(2, '0');
       if (/^\d{2}$/.test(num) && parseInt(num) >= 1 && parseInt(num) <= 49) {
         drawList.push(num);
+        numCount[num] = (numCount[num] || 0) + 1;
       }
     }
   }
@@ -2175,8 +2177,7 @@ function renderSmartDecision() {
   const actualPeriod = Math.min(period, currentIssue - 1);
   const cfg = getAllConfigData();
 
-  // 统计各维度（不含号码展示，但保留numCount用于建议计算）
-  const numCount = {};
+  // 统计各维度
   const zodiacCountLocal = {};
   const boseCount = {};
   const weishuCount = {};
@@ -2186,7 +2187,6 @@ function renderSmartDecision() {
   let xiaoCount = 0, daCount = 0;
 
   drawList.forEach(num => {
-    numCount[num] = (numCount[num] || 0) + 1;
     const z = currentZodiacMap[num] || '';
     if (z) zodiacCountLocal[z] = (zodiacCountLocal[z] || 0) + 1;
     if (redNumbers.includes(num)) boseCount['红波'] = (boseCount['红波'] || 0) + 1;
@@ -2216,31 +2216,27 @@ function renderSmartDecision() {
   }
 
   // 生肖
-  const zodiacItems = Object.keys(zodiacCountLocal).map(z => ({ name: z, cnt: zodiacCountLocal[z] }));
+  const zodiacItems = [];
   const zodiacAll = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
-  zodiacAll.forEach(z => { if (!zodiacCountLocal[z]) zodiacItems.push({ name: z, cnt: 0 }); });
-  const zodiacAvg = drawList.length / 12;
-  const zodiacAnalyzed = getHotCold(zodiacItems, zodiacAvg);
+  zodiacAll.forEach(z => zodiacItems.push({ name: z, cnt: zodiacCountLocal[z] || 0 }));
+  const zodiacAnalyzed = getHotCold(zodiacItems, drawList.length / 12);
   zodiacAnalyzed.sort((a, b) => b.cnt - a.cnt);
 
   // 波色
   const boseItems = ['红波','蓝波','绿波'].map(b => ({ name: b, cnt: boseCount[b] || 0 }));
-  const boseAvg = drawList.length / 3;
-  const boseAnalyzed = getHotCold(boseItems, boseAvg);
+  const boseAnalyzed = getHotCold(boseItems, drawList.length / 3);
   boseAnalyzed.sort((a, b) => b.cnt - a.cnt);
 
   // 尾数
   const weishuItems = [];
   for (let i = 0; i <= 9; i++) weishuItems.push({ name: i + '尾', cnt: weishuCount[i + '尾'] || 0 });
-  const weishuAvg = drawList.length / 10;
-  const weishuAnalyzed = getHotCold(weishuItems, weishuAvg);
+  const weishuAnalyzed = getHotCold(weishuItems, drawList.length / 10);
   weishuAnalyzed.sort((a, b) => b.cnt - a.cnt);
 
   // 头数
   const toushuItems = [];
   for (let i = 0; i <= 4; i++) toushuItems.push({ name: i + '头', cnt: toushuCount[i + '头'] || 0 });
-  const toushuAvg = drawList.length / 5;
-  const toushuAnalyzed = getHotCold(toushuItems, toushuAvg);
+  const toushuAnalyzed = getHotCold(toushuItems, drawList.length / 5);
   toushuAnalyzed.sort((a, b) => b.cnt - a.cnt);
 
   // 家禽/野兽
@@ -2248,24 +2244,21 @@ function renderSmartDecision() {
     { name: '家禽', cnt: jiaqinCount },
     { name: '野兽', cnt: yeshouCount }
   ];
-  const jysxAvg = drawList.length / 2;
-  const jysxAnalyzed = getHotCold(jysxItems, jysxAvg);
+  const jysxAnalyzed = getHotCold(jysxItems, drawList.length / 2);
 
   // 单双
   const dsItems = [
     { name: '单', cnt: danCount },
     { name: '双', cnt: shuangCount }
   ];
-  const dsAvg = drawList.length / 2;
-  const dsAnalyzed = getHotCold(dsItems, dsAvg);
+  const dsAnalyzed = getHotCold(dsItems, drawList.length / 2);
 
   // 大小
   const dxItems = [
     { name: '小', cnt: xiaoCount },
     { name: '大', cnt: daCount }
   ];
-  const dxAvg = drawList.length / 2;
-  const dxAnalyzed = getHotCold(dxItems, dxAvg);
+  const dxAnalyzed = getHotCold(dxItems, drawList.length / 2);
 
   // 渲染辅助
   function getZodiacCls(z) {
@@ -2356,6 +2349,13 @@ function renderSmartDecision() {
   const zodiacAdvice = Object.entries(zodiacUrgent).filter(([z, cnt]) => cnt >= 2).sort((a, b) => b[1] - a[1]);
   const boseAdvice = Object.entries(boseUrgent).filter(([b, cnt]) => cnt >= 3).sort((a, b) => b[1] - a[1]);
 
+  function getNumCls(n) {
+    if (redNumbers.includes(n)) return 'red-text';
+    if (blueNumbers.includes(n)) return 'blue-text';
+    if (greenNumbers.includes(n)) return 'green-text';
+    return '';
+  }
+
   if (urgentNums.length > 0) {
     html += '<div class="advice-urgent">';
     html += '<b>🚨 紧急抛售（高风险+旺）</b><br>';
@@ -2412,7 +2412,6 @@ function renderSmartDecision() {
   window._urgentNums = urgentNums.map(item => item.num);
 }
 
-// 点击号码填入识别弹窗
 function insertNumToRecognize(num) {
   const ta = document.querySelector('.source-order-input');
   if (!ta) {
@@ -2423,13 +2422,11 @@ function insertNumToRecognize(num) {
     }, 300);
     return;
   }
-  const currentVal = ta.value.trim();
-  ta.value = currentVal ? currentVal + '-' + num : num;
+  ta.value = ta.value.trim() ? ta.value.trim() + '-' + num : num;
   convertOrderText();
   showToast('已填入号码：' + num);
 }
 
-// 复制紧急号码
 function copyUrgentNums() {
   const nums = window._urgentNums || [];
   if (nums.length === 0) { showToast('暂无紧急号码'); return; }
@@ -2620,4 +2617,4 @@ window.onload = async () => {
 };
 </script>
 </body>
-</html>   
+</html>
