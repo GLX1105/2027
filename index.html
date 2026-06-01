@@ -2222,8 +2222,8 @@ function renderSmartDecision() {
     dxSeq.push(dx);
   });
 
-  // 连续分析辅助函数
-  function analyzeStreak(seq, name) {
+  // 连续分析辅助函数（带颜色渲染）
+  function analyzeStreak(seq, name, clsFn) {
     if (seq.length === 0) return '';
     const lastItem = seq[seq.length - 1];
     let streak = 0;
@@ -2231,9 +2231,14 @@ function renderSmartDecision() {
       if (seq[i] === lastItem) streak++;
       else break;
     }
-    if (streak >= 4) return `<span style="color:#e74c3c;font-weight:bold;">⚠ ${name}${streak}连${lastItem}</span>`;
-    if (streak >= 2) return `<span style="color:#f39c12;">📈 ${name}${streak}连${lastItem}</span>`;
-    return `<span style="color:#888;">${name}${lastItem}</span>`;
+    const cls = typeof clsFn === 'function' ? clsFn(lastItem) : '';
+    if (streak >= 4) {
+      return `<span style="color:#e74c3c;font-weight:bold;">⚠ ${name}连续${streak}期<span class="${cls}">${lastItem}</span></span>`;
+    }
+    if (streak >= 2) {
+      return `<span style="color:#f39c12;">📈 ${name}连续${streak}期<span class="${cls}">${lastItem}</span></span>`;
+    }
+    return `<span style="color:#888;">${name}<span class="${cls}">${lastItem}</span></span>`;
   }
 
   // 渲染辅助
@@ -2275,7 +2280,7 @@ function renderSmartDecision() {
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
     html += `<span class="${tagClass} ${getZodiacCls(item.name)}">${prefix}${item.name}(${item.cnt}次)</span> `;
   });
-  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(zodiacSeq, '生肖') + '</div>';
+  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(zodiacSeq, '生肖', getZodiacCls) + '</div>';
 
   // 热度 - 波色（降序）
   html += '<div style="margin-bottom:4px;"><b>波色：</b>';
@@ -2287,7 +2292,7 @@ function renderSmartDecision() {
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
     html += `<span class="${tagClass} ${getBoseCls(item.name)}">${prefix}${item.name}(${item.cnt}次)</span> `;
   });
-  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(boseSeq, '波色') + '</div>';
+  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(boseSeq, '波色', getBoseCls) + '</div>';
 
   // 热度 - 尾数（降序）
   html += '<div style="margin-bottom:4px;"><b>尾数：</b>';
@@ -2300,7 +2305,7 @@ function renderSmartDecision() {
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
     html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
   });
-  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(weishuSeq, '尾数') + '</div>';
+  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(weishuSeq, '尾数', '') + '</div>';
 
   // 热度 - 头数（降序）
   html += '<div style="margin-bottom:4px;"><b>头数：</b>';
@@ -2313,7 +2318,7 @@ function renderSmartDecision() {
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
     html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
   });
-  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(toushuSeq, '头数') + '</div>';
+  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(toushuSeq, '头数', '') + '</div>';
 
   // 热度 - 家禽/野兽（降序）
   html += '<div style="margin-bottom:4px;"><b>家禽/野兽：</b>';
@@ -2328,7 +2333,7 @@ function renderSmartDecision() {
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
     html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
   });
-  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(jysxSeq, '') + '</div>';
+  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(jysxSeq, '', '') + '</div>';
 
   // 热度 - 单双（降序）
   html += '<div style="margin-bottom:4px;"><b>单双：</b>';
@@ -2343,7 +2348,7 @@ function renderSmartDecision() {
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
     html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
   });
-  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(dsSeq, '') + '</div>';
+  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(dsSeq, '', '') + '</div>';
 
   // 热度 - 大小（降序）
   html += '<div style="margin-bottom:4px;"><b>大小：</b>';
@@ -2358,29 +2363,36 @@ function renderSmartDecision() {
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
     html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
   });
-  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(dxSeq, '') + '</div>';
+  html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(dxSeq, '', '') + '</div>';
 
   // ========== 智能建议 ==========
   html += '<div style="margin-top:8px;font-size:11px;">';
   html += '<div style="margin-bottom:2px;color:#666;">🎯 智能建议</div>';
 
-  // 🚨 紧急抛售：reportBetData中下注额超过平均值1.3倍的号码
+  // 准备上报下注数据
   const reportBets = [];
   for (let i = 1; i <= 49; i++) {
     const n = i.toString().padStart(2, '0');
     const bet = reportBetData[n] || 0;
     if (bet > 0) reportBets.push({ num: n, bet });
   }
+  const avgBet = reportBets.length > 0
+    ? (reportBets.reduce((sum, item) => sum + item.bet, 0) / reportBets.length)
+    : 0;
+
+  // 读取倍数
+  const multiplierInput = document.getElementById('urgentMultiplierInput');
+  const multiplier = multiplierInput ? (parseFloat(multiplierInput.value) || 1.3) : 1.3;
+
   let urgentNums = [];
   if (reportBets.length > 0) {
-    const avgBet = reportBets.reduce((sum, item) => sum + item.bet, 0) / reportBets.length;
     urgentNums = reportBets
-      .filter(item => item.bet > avgBet * 1.3)
+      .filter(item => item.bet > avgBet * multiplier)
       .sort((a, b) => b.bet - a.bet)
       .map(item => item.num);
   }
 
-  // 🔍 最近生肖监控：往前数6个不重复生肖，取其在reportRiskData中为负数的号码
+  // 🔍 最近生肖监控
   const recent6Zodiacs = [];
   for (let i = currentIssue - 1; i >= 1 && recent6Zodiacs.length < 6; i--) {
     const issueId = i.toString().padStart(2, '0');
@@ -2407,7 +2419,7 @@ function renderSmartDecision() {
       .sort((a, b) => (reportRiskData[a] || 0) - (reportRiskData[b] || 0));
   }
 
-  // 📈 加注建议：风险≥0 + 最近N期内出现次数为0
+  // 📈 加注建议
   const betNums = [];
   for (let i = 1; i <= 49; i++) {
     const n = i.toString().padStart(2, '0');
@@ -2420,7 +2432,7 @@ function renderSmartDecision() {
 
   // 输出
   html += '<div class="advice-urgent" style="margin-bottom:6px;">';
-  html += '<b>🚨 紧急抛售（上报下注 > 均值1.3倍）</b><br>';
+  html += `<b>🚨 紧急抛售（倍数：<input type="number" id="urgentMultiplierInput" value="${multiplier}" min="0.1" step="0.1" style="width:45px;padding:1px 3px;font-size:11px;border:1px solid #ccc;border-radius:3px;" onchange="renderSmartDecision()"> 均值：${avgBet.toFixed(0)}）</b><br>`;
   if (urgentNums.length > 0) {
     html += '号码：' + urgentNums.map(n => `<span class="${getNumCls(n)}">${n}</span>`).join(' ');
     html += ` <button class="copy-advice-btn" onclick="copyNumsToClipboard([${urgentNums.map(n=>"'"+n+"'").join(',')}])">📋复制</button>`;
