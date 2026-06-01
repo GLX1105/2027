@@ -2263,10 +2263,11 @@ function renderSmartDecision() {
   let html = '<div style="font-size:11px;">';
   html += `<div style="margin-bottom:4px;color:#666;">📊 开奖热度分析（最近${actualPeriod}期，共${drawList.length}条记录）</div>`;
 
-  // 热度 - 生肖
+  // 热度 - 生肖（降序排列）
   html += '<div style="margin-bottom:4px;"><b>生肖：</b>';
   const zodiacAll = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
   const zodiacItems = zodiacAll.map(z => ({ name: z, cnt: zodiacCountLocal[z] || 0 }));
+  zodiacItems.sort((a, b) => b.cnt - a.cnt);
   const zodiacAvg = drawList.length / 12;
   zodiacItems.forEach(item => {
     const tag = item.cnt >= Math.max(zodiacAvg * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
@@ -2276,42 +2277,52 @@ function renderSmartDecision() {
   });
   html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(zodiacSeq, '生肖') + '</div>';
 
-  // 热度 - 波色
+  // 热度 - 波色（降序）
   html += '<div style="margin-bottom:4px;"><b>波色：</b>';
-  ['红波','蓝波','绿波'].forEach(b => {
-    const cnt = boseCount[b] || 0;
-    const tag = cnt >= Math.max(drawList.length/3 * 1.5, 3) ? 'hot' : (cnt === 0 ? 'cold' : '');
+  const boseList = ['红波','蓝波','绿波'].map(b => ({ name: b, cnt: boseCount[b] || 0 }));
+  boseList.sort((a, b) => b.cnt - a.cnt);
+  boseList.forEach(item => {
+    const tag = item.cnt >= Math.max(drawList.length/3 * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
     const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
-    html += `<span class="${tagClass} ${getBoseCls(b)}">${prefix}${b}(${cnt}次)</span> `;
+    html += `<span class="${tagClass} ${getBoseCls(item.name)}">${prefix}${item.name}(${item.cnt}次)</span> `;
   });
   html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(boseSeq, '波色') + '</div>';
 
-  // 热度 - 尾数
+  // 热度 - 尾数（降序）
   html += '<div style="margin-bottom:4px;"><b>尾数：</b>';
-  for (let i = 0; i <= 9; i++) {
-    const w = i + '尾'; const cnt = weishuCount[w] || 0;
-    const tag = cnt >= Math.max(drawList.length/10 * 1.5, 3) ? 'hot' : (cnt === 0 ? 'cold' : '');
+  const weishuList = [];
+  for (let i = 0; i <= 9; i++) weishuList.push({ name: i + '尾', cnt: weishuCount[i + '尾'] || 0 });
+  weishuList.sort((a, b) => b.cnt - a.cnt);
+  weishuList.forEach(item => {
+    const tag = item.cnt >= Math.max(drawList.length/10 * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
     const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
-    html += `<span class="${tagClass}">${prefix}${w}(${cnt}次)</span> `;
-  }
+    html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
+  });
   html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(weishuSeq, '尾数') + '</div>';
 
-  // 热度 - 头数
+  // 热度 - 头数（降序）
   html += '<div style="margin-bottom:4px;"><b>头数：</b>';
-  for (let i = 0; i <= 4; i++) {
-    const t = i + '头'; const cnt = toushuCount[t] || 0;
-    const tag = cnt >= Math.max(drawList.length/5 * 1.5, 3) ? 'hot' : (cnt === 0 ? 'cold' : '');
+  const toushuList = [];
+  for (let i = 0; i <= 4; i++) toushuList.push({ name: i + '头', cnt: toushuCount[i + '头'] || 0 });
+  toushuList.sort((a, b) => b.cnt - a.cnt);
+  toushuList.forEach(item => {
+    const tag = item.cnt >= Math.max(drawList.length/5 * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
     const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
-    html += `<span class="${tagClass}">${prefix}${t}(${cnt}次)</span> `;
-  }
+    html += `<span class="${tagClass}">${prefix}${item.name}(${item.cnt}次)</span> `;
+  });
   html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(toushuSeq, '头数') + '</div>';
 
-  // 热度 - 家禽/野兽
+  // 热度 - 家禽/野兽（降序）
   html += '<div style="margin-bottom:4px;"><b>家禽/野兽：</b>';
-  [{name:'家禽',cnt:jiaqinCount},{name:'野兽',cnt:yeshouCount}].forEach(item => {
+  const jysxList = [
+    { name: '家禽', cnt: jiaqinCount },
+    { name: '野兽', cnt: yeshouCount }
+  ];
+  jysxList.sort((a, b) => b.cnt - a.cnt);
+  jysxList.forEach(item => {
     const tag = item.cnt >= Math.max(drawList.length/2 * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
     const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
@@ -2319,9 +2330,14 @@ function renderSmartDecision() {
   });
   html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(jysxSeq, '') + '</div>';
 
-  // 热度 - 单双
+  // 热度 - 单双（降序）
   html += '<div style="margin-bottom:4px;"><b>单双：</b>';
-  [{name:'单',cnt:danCount},{name:'双',cnt:shuangCount}].forEach(item => {
+  const dsList = [
+    { name: '单', cnt: danCount },
+    { name: '双', cnt: shuangCount }
+  ];
+  dsList.sort((a, b) => b.cnt - a.cnt);
+  dsList.forEach(item => {
     const tag = item.cnt >= Math.max(drawList.length/2 * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
     const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
@@ -2329,9 +2345,14 @@ function renderSmartDecision() {
   });
   html += '</div><div style="margin-bottom:6px;font-size:10px;color:#666;">' + analyzeStreak(dsSeq, '') + '</div>';
 
-  // 热度 - 大小
+  // 热度 - 大小（降序）
   html += '<div style="margin-bottom:4px;"><b>大小：</b>';
-  [{name:'小',cnt:xiaoCount},{name:'大',cnt:daCount}].forEach(item => {
+  const dxList = [
+    { name: '小', cnt: xiaoCount },
+    { name: '大', cnt: daCount }
+  ];
+  dxList.sort((a, b) => b.cnt - a.cnt);
+  dxList.forEach(item => {
     const tag = item.cnt >= Math.max(drawList.length/2 * 1.5, 3) ? 'hot' : (item.cnt === 0 ? 'cold' : '');
     const tagClass = tag === 'hot' ? 'hot-item' : (tag === 'cold' ? 'cold-item' : 'normal-item');
     const prefix = tag === 'hot' ? '🔥' : (tag === 'cold' ? '❄️' : '');
