@@ -292,16 +292,16 @@ document.addEventListener("keydown", e => {
         .payment-dialog-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
         .payment-dialog-btn:hover { background: rgba(255,255,255,0.4); }
         .payment-dialog-body { flex: 1; overflow: hidden; display: flex; flex-direction: row; gap: 10px; padding: 10px; }
-        .payment-table-container { overflow: auto; display: flex; flex-direction: column; }
+        .payment-table-container { flex: 1; overflow: auto; display: flex; flex-direction: column; }
         .payment-table-container h4 { margin-bottom: 5px; font-size: 0.9rem; color: #2c3e50; display: flex; align-items: center; gap: 10px; }
-        .payment-table-container-left { flex: 1 1 auto; }
-        .payment-table-container-right { flex: 0 0 auto; width: auto; }
         .payment-table { border-collapse: collapse; font-size: 0.8rem; table-layout: auto; width: 100%; }
         .payment-table th, .payment-table td { border: 1px solid #d1d5db; padding: 2px 4px; text-align: center; white-space: nowrap; }
         .payment-table th { background: #f1f6fd; font-weight: 600; color: #2c3e50; position: sticky; top: 0; }
         .payment-table input { border: none; background: transparent; text-align: center; font-size: 0.8rem; padding: 2px; outline: none; min-width: 0; width: 100%; }
         .payment-table input:focus { background: #eef2ff; border-radius: 2px; }
         .payment-table .col-receive-pay-display { cursor: pointer; min-height: 20px; }
+        .payment-table-container-left { flex: 1 1 auto; }
+        .payment-table-container-right { flex: 0 0 auto; width: auto; }
         .payment-table1 .col-receive-pay { min-width: 250px; color: #3498db; font-weight: normal; }
         .payment-table1 .col-profit, .payment-table1 .col-total, .payment-table1 .col-balance, .payment-table1 .col-accumulate { font-weight: bold; }
         .payment-table2 .col-profit-auto { font-weight: bold; }
@@ -1034,10 +1034,10 @@ function formatReceivePay(raw) {
     if (!raw) return '';
     return raw.replace(/(-?\d+)/g, (match) => {
         const num = parseInt(match);
-        if (isNaN(num)) return match;
+        if (isNaN(num)) return `<span style="color: #3498db;">${match}</span>`;
         if (num > 0) return `<span style="color: #27ae60;">${match}</span>`;
         else if (num < 0) return `<span style="color: #e74c3c;">${match}</span>`;
-        return `<span style="color: #3498db;">${match}</span>`;
+        return match;
     });
 }
 function editReceivePay(div) {
@@ -1071,17 +1071,29 @@ function updateRowCalculations(row) {
     let sum = 0;
     const matches = raw.match(/-?\d+/g);
     if (matches) sum = matches.reduce((acc, val) => acc + parseInt(val, 10), 0);
-    if (totalInput) totalInput.value = sum;
-    totalInput.classList.remove('profit-color-positive', 'profit-color-negative');
-    if (sum > 0) totalInput.classList.add('profit-color-positive');
-    else if (sum < 0) totalInput.classList.add('profit-color-negative');
-    if (balanceInput && profitInput) {
-        const profitVal = parseFloat(profitInput.value) || 0;
-        const balance = profitVal - sum;
-        balanceInput.value = balance;
-        balanceInput.classList.remove('profit-color-positive', 'profit-color-negative');
-        if (balance > 0) balanceInput.classList.add('profit-color-positive');
-        else if (balance < 0) balanceInput.classList.add('profit-color-negative');
+    if (totalInput) {
+        totalInput.value = sum === 0 ? '' : sum;
+        totalInput.classList.remove('profit-color-positive', 'profit-color-negative');
+        if (sum > 0) totalInput.classList.add('profit-color-positive');
+        else if (sum < 0) totalInput.classList.add('profit-color-negative');
+    }
+    if (balanceInput) {
+        const profitVal = profitInput ? parseFloat(profitInput.value) : NaN;
+        if (profitInput && profitInput.value.trim() === '') {
+            balanceInput.value = '';
+        } else if (!isNaN(profitVal)) {
+            const balance = profitVal - sum;
+            if (balance === 0) {
+                balanceInput.value = '已结清';
+            } else {
+                balanceInput.value = balance;
+            }
+            balanceInput.classList.remove('profit-color-positive', 'profit-color-negative');
+            if (balance > 0) balanceInput.classList.add('profit-color-positive');
+            else if (balance < 0) balanceInput.classList.add('profit-color-negative');
+        } else {
+            balanceInput.value = '';
+        }
     }
 }
 function handleTable1IndexChange(input) {
