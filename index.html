@@ -268,10 +268,8 @@ document.addEventListener("keydown", e => {
             .serial-number { font-size: 0.65rem; }
             .order-amount { font-size: 0.8rem; }
             .payment-dialog { top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; border-radius: 0; }
-            .payment-dialog-body { flex-direction: column; }
-            .payment-table-container-left, .payment-table-container-right { flex: 1; width: 100%; overflow-x: auto; }
-            .payment-table-container { overflow-x: auto; }
-            .payment-table1 .col-receive-pay { min-width: 150px; }
+            .payment-dialog-body { flex-direction: row; overflow-x: auto; min-width: 1000px; }
+            .payment-table-container-left, .payment-table-container-right { flex: 1; min-width: 480px; overflow-x: visible; }
             .resize-handle { display: none; }
             .payment-dialog-header { cursor: default; }
         }
@@ -324,7 +322,7 @@ document.addEventListener("keydown", e => {
     </style>
 </head>
 <body>
-  <div class="login-overlay" id="loginOverlay">
+<div class="login-overlay" id="loginOverlay">
     <div class="login-box">
         <h2><i class="fas fa-lock"></i> 系统访问受限</h2>
         <p>请输入访问密码以继续使用订单报表系统</p>
