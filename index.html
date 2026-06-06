@@ -284,7 +284,6 @@ document.addEventListener("keydown", e => {
         .custom-context-menu-item:hover { background: #f0f0f0; }
         .custom-context-menu-item i { width: 18px; color: #3498db; }
         .custom-context-menu-divider { height: 1px; background: #eee; margin: 4px 0; }
-        /* 收付弹窗样式 */
         .payment-dialog { position: fixed; top: 60px; left: 60px; width: 1000px; height: 700px; min-width: 400px; min-height: 300px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-radius: 8px; z-index: 5000; display: none; flex-direction: column; overflow: hidden; }
         .payment-dialog.active { display: flex; }
         .payment-dialog-header { background: #2c3e50; color: white; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none; }
@@ -953,7 +952,17 @@ function initPaymentTables() {
     table1Body.innerHTML = html1;
     const table2Body = document.getElementById('paymentTable2Body');
     const records = getFilteredRecords();
+    // 构建备注匹配集合，用于排除
+    const matchedUsers = new Set();
+    const remarkRows = paymentTable2Rows.filter(r => r.remark && r.remark.trim() !== '');
+    remarkRows.forEach(r => {
+        const user = records.find(rec => rec.applicant === r.remark.trim());
+        if (user) matchedUsers.add(user.applicant);
+    });
+    // 剩余未匹配的用户列表
+    const remainingUsers = records.filter(r => !matchedUsers.has(r.applicant));
     let html2 = '';
+    let remainingIndex = 0;
     for (let i = 0; i < 118; i++) {
         const saved = paymentTable2Rows.find(r => r.index === i) || {};
         const noVal = saved.no || '';
@@ -965,7 +974,12 @@ function initPaymentTables() {
             const matched = records.find(r => r.applicant === remarkVal.trim());
             if (matched) { user = matched.applicant; profit = Math.trunc(parseFloat(matched.extractedData.profitLoss || 0)); }
         } else {
-            if (i < records.length) { user = records[i].applicant; profit = Math.trunc(parseFloat(records[i].extractedData.profitLoss || 0)); }
+            if (remainingIndex < remainingUsers.length) {
+                const ru = remainingUsers[remainingIndex];
+                user = ru.applicant;
+                profit = Math.trunc(parseFloat(ru.extractedData.profitLoss || 0));
+                remainingIndex++;
+            }
         }
         html2 += `<tr>
             <td><input type="text" class="col-no" value="${escapeHtml(noVal)}" oninput="onTable2InputChange(this)" ${locked ? 'readonly' : ''}></td>
@@ -981,15 +995,27 @@ function initPaymentTables() {
 function refreshTable2UserData() {
     const rows = document.querySelectorAll('#paymentTable2 tbody tr');
     const records = getFilteredRecords();
+    // 收集备注已匹配的用户
+    const matchedUsers = new Set();
+    rows.forEach(row => {
+        const remark = row.querySelector('.col-remark')?.value.trim() || '';
+        if (remark && records.find(r => r.applicant === remark)) matchedUsers.add(remark);
+    });
+    const remainingUsers = records.filter(r => !matchedUsers.has(r.applicant));
+    let remainingIndex = 0;
     rows.forEach((row, i) => {
-        const remarkInput = row.querySelector('.col-remark');
-        const remark = remarkInput ? remarkInput.value.trim() : '';
+        const remark = row.querySelector('.col-remark')?.value.trim() || '';
         let user = '', profit = '';
         if (remark !== '') {
             const matched = records.find(r => r.applicant === remark);
             if (matched) { user = matched.applicant; profit = Math.trunc(parseFloat(matched.extractedData.profitLoss || 0)); }
         } else {
-            if (i < records.length) { user = records[i].applicant; profit = Math.trunc(parseFloat(records[i].extractedData.profitLoss || 0)); }
+            if (remainingIndex < remainingUsers.length) {
+                const ru = remainingUsers[remainingIndex];
+                user = ru.applicant;
+                profit = Math.trunc(parseFloat(ru.extractedData.profitLoss || 0));
+                remainingIndex++;
+            }
         }
         const userCell = row.querySelector('.col-user');
         const profitCell = row.querySelector('.col-profit-auto');
@@ -1002,28 +1028,34 @@ function onTable2RemarkChange(input) {
     const row = input.closest('tr');
     const remark = input.value.trim();
     const records = getFilteredRecords();
-    if (remark !== '') {
-        const matched = records.find(r => r.applicant === remark);
-        if (matched) {
-            row.querySelector('.col-user').textContent = matched.applicant;
-            const profit = Math.trunc(parseFloat(matched.extractedData.profitLoss || 0));
-            row.querySelector('.col-profit-auto').innerHTML = `<span class="${profit >= 0 ? 'profit-color-positive' : 'profit-color-negative'}">${profit}</span>`;
+    // 重建所有行的数据，避免重复用户
+    const rows = document.querySelectorAll('#paymentTable2 tbody tr');
+    const matchedUsers = new Set();
+    rows.forEach(r => {
+        const rem = r.querySelector('.col-remark')?.value.trim() || '';
+        if (rem && records.find(rec => rec.applicant === rem)) matchedUsers.add(rem);
+    });
+    const remainingUsers = records.filter(r => !matchedUsers.has(r.applicant));
+    let remainingIndex = 0;
+    rows.forEach((r, i) => {
+        const rem = r.querySelector('.col-remark')?.value.trim() || '';
+        let user = '', profit = '';
+        if (rem !== '') {
+            const matched = records.find(rec => rec.applicant === rem);
+            if (matched) { user = matched.applicant; profit = Math.trunc(parseFloat(matched.extractedData.profitLoss || 0)); }
         } else {
-            row.querySelector('.col-user').textContent = '';
-            row.querySelector('.col-profit-auto').innerHTML = '';
+            if (remainingIndex < remainingUsers.length) {
+                const ru = remainingUsers[remainingIndex];
+                user = ru.applicant;
+                profit = Math.trunc(parseFloat(ru.extractedData.profitLoss || 0));
+                remainingIndex++;
+            }
         }
-    } else {
-        const rows = document.querySelectorAll('#paymentTable2 tbody tr');
-        const idx = Array.from(rows).indexOf(row);
-        if (idx < records.length) {
-            row.querySelector('.col-user').textContent = records[idx].applicant;
-            const profit = Math.trunc(parseFloat(records[idx].extractedData.profitLoss || 0));
-            row.querySelector('.col-profit-auto').innerHTML = `<span class="${profit >= 0 ? 'profit-color-positive' : 'profit-color-negative'}">${profit}</span>`;
-        } else {
-            row.querySelector('.col-user').textContent = '';
-            row.querySelector('.col-profit-auto').innerHTML = '';
-        }
-    }
+        const userCell = r.querySelector('.col-user');
+        const profitCell = r.querySelector('.col-profit-auto');
+        if (userCell) userCell.textContent = user;
+        if (profitCell) profitCell.innerHTML = profit !== '' ? `<span class="${profit >= 0 ? 'profit-color-positive' : 'profit-color-negative'}">${profit}</span>` : '';
+    });
 }
 function saveTable2Data() {
     const rows = document.querySelectorAll('#paymentTable2 tbody tr');
@@ -1047,13 +1079,12 @@ function saveTable2Data() {
 function setTable2Editable(editable) {
     const rows = document.querySelectorAll('#paymentTable2 tbody tr');
     rows.forEach(row => {
-        if (editable) {
-            row.querySelector('.col-no').removeAttribute('readonly');
-            row.querySelector('.col-nick').removeAttribute('readonly');
-            row.querySelector('.col-remark').removeAttribute('readonly');
-        }
+        row.querySelector('.col-no').removeAttribute('readonly');
+        row.querySelector('.col-nick').removeAttribute('readonly');
+        row.querySelector('.col-remark').removeAttribute('readonly');
     });
-    paymentTable2Rows = [];
+    // 解锁后清空保存的锁定状态
+    paymentTable2Rows = paymentTable2Rows.map(r => ({ ...r, locked: false }));
     saveTable2RowsData();
     updateTable2EditButtons();
 }
