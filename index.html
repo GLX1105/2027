@@ -385,14 +385,14 @@ document.addEventListener("keydown", e => {
             font-size: 0.8rem;
             padding: 2px;
             outline: none;
-            min-width: 0;          /* 取消最小宽度限制，完全由内容决定列宽 */
+            min-width: 0;          /* 取消最小宽度限制 */
             width: 100%;
         }
         .payment-table input:focus {
             background: #eef2ff;
             border-radius: 2px;
         }
-        /* 左侧表格容器 flex 占满 */
+        /* 左侧表格容器 */
         .payment-table-container-left {
             flex: 1 1 auto;
         }
@@ -401,12 +401,30 @@ document.addEventListener("keydown", e => {
             flex: 0 0 auto;
             width: auto;
         }
-        /* 收付列保持较宽，使用 min-width 确保不会被压缩太窄 */
+        /* 收付列保持较宽 */
         .payment-table1 .col-receive-pay {
-            min-width: 200px;
+            min-width: 230px;
+            color: #3498db; /* 蓝色文本 */
+            font-weight: normal; /* 不加粗 */
         }
-        /* 表格2 的列不再需要单独的宽度定义，全部由内容决定 */
-
+        /* 数值列加粗（盈亏、累计、收付合计、结余） */
+        .payment-table1 .col-profit,
+        .payment-table1 .col-accumulate,
+        .payment-table1 .col-total,
+        .payment-table1 .col-balance {
+            font-weight: bold;
+        }
+        /* 第二个表格的盈亏列加粗 */
+        .payment-table2 .col-profit-auto {
+            font-weight: bold;
+        }
+        /* 统一非收付列宽度（约70px，够5位数且与用户列一致） */
+        .payment-table1 th:not(.col-receive-pay),
+        .payment-table1 td:not(.col-receive-pay),
+        .payment-table2 th,
+        .payment-table2 td {
+            width: 70px;
+        }
         .resize-handle {
             position: absolute;
             bottom: 0;
@@ -502,6 +520,7 @@ document.addEventListener("keydown", e => {
                         <th>序号</th>
                         <th>昵称</th>
                         <th>盈亏</th>
+                        <th>累计</th>
                         <th class="col-receive-pay">收付</th>
                         <th>收付合计</th>
                         <th>结余</th>
@@ -1175,13 +1194,14 @@ function initPaymentTables() {
     const table1Body = document.getElementById('paymentTable1Body');
     const table2Body = document.getElementById('paymentTable2Body');
 
-    // 表格1 118行
+    // 表格1 118行，新增累计列
     let html1 = '';
     for (let i = 0; i < 118; i++) {
         html1 += `<tr>
             <td><input type="text" class="col-index" oninput="handleTable1IndexChange(this)"></td>
             <td><input type="text" class="col-nick"></td>
             <td><input type="text" class="col-profit profit-input" oninput="updateProfitColor(this)"></td>
+            <td><input type="text" class="col-accumulate"></td>
             <td><input type="text" class="col-receive-pay"></td>
             <td><input type="text" class="col-total profit-input" oninput="updateProfitColor(this)"></td>
             <td><input type="text" class="col-balance profit-input" oninput="updateProfitColor(this)"></td>
@@ -1189,7 +1209,7 @@ function initPaymentTables() {
     }
     table1Body.innerHTML = html1;
 
-    // 表格2 118行，自动提取用户数据，编号昵称手动输入
+    // 表格2 118行
     const records = getFilteredRecords();
     const usersData = records.map(r => ({
         user: r.applicant,
@@ -1230,6 +1250,7 @@ function handleTable1IndexChange(input) {
     const row = input.closest('tr');
     const nickInput = row.querySelector('.col-nick');
     const profitInput = row.querySelector('.col-profit');
+    // 累计列不需要自动填充，保持空白
     nickInput.value = '';
     profitInput.value = '';
     profitInput.classList.remove('profit-color-positive', 'profit-color-negative');
