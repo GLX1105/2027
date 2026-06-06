@@ -360,10 +360,10 @@ document.addEventListener("keydown", e => {
             color: #2c3e50;
         }
         .payment-table {
-            width: 100%;
             border-collapse: collapse;
             font-size: 0.8rem;
             table-layout: auto;
+            width: 100%;
         }
         .payment-table th, .payment-table td {
             border: 1px solid #d1d5db;
@@ -379,7 +379,6 @@ document.addEventListener("keydown", e => {
             top: 0;
         }
         .payment-table input {
-            width: 100%;
             border: none;
             background: transparent;
             text-align: center;
@@ -387,23 +386,26 @@ document.addEventListener("keydown", e => {
             padding: 2px;
             outline: none;
             min-width: 50px;
+            width: 100%;
         }
         .payment-table input:focus {
             background: #eef2ff;
             border-radius: 2px;
         }
-        /* 表格1列宽 */
-        .payment-table1 .col-index { width: 60px; }
-        .payment-table1 .col-nick { width: 80px; }
-        .payment-table1 .col-profit { width: 80px; }
-        .payment-table1 .col-receive-pay { width: 200px; }
-        .payment-table1 .col-total { width: 80px; }
-        .payment-table1 .col-balance { width: 80px; }
-        /* 表格2列宽紧凑 */
-        .payment-table2 .col-no { width: 60px; }
-        .payment-table2 .col-nick { width: 70px; }
-        .payment-table2 .col-user { width: 90px; }
-        .payment-table2 .col-profit-auto { width: 70px; }
+        /* 左侧表格容器 flex 占满 */
+        .payment-table-container-left {
+            flex: 1 1 auto;
+        }
+        /* 右侧表格容器宽度自适应 */
+        .payment-table-container-right {
+            flex: 0 0 auto;
+            width: auto;
+        }
+        /* 表格1 列宽：收付列固定宽度，其他自适应 */
+        .payment-table1 .col-receive-pay {
+            min-width: 200px;
+        }
+        /* 表格2 列宽全部自适应，无额外设置 */
 
         .resize-handle {
             position: absolute;
@@ -491,33 +493,33 @@ document.addEventListener("keydown", e => {
         </div>
     </div>
     <div class="payment-dialog-body" id="paymentDialogBody">
-        <!-- 表格1：手动输入 -->
-        <div class="payment-table-container">
+        <!-- 左侧表格1 -->
+        <div class="payment-table-container payment-table-container-left">
             <h4>收付明细表</h4>
             <table class="payment-table payment-table1" id="paymentTable1">
                 <thead>
                     <tr>
-                        <th class="col-index">序号</th>
-                        <th class="col-nick">昵称</th>
-                        <th class="col-profit">盈亏</th>
+                        <th>序号</th>
+                        <th>昵称</th>
+                        <th>盈亏</th>
                         <th class="col-receive-pay">收付</th>
-                        <th class="col-total">收付合计</th>
-                        <th class="col-balance">结余</th>
+                        <th>收付合计</th>
+                        <th>结余</th>
                     </tr>
                 </thead>
                 <tbody id="paymentTable1Body"></tbody>
             </table>
         </div>
-        <!-- 表格2：自动提取用户，编号昵称手动输入 -->
-        <div class="payment-table-container">
+        <!-- 右侧表格2 -->
+        <div class="payment-table-container payment-table-container-right">
             <h4>用户盈亏明细</h4>
             <table class="payment-table payment-table2" id="paymentTable2">
                 <thead>
                     <tr>
-                        <th class="col-no">编号</th>
-                        <th class="col-nick">昵称</th>
-                        <th class="col-user">用户</th>
-                        <th class="col-profit-auto">盈亏</th>
+                        <th>编号</th>
+                        <th>昵称</th>
+                        <th>用户</th>
+                        <th>盈亏</th>
                     </tr>
                 </thead>
                 <tbody id="paymentTable2Body"></tbody>
@@ -606,6 +608,7 @@ document.addEventListener("keydown", e => {
 </div>
 
 <script>
+/* ========== 原有系统逻辑 ========== */
 function getPeriodFromDate(dateStr) {
     const date = new Date(dateStr);
     const year = date.getFullYear();
@@ -1222,29 +1225,24 @@ function updateProfitColor(input) {
     else if (num < 0) input.classList.add('profit-color-negative');
 }
 
-// 表格1序号输入匹配逻辑
 function handleTable1IndexChange(input) {
     const val = input.value.trim();
     const row = input.closest('tr');
     const nickInput = row.querySelector('.col-nick');
     const profitInput = row.querySelector('.col-profit');
-    // 清空昵称和盈亏
     nickInput.value = '';
     profitInput.value = '';
     profitInput.classList.remove('profit-color-positive', 'profit-color-negative');
 
     if (!val) return;
 
-    // 在表格2中查找编号匹配的行
     const table2 = document.getElementById('paymentTable2');
     const rows = table2.querySelectorAll('tbody tr');
     for (const row2 of rows) {
         const noInput = row2.querySelector('.col-no');
         if (noInput && noInput.value.trim() === val) {
-            // 获取表格2的昵称
             const nick2 = row2.querySelector('.col-nick');
             if (nick2) nickInput.value = nick2.value;
-            // 获取盈亏
             const profitCell = row2.querySelector('.col-profit-auto');
             if (profitCell) {
                 const span = profitCell.querySelector('span');
@@ -1263,7 +1261,6 @@ function handleTable1IndexChange(input) {
     }
 }
 
-// 表格2编号变化时，更新所有匹配的表格1行
 function handleTable2NoChange(input) {
     const val = input.value.trim();
     if (!val) return;
