@@ -342,24 +342,32 @@ document.addEventListener("keydown", e => {
         }
         .payment-dialog-body {
             flex: 1;
-            overflow: auto;
-            padding: 15px;
+            overflow: hidden;
             display: flex;
-            flex-direction: column;
-            gap: 20px;
+            flex-direction: row;
+            gap: 10px;
+            padding: 10px;
         }
         .payment-table-container {
-            overflow-x: auto;
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .payment-table-container h4 {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #2c3e50;
         }
         .payment-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.85rem;
-            table-layout: fixed;
+            font-size: 0.8rem;
+            table-layout: auto;
         }
         .payment-table th, .payment-table td {
             border: 1px solid #d1d5db;
-            padding: 4px 6px;
+            padding: 2px 4px;
             text-align: center;
             white-space: nowrap;
         }
@@ -375,8 +383,8 @@ document.addEventListener("keydown", e => {
             border: none;
             background: transparent;
             text-align: center;
-            font-size: 0.85rem;
-            padding: 4px;
+            font-size: 0.8rem;
+            padding: 2px;
             outline: none;
             min-width: 50px;
         }
@@ -384,15 +392,19 @@ document.addEventListener("keydown", e => {
             background: #eef2ff;
             border-radius: 2px;
         }
-        .col-index { width: 60px; }
-        .col-nick { width: 80px; }
-        .col-profit { width: 80px; }
-        .col-receive-pay { width: 400px; } /* 5倍 */
-        .col-total { width: 80px; }
-        .col-balance { width: 80px; }
-        .col-no { width: 60px; }
-        .col-user { width: 100px; }
-        .col-profit-auto { width: 100px; }
+        /* 表格1列宽 */
+        .payment-table1 .col-index { width: 60px; }
+        .payment-table1 .col-nick { width: 80px; }
+        .payment-table1 .col-profit { width: 80px; }
+        .payment-table1 .col-receive-pay { width: 200px; }
+        .payment-table1 .col-total { width: 80px; }
+        .payment-table1 .col-balance { width: 80px; }
+        /* 表格2列宽紧凑 */
+        .payment-table2 .col-no { width: 60px; }
+        .payment-table2 .col-nick { width: 70px; }
+        .payment-table2 .col-user { width: 90px; }
+        .payment-table2 .col-profit-auto { width: 70px; }
+
         .resize-handle {
             position: absolute;
             bottom: 0;
@@ -479,17 +491,35 @@ document.addEventListener("keydown", e => {
         </div>
     </div>
     <div class="payment-dialog-body" id="paymentDialogBody">
+        <!-- 表格1：手动输入 -->
         <div class="payment-table-container">
-            <h4 style="margin-bottom:8px;">收付明细表</h4>
-            <table class="payment-table" id="paymentTable1">
-                <thead><tr><th class="col-index">序号</th><th class="col-nick">昵称</th><th class="col-profit">盈亏</th><th class="col-receive-pay">收付</th><th class="col-total">收付合计</th><th class="col-balance">结余</th></tr></thead>
+            <h4>收付明细表</h4>
+            <table class="payment-table payment-table1" id="paymentTable1">
+                <thead>
+                    <tr>
+                        <th class="col-index">序号</th>
+                        <th class="col-nick">昵称</th>
+                        <th class="col-profit">盈亏</th>
+                        <th class="col-receive-pay">收付</th>
+                        <th class="col-total">收付合计</th>
+                        <th class="col-balance">结余</th>
+                    </tr>
+                </thead>
                 <tbody id="paymentTable1Body"></tbody>
             </table>
         </div>
+        <!-- 表格2：自动提取用户，编号昵称手动输入 -->
         <div class="payment-table-container">
-            <h4 style="margin-bottom:8px;">用户盈亏明细</h4>
-            <table class="payment-table" id="paymentTable2">
-                <thead><tr><th class="col-no">编号</th><th class="col-nick">昵称</th><th class="col-user">用户</th><th class="col-profit-auto">盈亏</th></tr></thead>
+            <h4>用户盈亏明细</h4>
+            <table class="payment-table payment-table2" id="paymentTable2">
+                <thead>
+                    <tr>
+                        <th class="col-no">编号</th>
+                        <th class="col-nick">昵称</th>
+                        <th class="col-user">用户</th>
+                        <th class="col-profit-auto">盈亏</th>
+                    </tr>
+                </thead>
                 <tbody id="paymentTable2Body"></tbody>
             </table>
         </div>
@@ -1142,19 +1172,21 @@ function initPaymentTables() {
     const table1Body = document.getElementById('paymentTable1Body');
     const table2Body = document.getElementById('paymentTable2Body');
 
+    // 表格1 118行
     let html1 = '';
-    for (let i = 1; i <= 118; i++) {
+    for (let i = 0; i < 118; i++) {
         html1 += `<tr>
-            <td><input type="text" class="col-index" placeholder="序号"></td>
-            <td><input type="text" class="col-nick" placeholder="昵称"></td>
-            <td><input type="text" class="col-profit profit-input" placeholder="盈亏" oninput="updateProfitColor(this)"></td>
-            <td><input type="text" class="col-receive-pay" placeholder="收付"></td>
-            <td><input type="text" class="col-total profit-input" placeholder="合计" oninput="updateProfitColor(this)"></td>
-            <td><input type="text" class="col-balance profit-input" placeholder="结余" oninput="updateProfitColor(this)"></td>
+            <td><input type="text" class="col-index" oninput="handleTable1IndexChange(this)"></td>
+            <td><input type="text" class="col-nick"></td>
+            <td><input type="text" class="col-profit profit-input" oninput="updateProfitColor(this)"></td>
+            <td><input type="text" class="col-receive-pay"></td>
+            <td><input type="text" class="col-total profit-input" oninput="updateProfitColor(this)"></td>
+            <td><input type="text" class="col-balance profit-input" oninput="updateProfitColor(this)"></td>
         </tr>`;
     }
     table1Body.innerHTML = html1;
 
+    // 表格2 118行，自动提取用户数据，编号昵称手动输入
     const records = getFilteredRecords();
     const usersData = records.map(r => ({
         user: r.applicant,
@@ -1162,16 +1194,15 @@ function initPaymentTables() {
     }));
 
     let html2 = '';
-    for (let i = 1; i <= 118; i++) {
-        const data = (i <= usersData.length) ? usersData[i-1] : null;
+    for (let i = 0; i < 118; i++) {
+        const data = (i < usersData.length) ? usersData[i] : null;
         const user = data ? data.user : '';
         const profit = data ? data.profit : '';
-        const profitClass = data ? (profit >= 0 ? 'profit-color-positive' : 'profit-color-negative') : '';
         html2 += `<tr>
-            <td>${i}</td>
-            <td><input type="text" class="col-nick" placeholder="昵称"></td>
+            <td><input type="text" class="col-no" oninput="handleTable2NoChange(this)"></td>
+            <td><input type="text" class="col-nick"></td>
             <td>${escapeHtml(user)}</td>
-            <td class="${profitClass}">${profit !== '' ? profit : ''}</td>
+            <td class="col-profit-auto profit-auto-cell">${profit !== '' ? '<span class="' + (profit >= 0 ? 'profit-color-positive' : 'profit-color-negative') + '">' + profit + '</span>' : ''}</td>
         </tr>`;
     }
     table2Body.innerHTML = html2;
@@ -1184,23 +1215,84 @@ function escapeHtml(text) {
 
 function updateProfitColor(input) {
     const val = input.value.trim();
-    if (val === '' || isNaN(val)) {
-        input.classList.remove('profit-color-positive', 'profit-color-negative');
-        return;
-    }
+    input.classList.remove('profit-color-positive', 'profit-color-negative');
+    if (val === '' || isNaN(val)) return;
     const num = parseFloat(val);
-    if (num > 0) {
-        input.classList.add('profit-color-positive');
-        input.classList.remove('profit-color-negative');
-    } else if (num < 0) {
-        input.classList.add('profit-color-negative');
-        input.classList.remove('profit-color-positive');
-    } else {
-        input.classList.remove('profit-color-positive', 'profit-color-negative');
+    if (num > 0) input.classList.add('profit-color-positive');
+    else if (num < 0) input.classList.add('profit-color-negative');
+}
+
+// 表格1序号输入匹配逻辑
+function handleTable1IndexChange(input) {
+    const val = input.value.trim();
+    const row = input.closest('tr');
+    const nickInput = row.querySelector('.col-nick');
+    const profitInput = row.querySelector('.col-profit');
+    // 清空昵称和盈亏
+    nickInput.value = '';
+    profitInput.value = '';
+    profitInput.classList.remove('profit-color-positive', 'profit-color-negative');
+
+    if (!val) return;
+
+    // 在表格2中查找编号匹配的行
+    const table2 = document.getElementById('paymentTable2');
+    const rows = table2.querySelectorAll('tbody tr');
+    for (const row2 of rows) {
+        const noInput = row2.querySelector('.col-no');
+        if (noInput && noInput.value.trim() === val) {
+            // 获取表格2的昵称
+            const nick2 = row2.querySelector('.col-nick');
+            if (nick2) nickInput.value = nick2.value;
+            // 获取盈亏
+            const profitCell = row2.querySelector('.col-profit-auto');
+            if (profitCell) {
+                const span = profitCell.querySelector('span');
+                if (span) {
+                    profitInput.value = span.textContent.trim();
+                    const num = parseFloat(profitInput.value);
+                    profitInput.classList.remove('profit-color-positive', 'profit-color-negative');
+                    if (!isNaN(num)) {
+                        if (num > 0) profitInput.classList.add('profit-color-positive');
+                        else if (num < 0) profitInput.classList.add('profit-color-negative');
+                    }
+                }
+            }
+            break;
+        }
     }
 }
 
-// 覆盖原 applyFilters，使其在弹窗打开时也更新表格
+// 表格2编号变化时，更新所有匹配的表格1行
+function handleTable2NoChange(input) {
+    const val = input.value.trim();
+    if (!val) return;
+    const table1 = document.getElementById('paymentTable1');
+    const rows1 = table1.querySelectorAll('tbody tr');
+    const nick2 = input.closest('tr').querySelector('.col-nick').value;
+    const profitCell = input.closest('tr').querySelector('.col-profit-auto');
+    const profitVal = profitCell ? (profitCell.querySelector('span') ? profitCell.querySelector('span').textContent.trim() : '') : '';
+
+    rows1.forEach(row1 => {
+        const idxInput = row1.querySelector('.col-index');
+        if (idxInput && idxInput.value.trim() === val) {
+            const nick1 = row1.querySelector('.col-nick');
+            const profit1 = row1.querySelector('.col-profit');
+            if (nick1) nick1.value = nick2;
+            if (profit1) {
+                profit1.value = profitVal;
+                profit1.classList.remove('profit-color-positive', 'profit-color-negative');
+                const num = parseFloat(profitVal);
+                if (!isNaN(num)) {
+                    if (num > 0) profit1.classList.add('profit-color-positive');
+                    else if (num < 0) profit1.classList.add('profit-color-negative');
+                }
+            }
+        }
+    });
+}
+
+// 覆盖 applyFilters 更新表格2
 const originalApplyFilters = applyFilters;
 applyFilters = function() {
     originalApplyFilters();
@@ -1210,7 +1302,7 @@ applyFilters = function() {
 };
 
 function initDragResize() {
-    // 事件监听已在外部绑定
+    // 事件已在外部绑定
 }
 </script>
 </body>
