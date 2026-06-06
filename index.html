@@ -286,165 +286,35 @@ document.addEventListener("keydown", e => {
         .custom-context-menu-divider { height: 1px; background: #eee; margin: 4px 0; }
 
         /* 收付弹窗样式 */
-        .payment-dialog {
-            position: fixed;
-            top: 60px;
-            left: 60px;
-            width: 1000px;
-            height: 700px;
-            min-width: 400px;
-            min-height: 300px;
-            background: white;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            border-radius: 8px;
-            z-index: 5000;
-            display: none;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .payment-dialog.active {
-            display: flex;
-        }
-        .payment-dialog-header {
-            background: #2c3e50;
-            color: white;
-            padding: 8px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: move;
-            user-select: none;
-        }
-        .payment-dialog-header h3 {
-            font-size: 1rem;
-            font-weight: 600;
-            margin: 0;
-        }
-        .payment-dialog-actions {
-            display: flex;
-            gap: 8px;
-        }
-        .payment-dialog-btn {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-        }
-        .payment-dialog-btn:hover {
-            background: rgba(255,255,255,0.4);
-        }
-        .payment-dialog-body {
-            flex: 1;
-            overflow: hidden;
-            display: flex;
-            flex-direction: row;
-            gap: 10px;
-            padding: 10px;
-        }
-        .payment-table-container {
-            flex: 1;
-            overflow: auto;
-            display: flex;
-            flex-direction: column;
-        }
-        .payment-table-container h4 {
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-            color: #2c3e50;
-        }
-        .payment-table {
-            border-collapse: collapse;
-            font-size: 0.8rem;
-            table-layout: auto;
-            width: 100%;
-        }
-        .payment-table th, .payment-table td {
-            border: 1px solid #d1d5db;
-            padding: 2px 4px;
-            text-align: center;
-            white-space: nowrap;
-        }
-        .payment-table th {
-            background: #f1f6fd;
-            font-weight: 600;
-            color: #2c3e50;
-            position: sticky;
-            top: 0;
-        }
-        .payment-table input {
-            border: none;
-            background: transparent;
-            text-align: center;
-            font-size: 0.8rem;
-            padding: 2px;
-            outline: none;
-            min-width: 0;
-            width: 100%;
-        }
-        .payment-table input:focus {
-            background: #eef2ff;
-            border-radius: 2px;
-        }
-        .payment-table-container-left {
-            flex: 1 1 auto;
-        }
-        .payment-table-container-right {
-            flex: 0 0 auto;
-            width: auto;
-        }
-        /* 收付列样式：加粗、黑色、略宽 */
-        .payment-table1 .col-receive-pay {
-            min-width: 250px;
-            color: #000; /* 黑色 */
-            font-weight: bold;
-        }
-        /* 数值列加粗：盈亏、收付合计、结余 */
-        .payment-table1 .col-profit,
-        .payment-table1 .col-total,
-        .payment-table1 .col-balance {
-            font-weight: bold;
-        }
-        /* 累计列不加粗 */
-        .payment-table1 .col-accumulate {
-            font-weight: normal;
-        }
-        .payment-table2 .col-profit-auto {
-            font-weight: bold;
-        }
-        /* 统一列宽（非收付列） */
-        .payment-table1 th:not(.col-receive-pay),
-        .payment-table1 td:not(.col-receive-pay),
-        .payment-table2 th,
-        .payment-table2 td {
-            width: 70px;
-        }
-        .resize-handle {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 20px;
-            height: 20px;
-            cursor: nwse-resize;
-            background: linear-gradient(135deg, transparent 50%, #ccc 50%);
-        }
-        .payment-dialog.fullscreen {
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
-            min-width: 100% !important;
-            min-height: 100% !important;
-            border-radius: 0;
-        }
+        .payment-dialog { position: fixed; top: 60px; left: 60px; width: 1000px; height: 700px; min-width: 400px; min-height: 300px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-radius: 8px; z-index: 5000; display: none; flex-direction: column; overflow: hidden; }
+        .payment-dialog.active { display: flex; }
+        .payment-dialog-header { background: #2c3e50; color: white; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none; }
+        .payment-dialog-header h3 { font-size: 1rem; font-weight: 600; margin: 0; }
+        .payment-dialog-actions { display: flex; gap: 8px; }
+        .payment-dialog-btn { background: rgba(255,255,255,0.2); border: none; color: white; width: 30px; height: 30px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .payment-dialog-btn:hover { background: rgba(255,255,255,0.4); }
+        .payment-dialog-body { flex: 1; overflow: hidden; display: flex; flex-direction: row; gap: 10px; padding: 10px; }
+        .payment-table-container { flex: 1; overflow: auto; display: flex; flex-direction: column; }
+        .payment-table-container h4 { margin-bottom: 5px; font-size: 0.9rem; color: #2c3e50; display: flex; align-items: center; gap: 10px; }
+        .payment-table { border-collapse: collapse; font-size: 0.8rem; table-layout: auto; width: 100%; }
+        .payment-table th, .payment-table td { border: 1px solid #d1d5db; padding: 2px 4px; text-align: center; white-space: nowrap; }
+        .payment-table th { background: #f1f6fd; font-weight: 600; color: #2c3e50; position: sticky; top: 0; }
+        .payment-table input { border: none; background: transparent; text-align: center; font-size: 0.8rem; padding: 2px; outline: none; min-width: 0; width: 100%; }
+        .payment-table input:focus { background: #eef2ff; border-radius: 2px; }
+        .payment-table-container-left { flex: 1 1 auto; }
+        .payment-table-container-right { flex: 0 0 auto; width: auto; }
+        .payment-table1 .col-receive-pay { min-width: 250px; color: #3498db; font-weight: normal; }
+        .payment-table1 .col-profit, .payment-table1 .col-total, .payment-table1 .col-balance { font-weight: bold; }
+        .payment-table1 .col-accumulate { font-weight: normal; }
+        .payment-table2 .col-profit-auto { font-weight: bold; }
+        .payment-table1 th:not(.col-receive-pay), .payment-table1 td:not(.col-receive-pay),
+        .payment-table2 th, .payment-table2 td { width: 70px; }
+        .resize-handle { position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, #ccc 50%); }
+        .payment-dialog.fullscreen { top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; min-width: 100% !important; min-height: 100% !important; border-radius: 0; }
         .profit-color-positive { color: #27ae60; }
         .profit-color-negative { color: #e74c3c; }
+        .btn-small { padding: 3px 8px; font-size: 0.75rem; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; }
+        .btn-small:hover { background: #f0f0f0; }
     </style>
 </head>
 <body>
@@ -502,43 +372,25 @@ document.addEventListener("keydown", e => {
     <div class="payment-dialog-header" id="paymentDialogHeader">
         <h3><i class="fas fa-hand-holding-usd"></i> 收付管理</h3>
         <div class="payment-dialog-actions">
-            <button class="payment-dialog-btn" onclick="toggleFullscreenPayment()" title="全屏/还原">
-                <i class="fas fa-expand"></i>
-            </button>
-            <button class="payment-dialog-btn" onclick="closePaymentDialog()" title="关闭">
-                <i class="fas fa-times"></i>
-            </button>
+            <button class="payment-dialog-btn" onclick="toggleFullscreenPayment()" title="全屏/还原"><i class="fas fa-expand"></i></button>
+            <button class="payment-dialog-btn" onclick="closePaymentDialog()" title="关闭"><i class="fas fa-times"></i></button>
         </div>
     </div>
     <div class="payment-dialog-body" id="paymentDialogBody">
         <div class="payment-table-container payment-table-container-left">
             <h4>收付明细表</h4>
             <table class="payment-table payment-table1" id="paymentTable1">
-                <thead>
-                    <tr>
-                        <th>序号</th>
-                        <th>昵称</th>
-                        <th>盈亏</th>
-                        <th>累计</th>
-                        <th class="col-receive-pay">收付</th>
-                        <th>收付合计</th>
-                        <th>结余</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>序号</th><th>昵称</th><th>盈亏</th><th>累计</th><th class="col-receive-pay">收付</th><th>收付合计</th><th>结余</th></tr></thead>
                 <tbody id="paymentTable1Body"></tbody>
             </table>
         </div>
         <div class="payment-table-container payment-table-container-right">
-            <h4>用户盈亏明细</h4>
+            <h4>用户盈亏明细
+                <button class="btn-small" id="btnEditTable2" onclick="setTable2Editable(true)" style="display:none;">修改</button>
+                <button class="btn-small" id="btnSaveTable2" onclick="saveTable2Data()">保存</button>
+            </h4>
             <table class="payment-table payment-table2" id="paymentTable2">
-                <thead>
-                    <tr>
-                        <th>编号</th>
-                        <th>昵称</th>
-                        <th>用户</th>
-                        <th>盈亏</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>编号</th><th>昵称</th><th>用户</th><th>盈亏</th><th>备注</th></tr></thead>
                 <tbody id="paymentTable2Body"></tbody>
             </table>
         </div>
@@ -625,7 +477,7 @@ document.addEventListener("keydown", e => {
 </div>
 
 <script>
-/* ========== 原有系统逻辑 ========== */
+/* ========== 原有系统全部逻辑（完整保留） ========== */
 function getPeriodFromDate(dateStr) {
     const date = new Date(dateStr);
     const year = date.getFullYear();
@@ -1084,12 +936,6 @@ function closeImportPreview() { document.getElementById('importPreviewDialog').s
 
 async function confirmImport() { if (pendingImportRecords.length === 0) { showToast('没有新记录可导入', 'warning'); closeImportPreview(); return; } try { for (const item of pendingImportRecords) { const newRec = { id: Date.now() + Math.random(), timestamp: item.timestamp, category: item.category || '未知分类', applicant: item.applicant, originalData: item.originalData, tableHTML: item.tableHTML || '', compensationCardHTML: item.compensationCardHTML || '', dataCount: item.dataCount || 0, extractedData: item.extractedData || {}, customTag: item.customTag || '', createdAt: new Date().toISOString() }; const validation = DataValidator.validateRecord(newRec); if (!validation.valid) continue; historyRecords.unshift(newRec); try { await saveToDatabase(STORE_NAME, newRec); } catch(e) {} } updateHistoryDisplay(); updateUserCardsDisplay(); updateSummaryDisplay(); updateMyAccountCards(); updateRecycleBadge(); try { populateFilterOptions(); } catch(e) {} updateStorageIndicator(); showToast(`成功导入 ${pendingImportRecords.length} 条新记录`, 'success'); } catch(e) { showToast('导入失败', 'error'); } finally { closeImportPreview(); } }
 
-async function importAllDataFromJSON(data) { try { if (!Array.isArray(data)) throw new Error("数据不是有效数组"); let cnt = 0; for (const item of data) { if (item.originalData && item.timestamp && item.applicant && item.category) { const newRec = { id: Date.now() + Math.random(), timestamp: item.timestamp, category: item.category, applicant: item.applicant, originalData: item.originalData, tableHTML: item.tableHTML || '', compensationCardHTML: item.compensationCardHTML || '', dataCount: item.dataCount || 0, extractedData: item.extractedData || {}, customTag: item.customTag || '', createdAt: new Date().toISOString() }; const validation = DataValidator.validateRecord(newRec); if (!validation.valid) continue; historyRecords.unshift(newRec); try { await saveToDatabase(STORE_NAME, newRec); } catch(e) {} cnt++; } } updateHistoryDisplay(); updateUserCardsDisplay(); updateSummaryDisplay(); updateMyAccountCards(); updateRecycleBadge(); try { populateFilterOptions(); } catch(e) {} updateStorageIndicator(); showToast(`成功导入 ${cnt} 条历史记录！`, 'success'); } catch(e) { showToast(`导入失败: ${e.message}`, 'error'); } }
-
-function importAllData() { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'; input.onchange = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { try { const data = JSON.parse(ev.target.result); importAllDataFromJSON(data); } catch(e) { showToast(`导入失败: ${e.message}`, 'error'); } }; reader.readAsText(file); }; input.click(); }
-
-async function exportAllData() { if (historyRecords.length === 0) { showToast('没有历史记录可导出！', 'error'); return; } try { const blob = new Blob([JSON.stringify(historyRecords, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `订单报表系统_所有数据_${new Date().toISOString().slice(0,10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 0); showToast('所有数据导出成功！', 'success'); } catch(e) { showToast('导出失败', 'error'); } }
-
 function showFormatSelector() { document.getElementById('formatSelector').style.display = 'flex'; }
 function closeFormatSelector() { document.getElementById('formatSelector').style.display = 'none'; }
 function selectFormat(el, fmt) { document.querySelectorAll('.format-option').forEach(o => o.classList.remove('selected')); el.classList.add('selected'); exportFormat = fmt; }
@@ -1107,92 +953,45 @@ document.getElementById('historyUserFilter').addEventListener('change', updateHi
 document.getElementById('accessPassword').addEventListener('keypress', (e) => { if (e.key === 'Enter') checkAccessPassword(); });
 document.getElementById('operationPassword').addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyOperationPassword(); });
 
-/* ========== 收付弹窗新增功能 ========== */
+/* ========== 收付弹窗全部功能 ========== */
+let paymentTable2Saved = JSON.parse(localStorage.getItem('paymentTable2Data') || '[]');
+let isTable2Editable = true;
+
 function openPaymentDialog() {
     const dialog = document.getElementById('paymentDialog');
     dialog.classList.add('active');
     initPaymentTables();
+    updateTable2EditButtons();
     initDragResize();
 }
-
-function closePaymentDialog() {
-    document.getElementById('paymentDialog').classList.remove('active');
-}
-
+function closePaymentDialog() { document.getElementById('paymentDialog').classList.remove('active'); }
 function toggleFullscreenPayment() {
     const dialog = document.getElementById('paymentDialog');
     dialog.classList.toggle('fullscreen');
     const icon = dialog.querySelector('.payment-dialog-header .payment-dialog-actions .fa-expand, .payment-dialog-header .payment-dialog-actions .fa-compress');
-    if (dialog.classList.contains('fullscreen')) {
-        icon.classList.remove('fa-expand');
-        icon.classList.add('fa-compress');
-    } else {
-        icon.classList.remove('fa-compress');
-        icon.classList.add('fa-expand');
-    }
+    if (dialog.classList.contains('fullscreen')) { icon.classList.remove('fa-expand'); icon.classList.add('fa-compress'); }
+    else { icon.classList.remove('fa-compress'); icon.classList.add('fa-expand'); }
 }
 
-let isDragging = false;
-let dragStartX, dragStartY, initialLeft, initialTop;
+let isDragging = false, dragStartX, dragStartY, initialLeft, initialTop;
 const dialogElement = document.getElementById('paymentDialog');
 const headerElement = document.getElementById('paymentDialogHeader');
-
 headerElement.addEventListener('mousedown', (e) => {
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-    isDragging = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    const rect = dialogElement.getBoundingClientRect();
-    initialLeft = rect.left;
-    initialTop = rect.top;
-    dialogElement.style.transition = 'none';
-    e.preventDefault();
+    isDragging = true; dragStartX = e.clientX; dragStartY = e.clientY;
+    const rect = dialogElement.getBoundingClientRect(); initialLeft = rect.left; initialTop = rect.top;
+    dialogElement.style.transition = 'none'; e.preventDefault();
 });
-
-document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const dx = e.clientX - dragStartX;
-    const dy = e.clientY - dragStartY;
-    dialogElement.style.left = (initialLeft + dx) + 'px';
-    dialogElement.style.top = (initialTop + dy) + 'px';
-});
-
-document.addEventListener('mouseup', () => {
-    isDragging = false;
-    dialogElement.style.transition = '';
-});
-
+document.addEventListener('mousemove', (e) => { if (!isDragging) return; dialogElement.style.left = (initialLeft + e.clientX - dragStartX) + 'px'; dialogElement.style.top = (initialTop + e.clientY - dragStartY) + 'px'; });
+document.addEventListener('mouseup', () => { isDragging = false; dialogElement.style.transition = ''; });
 const resizeHandle = document.getElementById('resizeHandle');
-let isResizing = false;
-let resizeStartX, resizeStartY, initialWidth, initialHeight;
-
-resizeHandle.addEventListener('mousedown', (e) => {
-    isResizing = true;
-    resizeStartX = e.clientX;
-    resizeStartY = e.clientY;
-    initialWidth = dialogElement.offsetWidth;
-    initialHeight = dialogElement.offsetHeight;
-    e.preventDefault();
-    e.stopPropagation();
-});
-
-document.addEventListener('mousemove', (e) => {
-    if (!isResizing) return;
-    const newWidth = Math.max(400, initialWidth + (e.clientX - resizeStartX));
-    const newHeight = Math.max(300, initialHeight + (e.clientY - resizeStartY));
-    dialogElement.style.width = newWidth + 'px';
-    dialogElement.style.height = newHeight + 'px';
-});
-
-document.addEventListener('mouseup', () => {
-    isResizing = false;
-});
+let isResizing = false, resizeStartX, resizeStartY, initialWidth, initialHeight;
+resizeHandle.addEventListener('mousedown', (e) => { isResizing = true; resizeStartX = e.clientX; resizeStartY = e.clientY; initialWidth = dialogElement.offsetWidth; initialHeight = dialogElement.offsetHeight; e.preventDefault(); e.stopPropagation(); });
+document.addEventListener('mousemove', (e) => { if (!isResizing) return; dialogElement.style.width = Math.max(400, initialWidth + e.clientX - resizeStartX) + 'px'; dialogElement.style.height = Math.max(300, initialHeight + e.clientY - resizeStartY) + 'px'; });
+document.addEventListener('mouseup', () => { isResizing = false; });
 
 function initPaymentTables() {
     const table1Body = document.getElementById('paymentTable1Body');
-    const table2Body = document.getElementById('paymentTable2Body');
-
-    // 表格1 118行，新增累计列
     let html1 = '';
     for (let i = 0; i < 118; i++) {
         html1 += `<tr>
@@ -1207,78 +1006,85 @@ function initPaymentTables() {
     }
     table1Body.innerHTML = html1;
 
-    // 表格2 118行
+    const table2Body = document.getElementById('paymentTable2Body');
     const records = getFilteredRecords();
-    const usersData = records.map(r => ({
-        user: r.applicant,
-        profit: Math.trunc(parseFloat(r.extractedData.profitLoss || 0))
-    }));
-
     let html2 = '';
     for (let i = 0; i < 118; i++) {
-        const data = (i < usersData.length) ? usersData[i] : null;
-        const user = data ? data.user : '';
-        const profit = data ? data.profit : '';
+        const saved = paymentTable2Saved.find(s => s.row === i) || {};
+        const data = (i < records.length) ? records[i] : null;
+        const user = data ? data.applicant : '';
+        const profit = data ? Math.trunc(parseFloat(data.extractedData.profitLoss || 0)) : '';
         html2 += `<tr>
-            <td><input type="text" class="col-no" oninput="handleTable2NoChange(this)"></td>
-            <td><input type="text" class="col-nick"></td>
+            <td><input type="text" class="col-no" value="${escapeHtml(saved.no || '')}" oninput="handleTable2NoChange(this)" ${isTable2Editable ? '' : 'readonly'}></td>
+            <td><input type="text" class="col-nick" value="${escapeHtml(saved.nick || '')}" ${isTable2Editable ? '' : 'readonly'}></td>
             <td>${escapeHtml(user)}</td>
-            <td class="col-profit-auto profit-auto-cell">${profit !== '' ? '<span class="' + (profit >= 0 ? 'profit-color-positive' : 'profit-color-negative') + '">' + profit + '</span>' : ''}</td>
+            <td class="col-profit-auto">${profit !== '' ? '<span class="' + (profit >= 0 ? 'profit-color-positive' : 'profit-color-negative') + '">' + profit + '</span>' : ''}</td>
+            <td><input type="text" class="col-remark" value="${escapeHtml(saved.remark || '')}" oninput="handleRemarkChange(this)" ${isTable2Editable ? '' : 'readonly'}></td>
         </tr>`;
     }
     table2Body.innerHTML = html2;
+    applyPaymentData();
 }
 
-function escapeHtml(text) {
-    const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
-    return text.replace(/[&<>"']/g, m => map[m]);
+function escapeHtml(text) { const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'}; return String(text).replace(/[&<>"']/g, m => map[m]); }
+
+function setTable2Editable(editable) {
+    isTable2Editable = editable;
+    const inputs = document.querySelectorAll('#paymentTable2 input');
+    inputs.forEach(inp => { if (editable) inp.removeAttribute('readonly'); else inp.setAttribute('readonly', 'readonly'); });
+    updateTable2EditButtons();
 }
 
-function updateProfitColor(input) {
-    const val = input.value.trim();
-    input.classList.remove('profit-color-positive', 'profit-color-negative');
-    if (val === '' || isNaN(val)) return;
-    const num = parseFloat(val);
-    if (num > 0) input.classList.add('profit-color-positive');
-    else if (num < 0) input.classList.add('profit-color-negative');
+function updateTable2EditButtons() {
+    document.getElementById('btnEditTable2').style.display = isTable2Editable ? 'none' : 'inline-block';
+    document.getElementById('btnSaveTable2').style.display = isTable2Editable ? 'inline-block' : 'none';
 }
 
-// 盈亏列变化时触发结余计算
-function handleProfitChange(input) {
-    updateProfitColor(input);
-    updateRowCalculations(input.closest('tr'));
+function saveTable2Data() {
+    const rows = document.querySelectorAll('#paymentTable2 tbody tr');
+    const data = [];
+    rows.forEach((row, idx) => {
+        const no = row.querySelector('.col-no')?.value || '';
+        const nick = row.querySelector('.col-nick')?.value || '';
+        const remark = row.querySelector('.col-remark')?.value || '';
+        if (no || nick || remark) data.push({ row: idx, no, nick, remark });
+    });
+    localStorage.setItem('paymentTable2Data', JSON.stringify(data));
+    paymentTable2Saved = data;
+    setTable2Editable(false);
+    showToast('用户盈亏明细已保存', 'success');
 }
 
-// 收付列变化时触发收付合计求和及结余计算
-function handleReceivePayChange(input) {
-    updateRowCalculations(input.closest('tr'));
+function handleRemarkChange(input) {
+    const row = input.closest('tr');
+    const remark = input.value.trim();
+    if (!remark) return;
+    const records = getFilteredRecords();
+    const matched = records.find(r => r.applicant === remark);
+    if (matched) {
+        row.querySelector('td:nth-child(3)').textContent = remark;
+        const profit = Math.trunc(parseFloat(matched.extractedData.profitLoss || 0));
+        const profitCell = row.querySelector('.col-profit-auto');
+        profitCell.innerHTML = profit !== 0 ? `<span class="${profit >= 0 ? 'profit-color-positive' : 'profit-color-negative'}">${profit}</span>` : '';
+    }
 }
 
-// 更新行的收付合计和结余
+function updateProfitColor(input) { const val = input.value.trim(); input.classList.remove('profit-color-positive', 'profit-color-negative'); if (val === '' || isNaN(val)) return; const num = parseFloat(val); if (num > 0) input.classList.add('profit-color-positive'); else if (num < 0) input.classList.add('profit-color-negative'); }
+function handleProfitChange(input) { updateProfitColor(input); updateRowCalculations(input.closest('tr')); }
+function handleReceivePayChange(input) { updateRowCalculations(input.closest('tr')); }
 function updateRowCalculations(row) {
     const receivePayInput = row.querySelector('.col-receive-pay');
     const totalInput = row.querySelector('.col-total');
     const profitInput = row.querySelector('.col-profit');
     const balanceInput = row.querySelector('.col-balance');
-
-    // 提取收付列中的数字（含负号）
     let sum = 0;
-    if (receivePayInput) {
-        const text = receivePayInput.value;
-        const matches = text.match(/-?\d+/g);
-        if (matches) {
-            sum = matches.reduce((acc, val) => acc + parseInt(val, 10), 0);
-        }
-    }
+    if (receivePayInput) { const matches = receivePayInput.value.match(/-?\d+/g); if (matches) sum = matches.reduce((acc, val) => acc + parseInt(val, 10), 0); }
     if (totalInput) totalInput.value = sum;
-
-    // 结余 = 盈亏 - 收付合计
     if (balanceInput && profitInput && totalInput) {
         const profitVal = parseFloat(profitInput.value) || 0;
         const totalVal = parseFloat(totalInput.value) || 0;
         const balance = profitVal - totalVal;
         balanceInput.value = balance;
-        // 结余列应用颜色
         balanceInput.classList.remove('profit-color-positive', 'profit-color-negative');
         if (balance > 0) balanceInput.classList.add('profit-color-positive');
         else if (balance < 0) balanceInput.classList.add('profit-color-negative');
@@ -1288,14 +1094,9 @@ function updateRowCalculations(row) {
 function handleTable1IndexChange(input) {
     const val = input.value.trim();
     const row = input.closest('tr');
-    const nickInput = row.querySelector('.col-nick');
-    const profitInput = row.querySelector('.col-profit');
-    nickInput.value = '';
-    profitInput.value = '';
-    profitInput.classList.remove('profit-color-positive', 'profit-color-negative');
-
+    const nickInput = row.querySelector('.col-nick'), profitInput = row.querySelector('.col-profit');
+    nickInput.value = ''; profitInput.value = ''; profitInput.classList.remove('profit-color-positive', 'profit-color-negative');
     if (!val) return;
-
     const table2 = document.getElementById('paymentTable2');
     const rows = table2.querySelectorAll('tbody tr');
     for (const row2 of rows) {
@@ -1310,16 +1111,12 @@ function handleTable1IndexChange(input) {
                     profitInput.value = span.textContent.trim();
                     const num = parseFloat(profitInput.value);
                     profitInput.classList.remove('profit-color-positive', 'profit-color-negative');
-                    if (!isNaN(num)) {
-                        if (num > 0) profitInput.classList.add('profit-color-positive');
-                        else if (num < 0) profitInput.classList.add('profit-color-negative');
-                    }
+                    if (!isNaN(num)) { if (num > 0) profitInput.classList.add('profit-color-positive'); else if (num < 0) profitInput.classList.add('profit-color-negative'); }
                 }
             }
             break;
         }
     }
-    // 更新关联计算
     updateRowCalculations(row);
 }
 
@@ -1331,35 +1128,100 @@ function handleTable2NoChange(input) {
     const nick2 = input.closest('tr').querySelector('.col-nick').value;
     const profitCell = input.closest('tr').querySelector('.col-profit-auto');
     const profitVal = profitCell ? (profitCell.querySelector('span') ? profitCell.querySelector('span').textContent.trim() : '') : '';
-
     rows1.forEach(row1 => {
         const idxInput = row1.querySelector('.col-index');
         if (idxInput && idxInput.value.trim() === val) {
-            const nick1 = row1.querySelector('.col-nick');
-            const profit1 = row1.querySelector('.col-profit');
+            const nick1 = row1.querySelector('.col-nick'), profit1 = row1.querySelector('.col-profit');
             if (nick1) nick1.value = nick2;
-            if (profit1) {
-                profit1.value = profitVal;
-                profit1.classList.remove('profit-color-positive', 'profit-color-negative');
-                const num = parseFloat(profitVal);
-                if (!isNaN(num)) {
-                    if (num > 0) profit1.classList.add('profit-color-positive');
-                    else if (num < 0) profit1.classList.add('profit-color-negative');
-                }
-                // 更新关联计算
-                updateRowCalculations(profit1.closest('tr'));
-            }
+            if (profit1) { profit1.value = profitVal; profit1.classList.remove('profit-color-positive', 'profit-color-negative'); const num = parseFloat(profitVal); if (!isNaN(num)) { if (num > 0) profit1.classList.add('profit-color-positive'); else if (num < 0) profit1.classList.add('profit-color-negative'); } updateRowCalculations(profit1.closest('tr')); }
         }
     });
 }
 
-const originalApplyFilters = applyFilters;
-applyFilters = function() {
-    originalApplyFilters();
-    if (document.getElementById('paymentDialog').classList.contains('active')) {
-        initPaymentTables();
+function getPaymentData() {
+    const table1Rows = document.querySelectorAll('#paymentTable1 tbody tr');
+    const table1Data = Array.from(table1Rows).map(row => ({
+        index: row.querySelector('.col-index')?.value || '',
+        nick: row.querySelector('.col-nick')?.value || '',
+        profit: row.querySelector('.col-profit')?.value || '',
+        accumulate: row.querySelector('.col-accumulate')?.value || '',
+        receivePay: row.querySelector('.col-receive-pay')?.value || '',
+        total: row.querySelector('.col-total')?.value || '',
+        balance: row.querySelector('.col-balance')?.value || ''
+    }));
+    const table2Rows = document.querySelectorAll('#paymentTable2 tbody tr');
+    const table2Data = Array.from(table2Rows).map(row => ({
+        no: row.querySelector('.col-no')?.value || '',
+        nick: row.querySelector('.col-nick')?.value || '',
+        remark: row.querySelector('.col-remark')?.value || ''
+    }));
+    return { table1: table1Data, table2: table2Data, editable: isTable2Editable };
+}
+
+function applyPaymentData() {
+    const saved = JSON.parse(localStorage.getItem('paymentDialogData') || 'null');
+    if (!saved) return;
+    const { table1, table2, editable } = saved;
+    if (table1) {
+        const rows = document.querySelectorAll('#paymentTable1 tbody tr');
+        table1.forEach((d, i) => { if (rows[i]) { rows[i].querySelector('.col-index').value = d.index; rows[i].querySelector('.col-nick').value = d.nick; rows[i].querySelector('.col-profit').value = d.profit; rows[i].querySelector('.col-accumulate').value = d.accumulate; rows[i].querySelector('.col-receive-pay').value = d.receivePay; rows[i].querySelector('.col-total').value = d.total; rows[i].querySelector('.col-balance').value = d.balance; updateProfitColor(rows[i].querySelector('.col-profit')); updateProfitColor(rows[i].querySelector('.col-balance')); } });
     }
+    if (table2) {
+        const rows = document.querySelectorAll('#paymentTable2 tbody tr');
+        table2.forEach((d, i) => { if (rows[i]) { rows[i].querySelector('.col-no').value = d.no; rows[i].querySelector('.col-nick').value = d.nick; rows[i].querySelector('.col-remark').value = d.remark; } });
+    }
+    if (editable !== undefined) setTable2Editable(editable);
+}
+
+// 覆盖导出导入，包含收付数据
+const _origExportAllData = exportAllData;
+exportAllData = async function() {
+    if (historyRecords.length === 0) { showToast('没有历史记录可导出！', 'error'); return; }
+    const paymentData = getPaymentData();
+    localStorage.setItem('paymentDialogData', JSON.stringify(paymentData));
+    const exportObj = { historyRecords, paymentData };
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `订单报表系统_全部_${new Date().toISOString().slice(0,10)}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    showToast('所有数据（含收付管理）导出成功！', 'success');
 };
+
+async function importAllDataFromJSON(data) {
+    try {
+        if (data.historyRecords) {
+            let cnt = 0;
+            for (const item of data.historyRecords) {
+                if (item.originalData && item.timestamp && item.applicant && item.category) {
+                    const newRec = { id: Date.now() + Math.random(), timestamp: item.timestamp, category: item.category, applicant: item.applicant, originalData: item.originalData, tableHTML: item.tableHTML || '', compensationCardHTML: item.compensationCardHTML || '', dataCount: item.dataCount || 0, extractedData: item.extractedData || {}, customTag: item.customTag || '', createdAt: new Date().toISOString() };
+                    const validation = DataValidator.validateRecord(newRec);
+                    if (!validation.valid) continue;
+                    historyRecords.unshift(newRec);
+                    try { await saveToDatabase(STORE_NAME, newRec); } catch(e) {}
+                    cnt++;
+                }
+            }
+            updateHistoryDisplay(); updateUserCardsDisplay(); updateSummaryDisplay(); updateMyAccountCards();
+            updateRecycleBadge(); populateFilterOptions(); updateStorageIndicator();
+            showToast(`成功导入 ${cnt} 条历史记录！`, 'success');
+        }
+        if (data.paymentData) {
+            localStorage.setItem('paymentDialogData', JSON.stringify(data.paymentData));
+            if (document.getElementById('paymentDialog').classList.contains('active')) applyPaymentData();
+            showToast('收付数据已恢复', 'success');
+        }
+    } catch(e) { showToast(`导入失败: ${e.message}`, 'error'); }
+}
+
+function importAllData() {
+    const input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+    input.onchange = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (ev) => { try { const data = JSON.parse(ev.target.result); await importAllDataFromJSON(data); } catch(e) { showToast(`导入失败: ${e.message}`, 'error'); } }; reader.readAsText(file); };
+    input.click();
+}
+
+const origApplyFilters = applyFilters;
+applyFilters = function() { origApplyFilters(); if (document.getElementById('paymentDialog').classList.contains('active')) initPaymentTables(); };
 
 function initDragResize() {}
 </script>
