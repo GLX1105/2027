@@ -385,40 +385,40 @@ document.addEventListener("keydown", e => {
             font-size: 0.8rem;
             padding: 2px;
             outline: none;
-            min-width: 0;          /* 取消最小宽度限制 */
+            min-width: 0;
             width: 100%;
         }
         .payment-table input:focus {
             background: #eef2ff;
             border-radius: 2px;
         }
-        /* 左侧表格容器 */
         .payment-table-container-left {
             flex: 1 1 auto;
         }
-        /* 右侧表格容器宽度自适应 */
         .payment-table-container-right {
             flex: 0 0 auto;
             width: auto;
         }
-        /* 收付列保持较宽 */
+        /* 收付列样式：加粗、黑色、略宽 */
         .payment-table1 .col-receive-pay {
-            min-width: 230px;
-            color: #3498db; /* 蓝色文本 */
-            font-weight: normal; /* 不加粗 */
+            min-width: 250px;
+            color: #000; /* 黑色 */
+            font-weight: bold;
         }
-        /* 数值列加粗（盈亏、累计、收付合计、结余） */
+        /* 数值列加粗：盈亏、收付合计、结余 */
         .payment-table1 .col-profit,
-        .payment-table1 .col-accumulate,
         .payment-table1 .col-total,
         .payment-table1 .col-balance {
             font-weight: bold;
         }
-        /* 第二个表格的盈亏列加粗 */
+        /* 累计列不加粗 */
+        .payment-table1 .col-accumulate {
+            font-weight: normal;
+        }
         .payment-table2 .col-profit-auto {
             font-weight: bold;
         }
-        /* 统一非收付列宽度（约70px，够5位数且与用户列一致） */
+        /* 统一列宽（非收付列） */
         .payment-table1 th:not(.col-receive-pay),
         .payment-table1 td:not(.col-receive-pay),
         .payment-table2 th,
@@ -511,7 +511,6 @@ document.addEventListener("keydown", e => {
         </div>
     </div>
     <div class="payment-dialog-body" id="paymentDialogBody">
-        <!-- 左侧表格1 -->
         <div class="payment-table-container payment-table-container-left">
             <h4>收付明细表</h4>
             <table class="payment-table payment-table1" id="paymentTable1">
@@ -529,7 +528,6 @@ document.addEventListener("keydown", e => {
                 <tbody id="paymentTable1Body"></tbody>
             </table>
         </div>
-        <!-- 右侧表格2 -->
         <div class="payment-table-container payment-table-container-right">
             <h4>用户盈亏明细</h4>
             <table class="payment-table payment-table2" id="paymentTable2">
@@ -1200,11 +1198,11 @@ function initPaymentTables() {
         html1 += `<tr>
             <td><input type="text" class="col-index" oninput="handleTable1IndexChange(this)"></td>
             <td><input type="text" class="col-nick"></td>
-            <td><input type="text" class="col-profit profit-input" oninput="updateProfitColor(this)"></td>
+            <td><input type="text" class="col-profit profit-input" oninput="handleProfitChange(this)"></td>
             <td><input type="text" class="col-accumulate"></td>
-            <td><input type="text" class="col-receive-pay"></td>
-            <td><input type="text" class="col-total profit-input" oninput="updateProfitColor(this)"></td>
-            <td><input type="text" class="col-balance profit-input" oninput="updateProfitColor(this)"></td>
+            <td><input type="text" class="col-receive-pay" oninput="handleReceivePayChange(this)"></td>
+            <td><input type="text" class="col-total" readonly></td>
+            <td><input type="text" class="col-balance" readonly></td>
         </tr>`;
     }
     table1Body.innerHTML = html1;
@@ -1245,12 +1243,53 @@ function updateProfitColor(input) {
     else if (num < 0) input.classList.add('profit-color-negative');
 }
 
+// 盈亏列变化时触发结余计算
+function handleProfitChange(input) {
+    updateProfitColor(input);
+    updateRowCalculations(input.closest('tr'));
+}
+
+// 收付列变化时触发收付合计求和及结余计算
+function handleReceivePayChange(input) {
+    updateRowCalculations(input.closest('tr'));
+}
+
+// 更新行的收付合计和结余
+function updateRowCalculations(row) {
+    const receivePayInput = row.querySelector('.col-receive-pay');
+    const totalInput = row.querySelector('.col-total');
+    const profitInput = row.querySelector('.col-profit');
+    const balanceInput = row.querySelector('.col-balance');
+
+    // 提取收付列中的数字（含负号）
+    let sum = 0;
+    if (receivePayInput) {
+        const text = receivePayInput.value;
+        const matches = text.match(/-?\d+/g);
+        if (matches) {
+            sum = matches.reduce((acc, val) => acc + parseInt(val, 10), 0);
+        }
+    }
+    if (totalInput) totalInput.value = sum;
+
+    // 结余 = 盈亏 - 收付合计
+    if (balanceInput && profitInput && totalInput) {
+        const profitVal = parseFloat(profitInput.value) || 0;
+        const totalVal = parseFloat(totalInput.value) || 0;
+        const balance = profitVal - totalVal;
+        balanceInput.value = balance;
+        // 结余列应用颜色
+        balanceInput.classList.remove('profit-color-positive', 'profit-color-negative');
+        if (balance > 0) balanceInput.classList.add('profit-color-positive');
+        else if (balance < 0) balanceInput.classList.add('profit-color-negative');
+    }
+}
+
 function handleTable1IndexChange(input) {
     const val = input.value.trim();
     const row = input.closest('tr');
     const nickInput = row.querySelector('.col-nick');
     const profitInput = row.querySelector('.col-profit');
-    // 累计列不需要自动填充，保持空白
     nickInput.value = '';
     profitInput.value = '';
     profitInput.classList.remove('profit-color-positive', 'profit-color-negative');
@@ -1280,6 +1319,8 @@ function handleTable1IndexChange(input) {
             break;
         }
     }
+    // 更新关联计算
+    updateRowCalculations(row);
 }
 
 function handleTable2NoChange(input) {
@@ -1305,12 +1346,13 @@ function handleTable2NoChange(input) {
                     if (num > 0) profit1.classList.add('profit-color-positive');
                     else if (num < 0) profit1.classList.add('profit-color-negative');
                 }
+                // 更新关联计算
+                updateRowCalculations(profit1.closest('tr'));
             }
         }
     });
 }
 
-// 覆盖 applyFilters 更新表格2
 const originalApplyFilters = applyFilters;
 applyFilters = function() {
     originalApplyFilters();
@@ -1319,9 +1361,7 @@ applyFilters = function() {
     }
 };
 
-function initDragResize() {
-    // 事件已在外部绑定
-}
+function initDragResize() {}
 </script>
 </body>
 </html>
