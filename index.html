@@ -385,7 +385,7 @@ document.addEventListener("keydown", e => {
             font-size: 0.8rem;
             padding: 2px;
             outline: none;
-            min-width: 50px;
+            min-width: 0;          /* 取消最小宽度限制，完全由内容决定列宽 */
             width: 100%;
         }
         .payment-table input:focus {
@@ -401,11 +401,11 @@ document.addEventListener("keydown", e => {
             flex: 0 0 auto;
             width: auto;
         }
-        /* 表格1 列宽：收付列固定宽度，其他自适应 */
+        /* 收付列保持较宽，使用 min-width 确保不会被压缩太窄 */
         .payment-table1 .col-receive-pay {
             min-width: 200px;
         }
-        /* 表格2 列宽全部自适应，无额外设置 */
+        /* 表格2 的列不再需要单独的宽度定义，全部由内容决定 */
 
         .resize-handle {
             position: absolute;
