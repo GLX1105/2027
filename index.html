@@ -893,8 +893,59 @@ document.getElementById('historyUserFilter').addEventListener('change', updateHi
 document.getElementById('accessPassword').addEventListener('keypress', (e) => { if (e.key === 'Enter') checkAccessPassword(); });
 document.getElementById('operationPassword').addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyOperationPassword(); });
 /* ========== 收付弹窗功能 ========== */
-let paymentTable1Data = JSON.parse(localStorage.getItem('paymentTable1Data') || '[]');
+let paymentTable1Data = []; // 当前日期的表格1数据
 let paymentTable2Rows = JSON.parse(localStorage.getItem('paymentTable2Data') || '[]');
+
+function getCurrentDate() {
+    return document.getElementById('dateFilter').value || getChinaToday();
+}
+function loadTable1Data() {
+    const key = 'paymentTable1Data_' + getCurrentDate();
+    paymentTable1Data = JSON.parse(localStorage.getItem(key) || '[]');
+}
+function saveTable1DataToStorage() {
+    const key = 'paymentTable1Data_' + getCurrentDate();
+    localStorage.setItem(key, JSON.stringify(paymentTable1Data));
+}
+// 获取所有日期的表格1数据
+function getAllTable1Data() {
+    const result = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.startsWith('paymentTable1Data_')) {
+            const date = key.substring('paymentTable1Data_'.length);
+            result[date] = JSON.parse(localStorage.getItem(key) || '[]');
+        }
+    }
+    return result;
+}
+// 设置所有日期的表格1数据
+function setAllTable1Data(dataObj) {
+    // 清除旧的
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key.startsWith('paymentTable1Data_')) {
+            localStorage.removeItem(key);
+        }
+    }
+    // 设置新的
+    for (const [date, data] of Object.entries(dataObj)) {
+        localStorage.setItem('paymentTable1Data_' + date, JSON.stringify(data));
+    }
+}
+function loadTable2RowsData() { paymentTable2Rows = JSON.parse(localStorage.getItem('paymentTable2Data') || '[]'); }
+function saveTable2RowsData() {
+    const rows = document.querySelectorAll('#paymentTable2 tbody tr');
+    const data = Array.from(rows).map((row, i) => {
+        const no = row.querySelector('.col-no')?.value || '';
+        const nick = row.querySelector('.col-nick')?.value || '';
+        const remark = row.querySelector('.col-remark')?.value || '';
+        const locked = row.querySelector('.col-no')?.hasAttribute('readonly') || false;
+        return { index: i, no, nick, remark, locked };
+    });
+    localStorage.setItem('paymentTable2Data', JSON.stringify(data));
+    paymentTable2Rows = data;
+}
 function openPaymentDialog() {
     const dialog = document.getElementById('paymentDialog');
     dialog.classList.add('active');
@@ -925,23 +976,8 @@ let isResizing = false, resizeStartX, resizeStartY, initialWidth, initialHeight;
 resizeHandle.addEventListener('mousedown', (e) => { isResizing = true; resizeStartX = e.clientX; resizeStartY = e.clientY; initialWidth = dialogElement.offsetWidth; initialHeight = dialogElement.offsetHeight; e.preventDefault(); e.stopPropagation(); });
 document.addEventListener('mousemove', (e) => { if (!isResizing) return; dialogElement.style.width = Math.max(400, initialWidth + e.clientX - resizeStartX) + 'px'; dialogElement.style.height = Math.max(300, initialHeight + e.clientY - resizeStartY) + 'px'; });
 document.addEventListener('mouseup', () => { isResizing = false; });
-function loadTable1Data() { paymentTable1Data = JSON.parse(localStorage.getItem('paymentTable1Data') || '[]'); }
-function saveTable1DataToStorage() { localStorage.setItem('paymentTable1Data', JSON.stringify(paymentTable1Data)); }
-function loadTable2RowsData() { paymentTable2Rows = JSON.parse(localStorage.getItem('paymentTable2Data') || '[]'); }
-function saveTable2RowsData() {
-    const rows = document.querySelectorAll('#paymentTable2 tbody tr');
-    const data = Array.from(rows).map((row, i) => {
-        const no = row.querySelector('.col-no')?.value || '';
-        const nick = row.querySelector('.col-nick')?.value || '';
-        const remark = row.querySelector('.col-remark')?.value || '';
-        const locked = row.querySelector('.col-no')?.hasAttribute('readonly') || false;
-        return { index: i, no, nick, remark, locked };
-    });
-    localStorage.setItem('paymentTable2Data', JSON.stringify(data));
-    paymentTable2Rows = data;
-}
 function initPaymentTables() {
-    loadTable1Data();
+    loadTable1Data(); // 加载当前日期的表格1数据
     loadTable2RowsData();
     const table1Body = document.getElementById('paymentTable1Body');
     let html1 = '';
@@ -1153,7 +1189,7 @@ function saveTable1Data() {
         data.push({ index: i, indexVal, nick, profit, accumulate, receivePay, locked: !!hasContent });
     });
     paymentTable1Data = data;
-    saveTable1DataToStorage();
+    saveTable1DataToStorage(); // 保存到当前日期
     updateTableButtons();
     if (!anyFilled) showToast('没有需要保存的数据', 'warning');
     else showToast('收付明细表已保存', 'success');
@@ -1250,27 +1286,15 @@ function getPaymentData() {
         accumulate: row.querySelector('.col-accumulate')?.value || '',
         receivePay: (row.querySelector('.col-receive-pay-display')?.getAttribute('data-raw')) || ''
     }));
-    return { table1: table1Data, table2: paymentTable2Rows };
+    return { table1ByDate: getAllTable1Data(), table2: paymentTable2Rows };
 }
 function applyPaymentData(data) {
     if (!data) return;
-    if (data.table1) {
-        const rows = document.querySelectorAll('#paymentTable1 tbody tr');
-        data.table1.forEach((d, i) => {
-            if (rows[i]) {
-                rows[i].querySelector('.col-index').value = d.indexVal || '';
-                rows[i].querySelector('.col-nick').value = d.nick || '';
-                rows[i].querySelector('.col-profit').value = d.profit || '';
-                rows[i].querySelector('.col-accumulate').value = d.accumulate || '';
-                const div = rows[i].querySelector('.col-receive-pay-display');
-                if (div) {
-                    div.setAttribute('data-raw', d.receivePay || '');
-                    div.innerHTML = formatReceivePay(d.receivePay || '');
-                }
-                updateProfitColor(rows[i].querySelector('.col-profit'));
-                updateRowCalculations(rows[i]);
-            }
-        });
+    if (data.table1ByDate) {
+        setAllTable1Data(data.table1ByDate);
+        // 刷新当前日期数据
+        loadTable1Data();
+        initPaymentTables();
     }
     if (data.table2) {
         localStorage.setItem('paymentTable2Data', JSON.stringify(data.table2));
@@ -1279,7 +1303,7 @@ function applyPaymentData(data) {
     }
 }
 async function exportAllData() {
-    if (historyRecords.length === 0 && paymentTable2Rows.length === 0 && paymentTable1Data.length === 0) { showToast('没有数据可导出！', 'error'); return; }
+    if (historyRecords.length === 0 && paymentTable2Rows.length === 0 && Object.keys(getAllTable1Data()).length === 0) { showToast('没有数据可导出！', 'error'); return; }
     const paymentData = getPaymentData();
     const exportObj = { historyRecords, paymentData };
     const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
