@@ -1488,7 +1488,7 @@ function orderContainsTarget(content,targetNum,cfg){ if(!targetNum)return true; 
 function getSpecialAmountFromOrder(content, prizeNum, cfg) { if (!prizeNum) return 0; const targetNum = prizeNum.padStart(2, '0'); const lines = content.split('\n'); let total = 0; for (const line of lines) { const match = line.match(/^(.+?)\s+各数\s+(\d+)$/); if (!match) continue; const tokensPart = match[1]; const amount = parseInt(match[2]) || 0; const tokens = tokensPart.split('-').map(t => t.trim()).filter(t => t); let hit = false; for (const token of tokens) { if (isTokenMatching(token, targetNum, cfg)) { hit = true; break; } } if (hit) { total += amount; } } return total; }
 function formatTimestampToCST(iso){ const d=new Date(iso); return new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Asia/Shanghai'}).format(d); }
 function getUserColor(u){ let h=0; for(let i=0;i<u.length;i++)h=u.charCodeAt(i)+((h<<5)-h); const hue=(h%360+360)%360; return`hsl(${hue},70%,45%)`; }
-  function renderOrderStats(allOrders, allReports, filterUser, prizeNum) { const container = document.getElementById('orderStatsContainer'); if (!container) return; const mul = parseFloat(document.getElementById('multipleVal')?.value) || 1; const rr = parseFloat(document.getElementById('rebateRate')?.value) || 0; const cfg = getAllConfigData(); let totalAmountSum = 0; allOrders.forEach(it => { totalAmountSum += it.totalAmount || 0; }); let reportTotalAmount = 0; allReports.forEach(it => { reportTotalAmount += it.totalAmount || 0; }); let totalSpecial = 0, reportSpecial = 0, hitCount = 0; if (prizeNum) { const num = prizeNum.padStart(2, '0'); if (filterUser === 'all' || !filterUser) { totalSpecial = tableBetData[num] || 0; } else { const userData = userBetData[filterUser] || {}; totalSpecial = userData[num] || 0; } allOrders.forEach(it => { if (orderContainsTarget(it.content, prizeNum, cfg)) hitCount++; }); allReports.forEach(it => { reportSpecial += getSpecialAmountFromOrder(it.content, prizeNum, cfg); }); } const totalProfit = totalAmountSum - totalSpecial * mul - totalAmountSum * (rr / 100); const reportProfit = reportTotalAmount - reportSpecial * mul - reportTotalAmount * (rr / 100); const netProfit = totalProfit - reportProfit; const showStats = prizeNum && prizeNum.trim() !== ''; let html = '<div class="stats-block">'; html += '<div class="stats-row">'; if (totalAmountSum > 0) { html += `<span class="stat-col"><span class="slabel">总额:</span><span class="stat-val-amount">${totalAmountSum}</span></span>`; } if (showStats) { html += `<span class="stat-col"><span class="slabel">总特:</span><span class="stat-val-special">${totalSpecial}</span></span>`; const tp = Math.round(totalProfit); const tlabel = tp >= 0 ? '总盈' : '总亏'; const tcls = tp >= 0 ? 'stat-val-profit' : 'stat-val-loss'; html += `<span class="stat-col"><span class="slabel">${tlabel}:</span><span class="${tcls}">${tp}</span></span>`; html += `<span class="stat-col"><span class="slabel">中:</span><span class="stat-val-count">${hitCount}条</span></span>`; } html += '</div><div class="stats-row">'; if (reportTotalAmount > 0) { html += `<span class="stat-col"><span class="slabel">上报金额:</span><span class="stat-val-amount">${reportTotalAmount}</span></span>`; } if (showStats) { html += `<span class="stat-col"><span class="slabel">上报特:</span><span class="stat-val-special">${reportSpecial}</span></span>`; const rp = Math.round(reportProfit); const rlabel = rp >= 0 ? '报盈' : '报亏'; const rcls = rp >= 0 ? 'stat-val-profit' : 'stat-val-loss'; html += `<span class="stat-col"><span class="slabel">${rlabel}:</span><span class="${rcls}">${rp}</span></span>`; const np = Math.round(netProfit); const nlabel = np >= 0 ? '盈' : '亏'; const ncls = np >= 0 ? 'stat-val-profit' : 'stat-val-loss'; html += `<span class="stat-col"><span class="slabel">${nlabel}:</span><span class="${ncls}">${np}</span></span>`; } html += '</div></div>'; container.innerHTML = html; }
+function renderOrderStats(allOrders, allReports, filterUser, prizeNum) { const container = document.getElementById('orderStatsContainer'); if (!container) return; const mul = parseFloat(document.getElementById('multipleVal')?.value) || 1; const rr = parseFloat(document.getElementById('rebateRate')?.value) || 0; const cfg = getAllConfigData(); let totalAmountSum = 0; allOrders.forEach(it => { totalAmountSum += it.totalAmount || 0; }); let reportTotalAmount = 0; allReports.forEach(it => { reportTotalAmount += it.totalAmount || 0; }); let totalSpecial = 0, reportSpecial = 0, hitCount = 0; if (prizeNum) { const num = prizeNum.padStart(2, '0'); if (filterUser === 'all' || !filterUser) { totalSpecial = tableBetData[num] || 0; } else { const userData = userBetData[filterUser] || {}; totalSpecial = userData[num] || 0; } allOrders.forEach(it => { if (orderContainsTarget(it.content, prizeNum, cfg)) hitCount++; }); allReports.forEach(it => { reportSpecial += getSpecialAmountFromOrder(it.content, prizeNum, cfg); }); } const totalProfit = totalAmountSum - totalSpecial * mul - totalAmountSum * (rr / 100); const reportProfit = reportTotalAmount - reportSpecial * mul - reportTotalAmount * (rr / 100); const netProfit = totalProfit - reportProfit; const showStats = prizeNum && prizeNum.trim() !== ''; let html = '<div class="stats-block">'; html += '<div class="stats-row">'; if (totalAmountSum > 0) { html += `<span class="stat-col"><span class="slabel">总额:</span><span class="stat-val-amount">${totalAmountSum}</span></span>`; } if (showStats) { html += `<span class="stat-col"><span class="slabel">总特:</span><span class="stat-val-special">${totalSpecial}</span></span>`; const tp = Math.round(totalProfit); const tlabel = tp >= 0 ? '总盈' : '总亏'; const tcls = tp >= 0 ? 'stat-val-profit' : 'stat-val-loss'; html += `<span class="stat-col"><span class="slabel">${tlabel}:</span><span class="${tcls}">${tp}</span></span>`; html += `<span class="stat-col"><span class="slabel">中:</span><span class="stat-val-count">${hitCount}条</span></span>`; } html += '</div><div class="stats-row">'; if (reportTotalAmount > 0) { html += `<span class="stat-col"><span class="slabel">上报金额:</span><span class="stat-val-amount">${reportTotalAmount}</span></span>`; } if (showStats) { html += `<span class="stat-col"><span class="slabel">上报特:</span><span class="stat-val-special">${reportSpecial}</span></span>`; const rp = Math.round(reportProfit); const rlabel = rp >= 0 ? '报盈' : '报亏'; const rcls = rp >= 0 ? 'stat-val-profit' : 'stat-val-loss'; html += `<span class="stat-col"><span class="slabel">${rlabel}:</span><span class="${rcls}">${rp}</span></span>`; const np = Math.round(netProfit); const nlabel = np >= 0 ? '盈' : '亏'; const ncls = np >= 0 ? 'stat-val-profit' : 'stat-val-loss'; html += `<span class="stat-col"><span class="slabel">${nlabel}:</span><span class="${ncls}">${np}</span></span>`; } html += '</div></div>'; container.innerHTML = html; }
 
 function updatePrizeStats(pn) {}
 
@@ -1610,11 +1610,10 @@ async function exportData(){
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);
     const fileName = `港澳识别数据_全部_${getTodayCST()}.json`;
-    // 弹窗提示下载链接
-    const downloadHtml = `<div style="text-align:center;padding:20px;"><p style="margin-bottom:15px;font-size:14px;">点击下方链接下载备份文件</p><a href="${url}" download="${fileName}" style="display:inline-block;padding:10px 20px;background:#3498db;color:#fff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;">📥 点击下载</a><p style="margin-top:15px;font-size:11px;color:#888;">文件名：${fileName}</p></div>`;
-    await showCustomDialog({ title: '导出数据', message: downloadHtml, type: 'alert' });
-    URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
     addOperationLog('export', '导出全部数据（含日志）');
+    showToast('导出成功：' + fileName);
     showStorageDrawerTemporary(5000);
   }catch(e){showToast('导出失败');}
 }
@@ -1714,8 +1713,151 @@ async function importData(){
   inp.addEventListener('cancel',()=>{document.body.removeChild(inp);}); inp.click();
 }
 
-function showCardManager() { if (!isAdmin()) { showToast('需要管理员权限'); return; } if (document.getElementById('cardManagerWin')) return; const keys = getCardKeys(); const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'cardManagerWin'; win.style.width = '650px'; win.style.height = '500px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; win.innerHTML = `<div class="modal-header"><h3>🔑 卡密管理</h3><div class="window-controls"><button onclick="maximizeWindow('cardManagerWin')">🗖</button><button onclick="document.getElementById('cardManagerWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;"><input type="number" id="expireDaysInput" placeholder="有效天数" value="30" min="1" style="padding:5px;border-radius:4px;border:1px solid #ccc;width:80px;"><span>天</span><button onclick="generateCardKey()"
-// ===== 修正后的回收站窗口（按地区隔离显示） =====
+function showCardManager() { if (!isAdmin()) { showToast('需要管理员权限'); return; } if (document.getElementById('cardManagerWin')) return; const keys = getCardKeys(); const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'cardManagerWin'; win.style.width = '650px'; win.style.height = '500px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; win.innerHTML = `<div class="modal-header"><h3>🔑 卡密管理</h3><div class="window-controls"><button onclick="maximizeWindow('cardManagerWin')">🗖</button><button onclick="document.getElementById('cardManagerWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;"><input type="number" id="expireDaysInput" placeholder="有效天数" value="30" min="1" style="padding:5px;border-radius:4px;border:1px solid #ccc;width:80px;"><span>天</span><button onclick="generateCardKey()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">生成卡密</button></div><div id="cardListContainer"></div></div><div class="modal-footer"><button onclick="document.getElementById('cardManagerWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(win); renderCardList(); makeWindowDraggable('cardManagerWin'); highestZ += 1; win.style.zIndex = highestZ; }
+function renderCardList() { const keys = getCardKeys(); const container = document.getElementById('cardListContainer'); if (!container) return; if (keys.length === 0) { container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">暂无卡密</div>'; return; } container.innerHTML = keys.map((card, idx) => { const created = card.createTime ? new Date(card.createTime).toLocaleString('zh-CN') : '未知'; const expired = card.expireDays ? `有效${card.expireDays}天` : '永久'; const statusClass = { active: 'green', disabled: 'red', expired: 'gray' }[card.status] || 'gray'; const statusText = card.status === 'active' ? '启用' : card.status === 'disabled' ? '禁用' : '过期'; return `<div style="border:1px solid #eee;border-radius:6px;padding:8px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${card.code}</span><span style="color:${statusClass};font-size:12px;">[${statusText}]</span><span style="font-size:11px;color:#666;">创建:${created} ${expired}</span><div style="margin-left:auto;display:flex;gap:5px;">${card.status==='active'?`<button onclick="disableCard(${idx})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}${card.status==='disabled'?`<button onclick="enableCard(${idx})" style="background:#2ecc71;color:#fff;border:none;padding:3px 8px;border-radius:3px;">启用</button>`:''}<button onclick="deleteCard(${idx})" style="background:#e74c3c;color:#fff;border:none;padding:3px 8px;border-radius:3px;">删除</button></div></div>`; }).join(''); }
+async function generateCardKey() { const expireDays = parseInt(document.getElementById('expireDaysInput')?.value) || 30; if (expireDays < 1) { showToast('有效期至少1天'); return; } const code = generateSelfVerifyingCard(expireDays); const keys = getCardKeys(); if (keys.find(k => k.code === code)) { showToast('卡密生成冲突，请重试'); return; } keys.push({ code, status: 'active', createTime: new Date().toISOString(), expireDays }); saveCardKeys(keys); renderCardList(); showToast(`卡密 ${code} 已生成，有效期${expireDays}天`); }
+async function disableCard(index) { if (!(await confirm('确定禁用该卡密？'))) return; const keys = getCardKeys(); keys[index].status = 'disabled'; saveCardKeys(keys); renderCardList(); }
+async function enableCard(index) { const keys = getCardKeys(); keys[index].status = 'active'; saveCardKeys(keys); renderCardList(); }
+async function deleteCard(index) { if (!(await confirm('确定删除该卡密？'))) return; const keys = getCardKeys(); keys.splice(index, 1); saveCardKeys(keys); renderCardList(); }
+
+function showUserManager() { if (document.getElementById('userManagerWin')) return; const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'userManagerWin'; win.style.width = '450px'; win.style.height = '400px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; win.innerHTML = `<div class="modal-header"><h3>管理用户</h3><div class="window-controls"><button onclick="maximizeWindow('userManagerWin')">🗖</button><button onclick="document.getElementById('userManagerWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newUserName" placeholder="用户名" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addUserAction()" style="padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="userList"></div></div><div class="modal-footer"><button onclick="document.getElementById('userManagerWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(win); renderUserList(); makeWindowDraggable('userManagerWin'); highestZ += 1; win.style.zIndex = highestZ; }
+function renderUserList() { const users = getUsers(); const container = document.getElementById('userList'); if (!container) return; if (users.length === 0) { container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">暂无用户</div>'; return; } container.innerHTML = users.map(u => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px;border:1px solid #eee;border-radius:4px;"><span style="flex:1;">${u}</span><button onclick="deleteUserAction('${u}')" style="background:#e74c3c;color:#fff;border:none;padding:2px 8px;border-radius:3px;">删除</button></div>`).join(''); }
+async function addUserAction() { const name = document.getElementById('newUserName')?.value.trim(); if (!name) { showToast('请输入用户名'); return; } if (addUser(name)) { document.getElementById('newUserName').value = ''; renderUserList(); updateSelects(); showToast('用户添加成功'); } }
+async function deleteUserAction(name) { if (!(await confirm(`确定删除用户"${name}"及其数据吗？`))) return; deleteUser(name); renderUserList(); updateSelects(); showToast('用户已删除'); }
+
+window.dragSelectionActive = false;
+function enableRowDragSelect(tableId) {
+  const tbody = document.getElementById(tableId === 'riskTable' ? 'tableBody' : 'reportTableBody');
+  if (!tbody) return;
+  let startRow = null;
+  let endRow = null;
+  function clearSelection() {
+    tbody.querySelectorAll('tr.selected-row').forEach(tr => tr.classList.remove('selected-row'));
+  }
+  function selectRows(row1, row2) {
+    if (!row1 || !row2) return;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const idx1 = rows.indexOf(row1);
+    const idx2 = rows.indexOf(row2);
+    if (idx1 === -1 || idx2 === -1) return;
+    const minIdx = Math.min(idx1, idx2);
+    const maxIdx = Math.max(idx1, idx2);
+    for (let i = minIdx; i <= maxIdx; i++) {
+      rows[i].classList.add('selected-row');
+    }
+  }
+
+  tbody.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    if (e.ctrlKey || e.shiftKey) return;
+    const targetRow = e.target.closest('tr');
+    if (!targetRow) return;
+    window.dragSelectionActive = true;
+    clearSelection();
+    startRow = targetRow;
+    endRow = targetRow;
+    targetRow.classList.add('selected-row');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!window.dragSelectionActive) return;
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    if (!target) return;
+    const tr = target.closest('tr');
+    if (!tr || tr.parentElement !== tbody) return;
+    if (tr !== endRow) {
+      endRow = tr;
+      clearSelection();
+      selectRows(startRow, endRow);
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    if (window.dragSelectionActive) {
+      window.dragSelectionActive = false;
+      startRow = null;
+      endRow = null;
+    }
+  });
+
+  let longPressTimer = null;
+  let longPressTriggered = false;
+  let touchStartY = 0;
+  let touchStartX = 0;
+
+  tbody.addEventListener('touchstart', (e) => {
+    const targetRow = e.target.closest('tr');
+    if (!targetRow) return;
+    longPressTriggered = false;
+    touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
+    if (longPressTimer) clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => {
+      longPressTriggered = true;
+      window.dragSelectionActive = true;
+      clearSelection();
+      startRow = targetRow;
+      endRow = targetRow;
+      targetRow.classList.add('selected-row');
+    }, 1000);
+  }, { passive: true });
+
+  tbody.addEventListener('touchmove', (e) => {
+    if (!longPressTriggered) {
+      const dy = Math.abs(e.touches[0].clientY - touchStartY);
+      const dx = Math.abs(e.touches[0].clientX - touchStartX);
+      if (dy > 10 || dx > 10) {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }
+      return;
+    }
+    if (!window.dragSelectionActive) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!target) return;
+    const tr = target.closest('tr');
+    if (!tr || tr.parentElement !== tbody) return;
+    if (tr !== endRow) {
+      endRow = tr;
+      clearSelection();
+      selectRows(startRow, endRow);
+    }
+  }, { passive: false });
+
+  tbody.addEventListener('touchend', () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    if (window.dragSelectionActive) {
+      window.dragSelectionActive = false;
+      startRow = null;
+      endRow = null;
+    }
+    longPressTriggered = false;
+  });
+}
+function copySelectedNumbers(tableId) { const tbody = document.getElementById(tableId === 'riskTable' ? 'tableBody' : 'reportTableBody'); if (!tbody) return; const selectedRows = Array.from(tbody.querySelectorAll('tr.selected-row')); if (selectedRows.length === 0) { showToast('请先选择号码'); return; } const ids = selectedRows.map(row => { const cells = row.querySelectorAll('td'); return cells[3] ? cells[3].textContent.trim() : ''; }).filter(id => id && /^\d+$/.test(id)); if (ids.length === 0) { showToast('无有效号码'); return; } const uniqueIds = [...new Set(ids)]; const text = uniqueIds.join('-'); navigator.clipboard.writeText(text).then(() => { showToast('已复制: ' + text); }).catch(() => { showToast('复制失败'); }); }
+
+document.getElementById('rebateRate')?.addEventListener('input', generateRiskTable);
+document.getElementById('multipleVal')?.addEventListener('input', generateRiskTable);
+document.getElementById('reportRebateRate')?.addEventListener('input', generateReportTable);
+document.getElementById('reportMultipleVal')?.addEventListener('input', generateReportTable);
+document.getElementById('startZodiacSelect')?.addEventListener('change', changeStartZodiac);
+
+const filterDateEl = document.getElementById('filterDate');
+if (filterDateEl) { filterDateEl.addEventListener('change', () => { updateTableFromRecords(); if (document.getElementById('orderWin')) { applyPrizeFilter(); } applyReportCap(); updateRecentDrawTexts(); renderPingtexiaoTable(); updateCardA(); }); filterDateEl.addEventListener('input', updateTableFromRecords); }
+
+let currentParseMethod = parseInt(localStorage.getItem('savedParseMethod') || '0');
+function parseExcessText(text, method) { const lines = text.trim().split('\n').filter(l => l.trim()); const items = []; for (const line of lines) { const match = line.match(/(\d{2})各(\d+)米/); if (match) { items.push({ num: match[1], amount: parseInt(match[2]) }); } } if (items.length === 0) return ''; items.sort((a, b) => b.amount - a.amount); const parseItems = (method) => { const data = items.map(item => ({ ...item })); const result = []; if (method === 0) { while (data.some(d => d.amount > 0)) { const maxAmount = Math.max(...data.map(d => d.amount)); if (maxAmount <= 0) break; const group = []; for (const d of data) { if (d.amount > 0 && (maxAmount - d.amount) <= maxAmount * 0.4) { group.push(d.num); } } const groupAmount = Math.min(...group.map(n => data.find(d => d.num === n).amount)); for (const n of group) { const d = data.find(d => d.num === n); d.amount -= groupAmount; } result.push(`${group.join('-')}各数${groupAmount}`); } } else if (method === 1) { while (data.some(d => d.amount > 0)) { let bestAmount = 0; let bestCount = 0; for (let i = 0; i < data.length; i++) { const candidate = data[i].amount; if (candidate <= 0) continue; let count = 0; for (const d of data) { if (d.amount >= candidate) count++; } if (count > bestCount || (count === bestCount && candidate < bestAmount)) { bestCount = count; bestAmount = candidate; } } if (bestCount === 0) break; const group = []; for (const d of data) { if (d.amount >= bestAmount) { group.push(d.num); d.amount -= bestAmount; } } result.push(`${group.join('-')}各数${bestAmount}`); } } else if (method === 2) { const levels = [50, 10, 5, 2, 1]; for (const lv of levels) { let again = true; while (again) { again = false; const group = []; for (const d of data) { if (d.amount >= lv) { group.push(d.num); d.amount -= lv; again = true; } } if (group.length > 0) { result.push(`${group.join('-')}各数${lv}`); } } } } else if (method === 3) { for (let lv = 100; lv >= 1; lv--) { let again = true; while (again) { again = false; const group = []; for (const d of data) { if (d.amount >= lv) { group.push(d.num); d.amount -= lv; again = true; } } if (group.length > 0) { result.push(`${group.join('-')}各数${lv}`); } } } } else if (method === 4) { const levels = []; for (let lv = 100; lv >= 5; lv -= 5) levels.push(lv); levels.push(3, 2, 1); for (const lv of levels) { let again = true; while (again) { again = false; const group = []; for (const d of data) { if (d.amount >= lv) { group.push(d.num); d.amount -= lv; again = true; } } if (group.length > 0) { result.push(`${group.join('-')}各数${lv}`); } } } } return result.join('\n'); }; return parseItems(method); }
+function switchParseMethod() { const text = document.getElementById('reportCapInfo').innerText; if (!text || text === '无超出的号码') { showToast('当前没有超额文本'); document.getElementById('parseResultArea').innerText = ''; return; } const result = parseExcessText(text, currentParseMethod); document.getElementById('parseResultArea').innerText = result; const methodNames = ['聚类分组', '贪心合并', '固定50→10→5→2→1', '100递减', '固定100→...→1']; showToast(`当前方案：${methodNames[currentParseMethod]}`); currentParseMethod = (currentParseMethod + 1) % 5; localStorage.setItem('savedParseMethod', currentParseMethod); }
+function copyOrderGroup() { const text = document.getElementById('parseResultArea').innerText; if (!text) { showToast('没有解析结果'); return; } navigator.clipboard.writeText(text).then(() => showToast('订单组已复制')); }
+const originalApplyReportCap = applyReportCap;
+applyReportCap = function() { originalApplyReportCap(); const info = document.getElementById('reportCapInfo').innerText; if (!info || info === '无超出的号码') { document.getElementById('parseResultArea').innerText = ''; } };
+    // ===== 修正后的回收站窗口（按地区隔离显示） =====
 async function showRecycleBin() { const existingWin = document.getElementById('recycleWin'); if (existingWin) existingWin.remove(); const allRecords = await getRecycleBinRecords(); const records = allRecords.filter(r => r.region === currentRegion); const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recycleWin'; win.style.width = '750px'; win.style.height = '550px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; let html = `<div class="modal-header"><h3>🗑️ 回收站</h3><div class="window-controls"><button onclick="maximizeWindow('recycleWin')">🗖</button><button onclick="document.getElementById('recycleWin').remove()">×</button></div></div>`; html += `<div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html += `<div style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><button onclick="checkAllRecycle()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAllRecycle()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="restoreCheckedRecycle()" style="padding:6px 12px;background:#27ae60;color:#fff;border:none;border-radius:4px;">恢复选中</button><button onclick="deleteCheckedRecycle()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">彻底删除</button><button onclick="emptyRecycleBin()" style="padding:6px 12px;background:#8e44ad;color:#fff;border:none;border-radius:4px;margin-left:auto;">清空回收站</button></div>`; html += `<div id="recycleListContainer" style="flex:1; overflow-y:auto;">`; if (records.length === 0) { html += `<div style="padding:20px;text-align:center;color:#666;">回收站为空</div>`; } else { records.sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt)); records.forEach(rec => { const ts = formatTimestampToCST(rec.deletedAt); const typeLabel = rec.type === 'order' ? '下单' : '上报'; const typeColor = rec.type === 'order' ? '#3498db' : '#e67e22'; html += `<div class="order-item"><input type="checkbox" class="recycle-check" data-id="${rec.id}"><div class="order-content">${rec.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${rec.totalAmount || 0}</span><span class="order-meta"><span style="color:${typeColor};">类型：${typeLabel}</span><span style="color:#e74c3c;">删除：${ts}</span><span>用户：${rec.user || '未知'}</span></span></div><button class="order-del" onclick="restoreRecycleRecord('${rec.id}')" style="background:#27ae60;margin-right:4px;">恢复</button><button class="order-del" onclick="permanentlyDeleteRecycleRecord('${rec.id}')">删除</button></div>`; }); } html += `</div></div><div class="modal-footer" style="justify-content:space-between;"><span style="font-size:12px;color:#666;" id="recycleStorageInfo"></span><button onclick="document.getElementById('recycleWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; win.innerHTML = html; document.body.appendChild(win); updateRecycleStorageInfo(); makeWindowDraggable('recycleWin'); highestZ += 1; win.style.zIndex = highestZ; updateRecycleCount(); }
 function updateRecycleStorageInfo() { const span = document.getElementById('recycleStorageInfo'); if (!span) return; getRecycleBinRecords().then(allRecords => { const records = allRecords.filter(r => r.region === currentRegion); let bytes = 0; records.forEach(r => bytes += JSON.stringify(r).length * 2); const usedMB = (bytes / (1024*1024)).toFixed(2); span.textContent = `回收站占用：${usedMB} MB（共${records.length}条记录）`; }); }
 async function updateRecycleCount() { const span = document.getElementById('recycleCount'); if (!span) return; try { const allRecords = await getRecycleBinRecords(); const count = allRecords.filter(r => r.region === currentRegion).length; if (count > 0) { span.textContent = count; span.style.display = 'inline-block'; } else { span.style.display = 'none'; } } catch(e) { span.style.display = 'none'; } }
