@@ -1028,14 +1028,18 @@ async function saveReportOrderRecordToIDB(content, user, date, totalAmount = 0, 
   if (!success) { showToast('保存失败，请重试'); return false; }
   return true;
 }
-    // ===== 操作日志函数（扩展签名：action, detail, regionOverride, orderUser, orderTotal） =====
+// ===== 操作日志函数（扩展签名：action, detail, regionOverride, orderUser, orderTotal） =====
 async function addOperationLog(action, detail, regionOverride = null, orderUser = null, orderTotal = 0) {
   if (!db) return;
   const session = getAuthSession();
   const username = session ? (session.role === 'admin' ? '管理员' : '卡密用户') : '未知';
+  // 修复：使用 CST 北京时间作为时间戳，确保日志日期与操作日期一致
+  const now = new Date();
+  const cstTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const cstTimestamp = cstTime.toISOString().replace('Z', '+08:00');
   const record = {
     id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-    timestamp: new Date().toISOString(),
+    timestamp: cstTimestamp,
     user: username,
     action: action,
     detail: detail,
