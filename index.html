@@ -460,73 +460,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
           </div>
         </div>
       </div>
-
-      <!-- 连肖识别卡片（折叠） -->
-      <div class="card" style="margin-top:0;" id="lianxiaoGenerateCard">
-        <div class="card-title" style="cursor:pointer;" onclick="toggleLianxiaoGenerate()">
-          <span id="lianxiaoGenerateArrow">▶</span> 连肖识别
-          <select id="comboUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;margin-left:8px;"></select>
-        </div>
-        <div id="lianxiaoGenerateContent" style="display:none;">
-          <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <div style="flex:1; display:flex; flex-direction:column;">
-              <div class="box-label">输入框</div>
-              <textarea id="comboInput" style="width:100%; height:120px; border:1px solid #ddd; padding:8px; resize:none; font-size:13px; outline:none;" oninput="convertComboText()"></textarea>
-            </div>
-            <div style="flex:1; display:flex; flex-direction:column;">
-              <div class="box-label">识别结果</div>
-              <div id="comboResult" style="width:100%; height:120px; border:1px solid #ddd; padding:8px; font-size:13px; overflow-y:auto;"></div>
-            </div>
-          </div>
-          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
-            <button class="btn btn-save-order" onclick="saveComboOrder()" style="padding:4px 10px; font-size:12px; min-height:28px;">保存下单</button>
-            <button class="btn btn-remove-sep" onclick="comboRemoveSeparators()" style="padding:4px 10px; font-size:12px; min-height:28px;">去分隔</button>
-          </div>
-          <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
-            <button class="category-btn" onclick="comboGenerate('lianxiao2')">二连肖</button>
-            <button class="category-btn" onclick="comboGenerate('lianxiao3')">三连肖</button>
-            <button class="category-btn" onclick="comboGenerate('lianxiao4')">四连肖</button>
-            <button class="category-btn" onclick="comboGenerate('lianxiao5')">五连肖</button>
-          </div>
-          <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
-            <button class="category-btn" onclick="comboGenerate('zhong2')">二中二</button>
-            <button class="category-btn" onclick="comboGenerate('zhong3')">三中三</button>
-          </div>
-          <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
-            <button class="category-btn" onclick="comboGenerate('buzhong5')">五不中</button>
-            <button class="category-btn" onclick="comboGenerate('buzhong6')">六不中</button>
-            <button class="category-btn" onclick="comboGenerate('buzhong7')">七不中</button>
-            <button class="category-btn" onclick="comboGenerate('buzhong8')">八不中</button>
-            <button class="category-btn" onclick="comboGenerate('buzhong9')">九不中</button>
-            <button class="category-btn" onclick="comboGenerate('buzhong10')">十不中</button>
-            <button class="category-btn" onclick="comboGenerate('buzhong11')">十一不中</button>
-            <button class="category-btn" onclick="comboGenerate('buzhong12')">十二不中</button>
-          </div>
-          <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
-            <button class="category-btn" onclick="comboGenerate('pingma')">平码</button>
-          </div>
-          <div style="display:flex; gap:4px; flex-wrap:wrap;">
-            <button class="category-btn" onclick="comboGenerate('lianwei2')">二连尾</button>
-            <button class="category-btn" onclick="comboGenerate('lianwei3')">三连尾</button>
-            <button class="category-btn" onclick="comboGenerate('lianwei4')">四连尾</button>
-            <button class="category-btn" onclick="comboGenerate('lianwei5')">五连尾</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 连肖统计卡片（折叠） -->
-      <div class="card" style="margin-top:0;" id="lianxiaoStatsCard">
-        <div class="card-title" style="cursor:pointer;" onclick="toggleLianxiaoStats()">
-          <span id="lianxiaoStatsArrow">▶</span> 连肖统计
-        </div>
-        <div id="lianxiaoStatsContent" style="display:none;">
-          <div id="lianxiaoStatsContainer" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
-          <div style="display:flex; gap:6px; margin-top:10px;">
-            <button class="btn" style="background:#3498db;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="refreshLianxiaoStats()">刷新</button>
-            <button class="btn" style="background:#e74c3c;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="clearAllComboOrders()">清空全部</button>
-          </div>
-        </div>
-      </div>
     </div>
         <!-- 右侧风险报告区域 -->
     <div class="risk-report-area">
@@ -1041,18 +974,84 @@ async function switchRiskReport() {
   await updateTableFromRecords();
 }
 
-// ===== 连肖识别：折叠/展开 =====
-function toggleLianxiaoGenerate() {
-  const content = document.getElementById('lianxiaoGenerateContent');
-  const arrow = document.getElementById('lianxiaoGenerateArrow');
-  if (content.style.display === 'none') { content.style.display = ''; arrow.textContent = '▼'; }
-  else { content.style.display = 'none'; arrow.textContent = '▶'; }
+// ===== 连肖识别弹窗 =====
+function showLianxiaoGenerateWin() {
+  if (document.getElementById('lianxiaoGenerateWin')) return;
+  const users = getUsers();
+  let userOptions = ''; users.forEach(u => { userOptions += `<option value="${u}">${u}</option>`; });
+  const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoGenerateWin';
+  win.style.width = '850px'; win.style.height = '600px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
+  win.setAttribute('data-orig-width', '850px'); win.setAttribute('data-orig-height', '600px');
+  win.innerHTML = `
+    <div class="modal-header">连肖识别<div class="window-controls"><button onclick="maximizeWindow('lianxiaoGenerateWin')">🗖</button><button onclick="document.getElementById('lianxiaoGenerateWin').remove()">×</button></div></div>
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; gap:10px; margin-bottom:10px;">
+        <div style="flex:1; display:flex; flex-direction:column;">
+          <div class="box-label">输入框</div>
+          <textarea id="comboInput" style="width:100%; height:150px; border:1px solid #ddd; padding:8px; resize:none; font-size:13px; outline:none;" oninput="convertComboText()"></textarea>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column;">
+          <div class="box-label">识别结果</div>
+          <div id="comboResult" style="width:100%; height:150px; border:1px solid #ddd; padding:8px; font-size:13px; overflow-y:auto;"></div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <select id="comboUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:13px;">${userOptions}</select>
+        <button class="btn btn-save-order" onclick="saveComboOrder()" style="padding:4px 10px; font-size:12px; min-height:28px;">保存下单</button>
+        <button class="btn btn-remove-sep" onclick="comboRemoveSeparators()" style="padding:4px 10px; font-size:12px; min-height:28px;">去分隔</button>
+      </div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
+        <button class="category-btn" onclick="window.comboGenerate('lianxiao2')">二连肖</button>
+        <button class="category-btn" onclick="window.comboGenerate('lianxiao3')">三连肖</button>
+        <button class="category-btn" onclick="window.comboGenerate('lianxiao4')">四连肖</button>
+        <button class="category-btn" onclick="window.comboGenerate('lianxiao5')">五连肖</button>
+      </div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
+        <button class="category-btn" onclick="window.comboGenerate('zhong2')">二中二</button>
+        <button class="category-btn" onclick="window.comboGenerate('zhong3')">三中三</button>
+      </div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
+        <button class="category-btn" onclick="window.comboGenerate('buzhong5')">五不中</button>
+        <button class="category-btn" onclick="window.comboGenerate('buzhong6')">六不中</button>
+        <button class="category-btn" onclick="window.comboGenerate('buzhong7')">七不中</button>
+        <button class="category-btn" onclick="window.comboGenerate('buzhong8')">八不中</button>
+        <button class="category-btn" onclick="window.comboGenerate('buzhong9')">九不中</button>
+        <button class="category-btn" onclick="window.comboGenerate('buzhong10')">十不中</button>
+        <button class="category-btn" onclick="window.comboGenerate('buzhong11')">十一不中</button>
+        <button class="category-btn" onclick="window.comboGenerate('buzhong12')">十二不中</button>
+      </div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
+        <button class="category-btn" onclick="window.comboGenerate('pingma')">平码</button>
+      </div>
+      <div style="display:flex; gap:4px; flex-wrap:wrap;">
+        <button class="category-btn" onclick="window.comboGenerate('lianwei2')">二连尾</button>
+        <button class="category-btn" onclick="window.comboGenerate('lianwei3')">三连尾</button>
+        <button class="category-btn" onclick="window.comboGenerate('lianwei4')">四连尾</button>
+        <button class="category-btn" onclick="window.comboGenerate('lianwei5')">五连尾</button>
+      </div>
+    </div>`;
+  document.body.appendChild(win);
+  makeWindowDraggable('lianxiaoGenerateWin'); highestZ += 1; win.style.zIndex = highestZ;
 }
-function toggleLianxiaoStats() {
-  const content = document.getElementById('lianxiaoStatsContent');
-  const arrow = document.getElementById('lianxiaoStatsArrow');
-  if (content.style.display === 'none') { content.style.display = ''; arrow.textContent = '▼'; refreshLianxiaoStats(); }
-  else { content.style.display = 'none'; arrow.textContent = '▶'; }
+
+// ===== 连肖统计弹窗 =====
+function showLianxiaoStatsWin() {
+  if (document.getElementById('lianxiaoStatsWin')) return;
+  const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoStatsWin';
+  win.style.width = '1200px'; win.style.height = '700px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
+  win.setAttribute('data-orig-width', '1200px'); win.setAttribute('data-orig-height', '700px');
+  win.innerHTML = `
+    <div class="modal-header">连肖统计<div class="window-controls"><button onclick="maximizeWindow('lianxiaoStatsWin')">🗖</button><button onclick="document.getElementById('lianxiaoStatsWin').remove()">×</button></div></div>
+    <div class="modal-body">
+      <div id="lianxiaoStatsContainer" style="display:flex; flex-wrap:wrap; gap:10px;"></div>
+      <div style="display:flex; gap:6px; margin-top:10px;">
+        <button class="btn" style="background:#3498db;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="refreshLianxiaoStats()">刷新</button>
+        <button class="btn" style="background:#e74c3c;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="clearAllComboOrders()">清空全部</button>
+      </div>
+    </div>`;
+  document.body.appendChild(win);
+  makeWindowDraggable('lianxiaoStatsWin'); highestZ += 1; win.style.zIndex = highestZ;
+  refreshLianxiaoStats();
 }
 
 // ===== 连肖识别：输入框实时识别 =====
@@ -1081,8 +1080,8 @@ function comboRemoveSeparators() {
   convertComboText();
 }
 
-// ===== 组合生成核心函数 =====
-function comboGenerate(comboType) {
+// ===== 组合生成核心函数（挂载到 window 以确保 onclick 能访问） =====
+window.comboGenerate = function(comboType) {
   const inputEl = document.getElementById('comboInput');
   const resultEl = document.getElementById('comboResult');
   if (!inputEl || !resultEl) return;
@@ -1172,7 +1171,7 @@ function comboGenerate(comboType) {
   });
 
   resultEl.innerHTML = allResults.join('<br>');
-}
+};
 
 function getComboSize(comboType) {
   const map = { lianxiao2:2, lianxiao3:3, lianxiao4:4, lianxiao5:5, zhong2:2, zhong3:3, pingma:1, lianwei2:2, lianwei3:3, lianwei4:4, lianwei5:5, buzhong5:5, buzhong6:6, buzhong7:7, buzhong8:8, buzhong9:9, buzhong10:10, buzhong11:11, buzhong12:12 };
@@ -1254,8 +1253,129 @@ async function saveComboOrder() {
   await saveComboOrderRecordToIDB(text, user, date, 0, 'combo');
   addOperationLog('save_order', text, currentRegion, user, 0);
   showToast('已保存连肖订单');
-  // 同步保存到 orders 表，标记来源
-  await saveOrderRecordToIDB(text, user, date, 0);
+}
+
+// ===== 连肖统计函数 =====
+async function refreshLianxiaoStats() {
+  const container = document.getElementById('lianxiaoStatsContainer');
+  if (!container) return;
+  if (!db) { container.innerHTML = '数据库不可用'; return; }
+  const fd = document.getElementById('filterDate')?.value || getTodayCST();
+  const tx = db.transaction([COMBO_STORE_NAME], 'readonly');
+  const store = tx.objectStore(COMBO_STORE_NAME);
+  const all = await new Promise(resolve => {
+    const req = store.getAll();
+    req.onsuccess = (e) => resolve(e.target.result || []);
+  });
+  const records = all.filter(r => r.region === currentRegion && r.date === fd);
+  if (records.length === 0) { container.innerHTML = '<div style="color:#666;text-align:center;padding:10px;">暂无连肖数据</div>'; return; }
+  const cfg = getAllConfigData();
+  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
+  const stats = {};
+  records.forEach(rec => {
+    const lines = rec.content.split('\n');
+    lines.forEach(line => {
+      const match = line.match(/^(.+?)\s+各组\s+(\d+)$/);
+      if (!match) return;
+      const content = match[1];
+      const amount = parseInt(match[2]) || 0;
+      const groups = content.split(/\s+/);
+      groups.forEach(group => {
+        const tokens = group.split('-');
+        if (tokens.some(t => cfg.zodiac[t])) {
+          const comboType = `lianxiao${tokens.length}`;
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const hasYear = tokens.some(t => t === curYearZodiac);
+          const comboKey = tokens.join('-');
+          if (hasYear) {
+            const old = stats[comboType].withYear.get(comboKey) || 0;
+            stats[comboType].withYear.set(comboKey, old + amount);
+          } else {
+            const old = stats[comboType].withoutYear.get(comboKey) || 0;
+            stats[comboType].withoutYear.set(comboKey, old + amount);
+          }
+        } else if (tokens.some(t => t.includes('尾'))) {
+          const comboType = `lianwei${tokens.length}`;
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const hasZero = tokens.some(t => t.replace('尾','') === '0');
+          const comboKey = tokens.join('-');
+          if (hasZero) {
+            const old = stats[comboType].withYear.get(comboKey) || 0;
+            stats[comboType].withYear.set(comboKey, old + amount);
+          } else {
+            const old = stats[comboType].withoutYear.get(comboKey) || 0;
+            stats[comboType].withoutYear.set(comboKey, old + amount);
+          }
+        } else {
+          const comboType = tokens.length === 1 ? 'pingma' : (tokens.length === 2 ? 'zhong2' : (tokens.length === 3 ? 'zhong3' : 'buzhong' + tokens.length));
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const comboKey = tokens.join('-');
+          const old = stats[comboType].withYear.get(comboKey) || 0;
+          stats[comboType].withYear.set(comboKey, old + amount);
+        }
+      });
+    });
+  });
+
+  let html = '';
+  const order = ['lianxiao2','lianxiao3','lianxiao4','lianxiao5','zhong2','zhong3','pingma','lianwei2','lianwei3','lianwei4','lianwei5','buzhong5','buzhong6','buzhong7','buzhong8','buzhong9','buzhong10','buzhong11','buzhong12'];
+  order.forEach(type => {
+    if (!stats[type]) return;
+    const data = stats[type];
+    let cardHtml = '<div class="freq-card" style="min-width:280px;margin-bottom:8px;">';
+    cardHtml += `<div class="freq-title">${getComboTypeLabel(type)}</div>`;
+    if (type.startsWith('lianxiao')) {
+      if (data.withYear.size > 0) {
+        cardHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖（' + curYearZodiac + '）──</div>';
+        cardHtml += '<table style="width:100%;"><tr><td style="width:70%;word-break:break-word;">组合</td><td style="text-align:right;">金额</td></tr>';
+        data.withYear.forEach((v, k) => { cardHtml += `<tr><td>${k}</td><td style="text-align:right;">${v}</td></tr>`; });
+        cardHtml += '</table>';
+      }
+      if (data.withoutYear.size > 0) {
+        cardHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 不含本年生肖 ──</div>';
+        cardHtml += '<table style="width:100%;"><tr><td style="width:70%;word-break:break-word;">组合</td><td style="text-align:right;">金额</td></tr>';
+        data.withoutYear.forEach((v, k) => { cardHtml += `<tr><td>${k}</td><td style="text-align:right;">${v}</td></tr>`; });
+        cardHtml += '</table>';
+      }
+    } else if (type.startsWith('lianwei')) {
+      if (data.withYear.size > 0) {
+        cardHtml += '<div style="font-size:11px;color:#333;">── 含0尾 ──</div>';
+        cardHtml += '<table style="width:100%;"><tr><td style="width:70%;word-break:break-word;">组合</td><td style="text-align:right;">金额</td></tr>';
+        data.withYear.forEach((v, k) => { cardHtml += `<tr><td>${k}</td><td style="text-align:right;">${v}</td></tr>`; });
+        cardHtml += '</table>';
+      }
+      if (data.withoutYear.size > 0) {
+        cardHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 不含0尾 ──</div>';
+        cardHtml += '<table style="width:100%;"><tr><td style="width:70%;word-break:break-word;">组合</td><td style="text-align:right;">金额</td></tr>';
+        data.withoutYear.forEach((v, k) => { cardHtml += `<tr><td>${k}</td><td style="text-align:right;">${v}</td></tr>`; });
+        cardHtml += '</table>';
+      }
+    } else {
+      if (data.withYear.size > 0) {
+        cardHtml += '<table style="width:100%;"><tr><td style="width:70%;word-break:break-word;">组合</td><td style="text-align:right;">金额</td></tr>';
+        data.withYear.forEach((v, k) => { cardHtml += `<tr><td>${k}</td><td style="text-align:right;">${v}</td></tr>`; });
+        cardHtml += '</table>';
+      }
+    }
+    cardHtml += '</div>';
+    html += cardHtml;
+  });
+  container.innerHTML = html || '<div style="color:#666;text-align:center;padding:10px;">暂无连肖数据</div>';
+}
+
+function getComboTypeLabel(type) {
+  const map = { lianxiao2:'二连肖', lianxiao3:'三连肖', lianxiao4:'四连肖', lianxiao5:'五连肖', zhong2:'二中二', zhong3:'三中三', pingma:'平码', lianwei2:'二连尾', lianwei3:'三连尾', lianwei4:'四连尾', lianwei5:'五连尾', buzhong5:'五不中', buzhong6:'六不中', buzhong7:'七不中', buzhong8:'八不中', buzhong9:'九不中', buzhong10:'十不中', buzhong11:'十一不中', buzhong12:'十二不中' };
+  return map[type] || type;
+}
+
+async function clearAllComboOrders() {
+  if (!(await confirm('确定清空全部连肖订单吗？此操作不可恢复！'))) return;
+  if (!db) return;
+  const tx = db.transaction([COMBO_STORE_NAME], 'readwrite');
+  const store = tx.objectStore(COMBO_STORE_NAME);
+  store.clear();
+  refreshLianxiaoStats();
+  showToast('已清空全部连肖订单');
 }
     function initIndexedDB() { return new Promise((resolve) => { const request = indexedDB.open(DB_NAME, DB_VERSION); request.onerror = () => { dbAvailable = false; document.getElementById('dbWarning').style.display = 'block'; const dbStatusEl = document.getElementById('dbStatus'); if (dbStatusEl) { dbStatusEl.textContent = '异常'; dbStatusEl.style.color = '#e74c3c'; } resolve(false); }; request.onsuccess = (event) => { db = event.target.result; dbAvailable = true; document.getElementById('dbWarning').style.display = 'none'; const dbStatusEl = document.getElementById('dbStatus'); if (dbStatusEl) { dbStatusEl.textContent = '正常'; dbStatusEl.style.color = '#27ae60'; } resolve(true); }; request.onupgradeneeded = (event) => { db = event.target.result; if (!db.objectStoreNames.contains(STORE_NAME)) { db.createObjectStore(STORE_NAME, { keyPath: 'id' }); } if (!db.objectStoreNames.contains(REPORT_STORE_NAME)) { db.createObjectStore(REPORT_STORE_NAME, { keyPath: 'id' }); } if (!db.objectStoreNames.contains(RECYCLE_STORE_NAME)) { db.createObjectStore(RECYCLE_STORE_NAME, { keyPath: 'id' }); } if (!db.objectStoreNames.contains(LOG_STORE_NAME)) { db.createObjectStore(LOG_STORE_NAME, { keyPath: 'id' }); } if (!db.objectStoreNames.contains(COMBO_STORE_NAME)) { db.createObjectStore(COMBO_STORE_NAME, { keyPath: 'id' }); } const tx = event.target.transaction; const orderStore = tx.objectStore(STORE_NAME); const reportStore = tx.objectStore(REPORT_STORE_NAME); const addRegion = (store) => { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result; records.forEach(r => { if (!r.region) { r.region = 'macau'; store.put(r); } }); }; }; addRegion(orderStore); addRegion(reportStore); }; }); }
 async function getAllOrdersUnfiltered() { return new Promise((resolve) => { if (!db) resolve([]); const tx = db.transaction([STORE_NAME],'readonly'); const store = tx.objectStore(STORE_NAME); const req = store.getAll(); req.onsuccess = (e) => resolve(e.target.result || []); }); }
@@ -1626,7 +1746,7 @@ function addUser(name) { const users = getUsers(); if (users.includes(name)) { s
 async function deleteUser(name) { let users = getUsers(); users = users.filter(u => u !== name); saveUsers(users); if (userBetData[name]) delete userBetData[name]; rebuildTotal(); refreshAll(); }
 function rebuildTotal() { tableBetData = {}; for (const u in userBetData) for (const n in userBetData[u]) tableBetData[n] = (tableBetData[n]||0) + userBetData[u][n]; }
 function refreshAll() { updateSelects(); updateTableFromRecords(); }
-function updateSelects() { const users = getUsers(); const orderSel = document.getElementById('orderUserSelect'); if (orderSel) { orderSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; orderSel.appendChild(o); }); } const viewSel = document.getElementById('viewUserSelect'); if (viewSel) { viewSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; viewSel.appendChild(o); }); } const comboSel = document.getElementById('comboUserSelect'); if (comboSel) { comboSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; comboSel.appendChild(o); }); } }
+function updateSelects() { const users = getUsers(); const orderSel = document.getElementById('orderUserSelect'); if (orderSel) { orderSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; orderSel.appendChild(o); }); } const viewSel = document.getElementById('viewUserSelect'); if (viewSel) { viewSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; viewSel.appendChild(o); }); } }
     // ===== 快捷添加与分词 =====
 function quickAddWithAmount(text, button) { const input = document.querySelector('.source-order-input'); if (!input) return; const lines = input.value.trim().split('\n').filter(l=>l.trim()); const idx = lines.findIndex(l=> l.includes(text) && (l.includes('各数')||l.includes('各号'))); if (idx !== -1) { lines.splice(idx,1); button.classList.remove('active'); } else { lines.push(`${text} 各数 `); button.classList.add('active'); } input.value = lines.join('\n'); convertOrderText(); const lastIndex = input.value.lastIndexOf('各数'); if (lastIndex !== -1) { const pos = lastIndex + 2; input.focus(); input.setSelectionRange(pos, pos); } }
 function getReplacePresets() { try { return JSON.parse(localStorage.getItem('replacePresets') || '[]'); } catch (e) { return []; } }
@@ -1960,7 +2080,11 @@ function updatePrizeStats(pn) {}
 
 async function applyPrizeFilter(){ const pi=document.getElementById('prizeNumberInput'),uf=document.getElementById('recordUserFilter'); if(!pi||!uf) return; const sd = document.getElementById('filterDate')?.value; const pn=pi.value.trim(),uv=uf.value; const recs=await getOrderRecords(); const reports=await getReportOrderRecords(); const fRecs = sd ? recs.filter(r=>r.date===sd) : recs; const fReps = sd ? reports.filter(r=>r.date===sd) : reports; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); let filtered=pn ? [] : [...userOrders]; if(pn){ const cfg=getAllConfigData(); for(const it of userOrders){ if(orderContainsTarget(it.content,pn,cfg)) filtered.push(it); } } const cont=document.getElementById('orderListContainer'); if(!cont)return; if(filtered.length===0){cont.innerHTML='<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';} else{ const cfg=getAllConfigData(); cont.innerHTML=filtered.map(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; const lines=it.content.split('\n'); const hl=lines.map(l=>{const m=l.match(/^(.+?)\s+各数\s+(\d+)$/);if(!m)return l;const cont=m[1],amt=m[2];const hc=highlightContent(cont,pn,cfg);return`${hc} 各数 ${amt}`;}).join('<br>'); return`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${hl}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }).join(''); } renderOrderStats(userOrders, userReports, uv, pn); }
 
-async function showOrderRecord(filter='all'){ try{ const recs=await getOrderRecords(),users=getUsers(),today=getTodayCST(); const reports=await getReportOrderRecords(); const fd=document.getElementById('filterDate')?.value; const fRecs=fd?recs.filter(r=>r.date===fd):recs; const fReps=fd?reports.filter(r=>r.date===fd):reports; if(document.getElementById('orderWin'))document.getElementById('orderWin').remove(); const w=document.createElement('div'); w.className='floating-window'; w.id='orderWin'; w.style.width='750px'; w.style.height='600px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; let html=`<div class="modal-header"><h3>下单记录</h3><div class="window-controls"><button onclick="maximizeWindow('orderWin')">🗖</button><button onclick="document.getElementById('orderWin').remove()">×</button></div></div><div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html+=`<div style="margin-bottom:6px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><select id="recordUserFilter" onchange="applyPrizeFilter()" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;"><option value="all" ${filter==='all'?'selected':''}>全部用户</option>`; users.forEach(u=>html+=`<option value="${u}" ${u===filter?'selected':''}>${u}</option>`); html+=`</select><button onclick="checkAll()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAll()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="deleteChecked()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button> <span style="display:flex;align-items:center;gap:3px;margin-left:auto;"><span id="orderStatsContainer" style="margin-right:4px;"></span><span style="display:flex;align-items:center;gap:2px;"><span>对奖:</span><input type="text" id="prizeNumberInput" maxlength="2" oninput="applyPrizeFilter()" style="padding:4px;border-radius:4px;border:1px solid #ccc;width:50px;text-align:center;"></span></span></div>`; html+=`<div id="orderListContainer" style="flex:1; overflow-y:auto;">`; const filterDateVal = fd || today; const df=fRecs; const fin=(filter==='all')?df:df.filter(r=>r.user===filter); if(fin.length===0)html+=`<div style="padding:20px;text-align:center;color:#666;">暂无订单记录</div>`; else{ fin.forEach(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; html+=`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${it.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }); } html+=`</div></div><div class="modal-footer"><button onclick="batchCopyOrders('.order-check')" style="padding:8px 16px;background:#8e44ad;color:#fff;border:none;border-radius:4px;">批量复制</button><button onclick="document.getElementById('orderWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; w.innerHTML=html; document.body.appendChild(w); makeWindowDraggable('orderWin'); highestZ+=1; w.style.zIndex=highestZ; const uv = filter || 'all'; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); renderOrderStats(userOrders, userReports, uv, ''); }catch(e){showToast('加载失败');} }
+// 订单记录弹窗：默认只显示普通订单，连肖记录按钮切换
+let orderListMode = 'normal'; // 'normal' | 'combo'
+async function showOrderRecord(filter='all'){ try{ const recs=await getOrderRecords(),users=getUsers(),today=getTodayCST(); const reports=await getReportOrderRecords(); const comboRecs=await getComboOrders(); const fd=document.getElementById('filterDate')?.value; const fRecs=fd?recs.filter(r=>r.date===fd):recs; const fReps=fd?reports.filter(r=>r.date===fd):reports; const fCombo=fd?comboRecs.filter(r=>r.date===fd):comboRecs; if(document.getElementById('orderWin'))document.getElementById('orderWin').remove(); const w=document.createElement('div'); w.className='floating-window'; w.id='orderWin'; w.style.width='750px'; w.style.height='600px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; let html=`<div class="modal-header"><h3>下单记录</h3><div class="window-controls"><button onclick="maximizeWindow('orderWin')">🗖</button><button onclick="document.getElementById('orderWin').remove()">×</button></div></div><div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html+=`<div style="margin-bottom:6px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><select id="recordUserFilter" onchange="applyPrizeFilter()" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;"><option value="all" ${filter==='all'?'selected':''}>全部用户</option>`; users.forEach(u=>html+=`<option value="${u}" ${u===filter?'selected':''}>${u}</option>`); html+=`</select><button onclick="checkAll()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAll()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="deleteChecked()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button> <span style="display:flex;align-items:center;gap:3px;margin-left:auto;"><span id="orderStatsContainer" style="margin-right:4px;"></span><span style="display:flex;align-items:center;gap:2px;"><span>对奖:</span><input type="text" id="prizeNumberInput" maxlength="2" oninput="applyPrizeFilter()" style="padding:4px;border-radius:4px;border:1px solid #ccc;width:50px;text-align:center;"></span></span></div>`; html+=`<div id="orderListContainer" style="flex:1; overflow-y:auto;">`; const filterDateVal = fd || today; const df= orderListMode==='combo' ? fCombo : fRecs; const fin=(filter==='all')?df:df.filter(r=>r.user===filter); if(fin.length===0)html+=`<div style="padding:20px;text-align:center;color:#666;">暂无${orderListMode==='combo'?'连肖':'订单'}记录</div>`; else{ fin.forEach(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; html+=`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${it.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }); } html+=`</div></div><div class="modal-footer"><button onclick="toggleOrderListMode()" id="comboOrderBtn" style="padding:8px 16px;background:${orderListMode==='combo'?'#3498db':'#6c757d'};color:#fff;border:none;border-radius:4px;">${orderListMode==='combo'?'普通订单':'连肖记录'}</button><button onclick="batchCopyOrders('.order-check')" style="padding:8px 16px;background:#8e44ad;color:#fff;border:none;border-radius:4px;">批量复制</button><button onclick="document.getElementById('orderWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; w.innerHTML=html; document.body.appendChild(w); makeWindowDraggable('orderWin'); highestZ+=1; w.style.zIndex=highestZ; const uv = filter || 'all'; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); renderOrderStats(userOrders, userReports, uv, ''); }catch(e){showToast('加载失败');} }
+
+function toggleOrderListMode() { orderListMode = orderListMode === 'combo' ? 'normal' : 'combo'; showOrderRecord(); }
 
 async function deleteOrderRecord(id) { if (!(await confirm('确定删除？（可到回收站恢复）'))) return; try { const record = await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readonly'); const store = tx.objectStore(STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); const result = await deleteOrderRecordFromIDB(id); if (result) { if (record) addOperationLog('delete_order', record.content, currentRegion, record.user, record.totalAmount || 0); clearStatsCache(); showToast('已移入回收站'); await updateTableFromRecords(); calculateStorageUsage(); showOrderRecord(); updateRecycleCount(); } else { showToast('删除失败，记录可能已不存在'); } } catch(e) { console.error('删除订单异常', e); showToast('删除异常'); } }
 
@@ -3893,8 +4017,8 @@ function renderSmartDecision() {
   finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:${heatVisible?'#2ecc71':'#95a5a6'}; color:#fff; border:none; cursor:pointer;" onclick="toggleHeat()">开奖热度分析</button>`;
   finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:${adviceVisible?'#2ecc71':'#95a5a6'}; color:#fff; border:none; cursor:pointer;" onclick="toggleAdvice()">智能建议</button>`;
   finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:${surgeVisible?'#2ecc71':'#95a5a6'}; color:#fff; border:none; cursor:pointer;" onclick="toggleSurge()">暴增监控</button>`;
-  finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:#3498db; color:#fff; border:none; cursor:pointer;" onclick="toggleLianxiaoGenerate()">连肖识别</button>`;
-  finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:#3498db; color:#fff; border:none; cursor:pointer;" onclick="toggleLianxiaoStats()">连肖统计</button>`;
+  finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:#3498db; color:#fff; border:none; cursor:pointer;" onclick="showLianxiaoGenerateWin()">连肖识别</button>`;
+  finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:#3498db; color:#fff; border:none; cursor:pointer;" onclick="showLianxiaoStatsWin()">连肖统计</button>`;
   finalHtml += `</div>`;
 
   if (heatVisible) finalHtml += heatHtml;
