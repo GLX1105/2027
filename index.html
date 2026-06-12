@@ -1079,7 +1079,7 @@ function comboRemoveSeparators() {
   ta.value = ta.value.substring(0, s) + cleaned + ta.value.substring(e);
   convertComboText();
 }
-    // ===== 组合生成核心函数（挂载到 window 以确保 onclick 能访问） =====
+  // ===== 组合生成核心函数（挂载到 window 以确保 onclick 能访问） =====
 window.comboGenerate = function(comboType) {
   const inputEl = document.getElementById('comboInput');
   const resultEl = document.getElementById('comboResult');
@@ -1112,7 +1112,26 @@ window.comboGenerate = function(comboType) {
       tokens.forEach(t => {
         if (/^\d{1,2}$/.test(t)) { numbers.push(t.padStart(2, '0')); }
         else if (/^[\u4e00-\u9fa5]尾$/.test(t)) { weishus.push(t.replace('尾', '')); }
-        else if (/^[\u4e00-\u9fa5]$/.test(t) && Object.keys(cfg.zodiac).includes(t)) { zodiacs.push(t); }
+        else if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) { zodiacs.push(t); }
+        else if (/^[\u4e00-\u9fa5]+$/.test(t) && t.length > 1) {
+          // 支持连写：连续汉字逐字判断是否为生肖
+          const chars = t.split('');
+          let allZodiac = true;
+          const tempZodiacs = [];
+          for (const ch of chars) {
+            if (cfg.zodiac[ch]) {
+              tempZodiacs.push(ch);
+            } else {
+              allZodiac = false;
+              break;
+            }
+          }
+          if (allZodiac && tempZodiacs.length > 0) {
+            zodiacs.push(...tempZodiacs);
+          } else {
+            numbers.push(t);
+          }
+        }
         else { numbers.push(t); }
       });
 
@@ -1284,8 +1303,14 @@ async function saveComboOrder() {
   if (!user) { showToast('请先选择用户'); return; }
   const date = document.getElementById('filterDate')?.value || getTodayCST();
   const pureText = window._comboPureContents.join('\n');
-  await saveComboOrderRecordToIDB(pureText, user, date, 0, 'combo');
-  addOperationLog('save_order', pureText, currentRegion, user, 0);
+  // 计算总金额
+  let totalAmount = 0;
+  window._comboPureContents.forEach(line => {
+    const m = line.match(/各组\s*(\d+)$/);
+    if (m) totalAmount += parseInt(m[1]) || 0;
+  });
+  await saveComboOrderRecordToIDB(pureText, user, date, totalAmount, 'combo');
+  addOperationLog('save_order', pureText, currentRegion, user, totalAmount);
   showToast('已保存连肖订单');
 }
     // ===== 连肖统计函数 =====
@@ -2122,7 +2147,34 @@ async function showOrderRecord(filter='all'){ try{ const recs=await getOrderReco
 
 function toggleOrderListMode() { orderListMode = orderListMode === 'combo' ? 'normal' : 'combo'; showOrderRecord(); }
 
-async function deleteOrderRecord(id) { if (!(await confirm('确定删除？（可到回收站恢复）'))) return; try { const record = await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readonly'); const store = tx.objectStore(STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); const result = await deleteOrderRecordFromIDB(id); if (result) { if (record) addOperationLog('delete_order', record.content, currentRegion, record.user, record.totalAmount || 0); clearStatsCache(); showToast('已移入回收站'); await updateTableFromRecords(); calculateStorageUsage(); showOrderRecord(); updateRecycleCount(); } else { showToast('删除失败，记录可能已不存在'); } } catch(e) { console.error('删除订单异常', e); showToast('删除异常'); } }
+async function deleteOrderRecord(id) {
+  if (!(await confirm('确定删除？（可到回收站恢复）'))) return;
+  try {
+    const record = await new Promise((resolve) => {
+      const tx = db.transaction([STORE_NAME], 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+    const result = await deleteOrderRecordFromIDB(id);
+    if (result) {
+      if (record) addOperationLog('delete_order', record.content, currentRegion, record.user, record.totalAmount || 0);
+      clearStatsCache();
+      showToast('已移入回收站');
+      await updateTableFromRecords();
+      calculateStorageUsage();
+      showOrderRecord();
+      updateRecycleCount();
+      // 如果连肖统计窗口存在则自动刷新
+      if (document.getElementById('lianxiaoStatsWin')) {
+        refreshLianxiaoStats();
+      }
+    } else {
+      showToast('删除失败，记录可能已不存在');
+    }
+  } catch(e) { console.error('删除订单异常', e); showToast('删除异常'); }
+}
 
 async function showReportOrderRecord(filter='all'){ try{ const recs=await getReportOrderRecords(),users=getUsers(); if(document.getElementById('reportWin'))document.getElementById('reportWin').remove(); const fd=document.getElementById('filterDate')?.value; const df=fd?recs.filter(r=>r.date===fd):recs; const fin=(filter==='all')?df:df.filter(r=>r.user===filter); const w=document.createElement('div'); w.className='floating-window'; w.id='reportWin'; w.style.width='700px'; w.style.height='500px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; let html=`<div class="modal-header"><h3>上报数据</h3><div class="window-controls"><button onclick="maximizeWindow('reportWin')">🗖</button><button onclick="document.getElementById('reportWin').remove()">×</button></div></div><div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html+=`<div style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><select id="reportRecordUserFilter" onchange="showReportOrderRecord(this.value)" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;"><option value="all" ${filter==='all'?'selected':''}>全部用户</option>`; users.forEach(u=>html+=`<option value="${u}" ${u===filter?'selected':''}>${u}</option>`); html+=`</select><button onclick="checkAllReport()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAllReport()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="deleteCheckedReport()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button></div>`; html+=`<div id="reportOrderListContainer" style="flex:1; overflow-y:auto;">`; if(fin.length===0)html+=`<div style="padding:20px;text-align:center;color:#666;">暂无上报记录</div>`; else{ fin.forEach(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',ta=it.totalAmount||0; html+=`<div class="order-item"><input type="checkbox" class="report-order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${it.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:red;">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteReportOrderRecord('${it.id}')">删除</button></div>`; }); } html+=`</div></div><div class="modal-footer"><button onclick="batchCopyOrders('.report-order-check')" style="padding:8px 16px;background:#8e44ad;color:#fff;border:none;border-radius:4px;">批量复制</button><button onclick="document.getElementById('reportWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; w.innerHTML=html; document.body.appendChild(w); makeWindowDraggable('reportWin'); highestZ+=1; w.style.zIndex=highestZ; }catch(e){showToast('加载失败');} }
 
