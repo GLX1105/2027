@@ -284,7 +284,8 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .log-type-switch{background:#e8daef;color:#6c3483;}
 
 .draw-number-input-plain {
-    width: 40px; padding: 2px; text-align: center; font-size: 14px; font-weight: bold;
+    width: 28px;
+    padding: 2px; text-align: center; font-size: 14px; font-weight: bold;
     border: none; outline: none; background: transparent;
     border-bottom: 1px dashed #ccc;
 }
@@ -1098,6 +1099,12 @@ function showLianxiaoStatsWin() {
   const savedEntry = savedData[issueId] || {};
   const savedNumbers = savedEntry.numbers || [];
   const isReadOnly = savedNumbers.length > 0;
+
+  // 生成带颜色的号码和生肖
+  const numCls = (i) => savedNumbers[i] ? getNumberColorClass(savedNumbers[i].padStart(2,'0')) : '';
+  const zodCls = (i) => savedNumbers[i] ? getZodiacColorClass(currentZodiacMap[savedNumbers[i].padStart(2,'0')]||'') : '';
+  const zodText = (i) => savedNumbers[i] ? (currentZodiacMap[savedNumbers[i].padStart(2,'0')]||'') : '';
+
   win.innerHTML = `
     <div class="modal-header">连肖统计<div class="window-controls"><button onclick="maximizeWindow('lianxiaoStatsWin')">🗖</button><button onclick="document.getElementById('lianxiaoStatsWin').remove()">×</button></div></div>
     <div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 60px);">
@@ -1108,25 +1115,25 @@ function showLianxiaoStatsWin() {
         <table style="margin:0 auto;">
           <tr>
             <td style="text-align:center; padding:0 3px;"><span style="font-size:11px;">正码</span></td>
-            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum1" value="${savedNumbers[0]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(1)" maxlength="2"></td>
-            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum2" value="${savedNumbers[1]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(2)" maxlength="2"></td>
-            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum3" value="${savedNumbers[2]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(3)" maxlength="2"></td>
-            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum4" value="${savedNumbers[3]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(4)" maxlength="2"></td>
-            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum5" value="${savedNumbers[4]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(5)" maxlength="2"></td>
-            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum6" value="${savedNumbers[5]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(6)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(0)}" id="drawNum1" value="${savedNumbers[0]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(1)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(1)}" id="drawNum2" value="${savedNumbers[1]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(2)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(2)}" id="drawNum3" value="${savedNumbers[2]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(3)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(3)}" id="drawNum4" value="${savedNumbers[3]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(4)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(4)}" id="drawNum5" value="${savedNumbers[4]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(5)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(5)}" id="drawNum6" value="${savedNumbers[5]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(6)" maxlength="2"></td>
             <td style="text-align:center; padding:0 3px;"><span style="font-size:11px;">特码</span></td>
-            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum7" value="${savedNumbers[6]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(7)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(6)}" id="drawNum7" value="${savedNumbers[6]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(7)" maxlength="2"></td>
           </tr>
           <tr>
             <td></td>
-            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac1">${savedNumbers[0]?(currentZodiacMap[savedNumbers[0].padStart(2,'0')]||''):''}</span></td>
-            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac2">${savedNumbers[1]?(currentZodiacMap[savedNumbers[1].padStart(2,'0')]||''):''}</span></td>
-            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac3">${savedNumbers[2]?(currentZodiacMap[savedNumbers[2].padStart(2,'0')]||''):''}</span></td>
-            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac4">${savedNumbers[3]?(currentZodiacMap[savedNumbers[3].padStart(2,'0')]||''):''}</span></td>
-            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac5">${savedNumbers[4]?(currentZodiacMap[savedNumbers[4].padStart(2,'0')]||''):''}</span></td>
-            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac6">${savedNumbers[5]?(currentZodiacMap[savedNumbers[5].padStart(2,'0')]||''):''}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(0)}" id="drawZodiac1">${zodText(0)}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(1)}" id="drawZodiac2">${zodText(1)}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(2)}" id="drawZodiac3">${zodText(2)}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(3)}" id="drawZodiac4">${zodText(3)}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(4)}" id="drawZodiac5">${zodText(4)}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(5)}" id="drawZodiac6">${zodText(5)}</span></td>
             <td></td>
-            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac7">${savedNumbers[6]?(currentZodiacMap[savedNumbers[6].padStart(2,'0')]||''):''}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(6)}" id="drawZodiac7">${zodText(6)}</span></td>
           </tr>
         </table>
       </div>
@@ -1632,7 +1639,6 @@ async function refreshLianxiaoStats() {
   const cfg = getAllConfigData();
   const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
 
-  // 读取当天开奖号码
   let drawNumbers = [];
   let drawZodiacs = [];
   const fdYear = fd.substring(0, 4);
@@ -1706,7 +1712,6 @@ async function refreshLianxiaoStats() {
     });
   });
 
-  // 赔率数据
   const oddsData = getOddsData();
   const defaults = {
     'pingtexiao':{odds:2,rebate:4},'pingtexiao带主肖':{odds:1.8,rebate:4},'lianxiao2':{odds:4,rebate:4},'lianxiao2带主肖':{odds:3.5,rebate:4},
@@ -1725,10 +1730,7 @@ async function refreshLianxiaoStats() {
     else if (hasSpecial && type === 'pingtewei') key = 'pingtewei零尾';
     else if (hasSpecial && type.startsWith('lianwei')) key = type + '零尾';
     const saved = oddsData[key] || {};
-    return {
-      odds: parseFloat(saved.odds) || defaults[key]?.odds || 1,
-      rebate: parseFloat(saved.rebate) || defaults[key]?.rebate || 4
-    };
+    return { odds: parseFloat(saved.odds) || defaults[key]?.odds || 1, rebate: parseFloat(saved.rebate) || defaults[key]?.rebate || 4 };
   }
 
   let grandPL = 0;
@@ -1762,7 +1764,7 @@ async function refreshLianxiaoStats() {
           pl = hit ? (v - v * (rebate / 100) - v * odds) : (v - v * (rebate / 100));
         }
         cardPL += pl;
-        html2 += `<tr><td style="text-align:center;">${k}</td><td style="text-align:center;">${v}</td><td style="text-align:center;">${hit ? `<span class="amount-red-text">${v}</span>` : ''}</td><td style="text-align:center;${pl>0?'color:#27ae60;':(pl<0?'color:#e74c3c;':'')}">${pl!==0?pl:''}</td></tr>`;
+        html2 += `<tr><td style="text-align:center;">${k}</td><td style="text-align:center;">${v}</td><td style="text-align:center;">${hit ? `<span class="amount-red-text">${v}</span>` : ''}</td><td style="text-align:center;${pl>0?'color:#27ae60;':(pl<0?'color:#e74c3c;':'')}">${pl!==0?Math.round(pl):''}</td></tr>`;
         totalGroups++; totalAmount += v;
       });
       html2 += '</table>';
@@ -1785,18 +1787,19 @@ async function refreshLianxiaoStats() {
       if (data.withYear.size > 0) { cardHtml += renderTable(data.withYear, false); }
     }
     grandPL += cardPL;
+    const roundedCardPL = Math.round(cardPL);
     cardHtml += `<div style="border-top:1px solid #ddd;margin-top:4px;padding-top:4px;font-size:11px;text-align:center;">小计：${totalGroups}组 金额：${totalAmount}`;
     if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
-      cardHtml += ` 盈亏：<span style="color:${cardPL>0?'#27ae60':(cardPL<0?'#e74c3c':'')};">${cardPL>0?cardPL:(cardPL<0?cardPL:'')}</span>`;
+      cardHtml += ` 盈亏：<span style="color:${roundedCardPL>0?'#27ae60':(roundedCardPL<0?'#e74c3c':'')};">${roundedCardPL>0?roundedCardPL:(roundedCardPL<0?roundedCardPL:'')}</span>`;
     }
     cardHtml += '</div></div>';
     html += cardHtml;
   });
   container.innerHTML = html || '<div style="color:#666;text-align:center;padding:10px;">暂无连肖数据</div>';
-  // 底部汇总
+  const roundedGrandPL = Math.round(grandPL);
   let totalHtml = `<span style="color:#0000ff;">全部玩法下单金额：</span><span style="color:#e74c3c;">${grandTotal}</span>`;
   if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
-    totalHtml += ` &nbsp; <span style="color:#0000ff;">全部玩法总盈亏：</span><span style="color:${grandPL>0?'#27ae60':(grandPL<0?'#e74c3c':'')};">${grandPL>0?grandPL:(grandPL<0?grandPL:'')}</span>`;
+    totalHtml += ` &nbsp; <span style="color:#0000ff;">全部玩法总盈亏：</span><span style="color:${roundedGrandPL>0?'#27ae60':(roundedGrandPL<0?'#e74c3c':'')};">${roundedGrandPL>0?roundedGrandPL:(roundedGrandPL<0?roundedGrandPL:'')}</span>`;
   }
   document.getElementById('lianxiaoStatsTotal').innerHTML = totalHtml;
 }
@@ -1823,7 +1826,6 @@ async function getOrderRecords() { const all = await getAllOrdersUnfiltered(); r
 async function getReportOrderRecords() { const all = await getAllReportsUnfiltered(); return all.filter(r => r.region === currentRegion); }
 async function getComboOrders() { return new Promise((resolve) => { if (!db) resolve([]); const tx = db.transaction([COMBO_STORE_NAME],'readonly'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.getAll(); req.onsuccess = (e) => resolve(e.target.result || []); }); }
 
-// ===== 写入失败重试机制 =====
 async function saveOrderRecordToIDB(content, user, date, totalAmount = 0, ts = null, regionOverride = null) {
   if (!db || !dbAvailable) { showToast('数据库不可用，操作无法保存'); return false; }
   const record = { id: Date.now() + '-' + Math.random().toString(36).substr(2, 9), content, user, date, totalAmount, region: regionOverride || currentRegion, timestamp: ts || new Date().toISOString() };
@@ -2099,7 +2101,7 @@ function tokenizeAndJoin(content) { const cfg = getAllConfigData(); const vc = g
 function convertOrderText() { const inputEl = document.querySelector('.source-order-input'); const resultEl = document.getElementById('orderResult'); const invalidSpan = document.getElementById('invalidTokensDisplay'); if (!inputEl || !resultEl) return; let text = applyCategoryAliases(applyReplacePresets(inputEl.value.trim())); if (!text) { resultEl.innerHTML = ''; if (invalidSpan) { invalidSpan.textContent = ''; invalidSpan.style.display = 'none'; } updateOrderTotalDisplay(); return; } const lines = text.split('\n'); const resultLines = []; const originalContents = []; const skipInvalidCheck = new Set(); const HARD_AMP_LIST = ['每个号','各号码','各数','每数','每号','个号','各号','各码','号','个','=','各']; const cusAmp = getCustomAmountPrefixes(); const allAmpList = [...HARD_AMP_LIST, ...cusAmp]; allAmpList.sort((a, b) => b.length - a.length); const AMP_ORIGINAL = '(?:' + allAmpList.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')'; const IGN = ['奥特','特码','澳门特码','特','奥','澳','澳门','澳門','澳門特碼','澳门特码','澳門特码',':','。','.','新',',','新','新奥','门','，','新澳','新特','新澳特','特碼']; const cusPre = getCustomPrefixes(); const allPre = [...IGN, ...cusPre]; const baseSuf = '元块咪米斤#،。\\s'; const cusAmtSuf = getCustomAmountSuffixes(); const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join(''); const AMTS = `[${allAmtChars}]*`; function cn2n(s) { const m = {'零':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000}; let sum = 0, tmp = 0; for (let c of s) { const v = m[c]; if (v === 10 || v === 100 || v === 1000) { if (tmp === 0) tmp = 1; tmp *= v; sum += tmp; tmp = 0; } else if (v !== undefined) { if (tmp > 0) { sum += tmp; tmp = 0; } tmp = v; } } sum += tmp; return sum; } const SIMPLE_PAIR = /^(\d{1,2})[^\d\s]+(\d+)$/; const cfg = getAllConfigData(); const vc = getAllValidCategories(cfg); const allCatNames = new Set(); Object.keys(cfg.zodiac).forEach(z => allCatNames.add(z)); vc.forEach(c => allCatNames.add(c)); const ZODIAC_SET = new Set(Object.keys(cfg.zodiac)); function startsWithCategory(str) { for (let cat of allCatNames) { if (str.startsWith(cat)) return true; } return false; } function isValidNumber(token) { return /^(0[1-9]|[1-4][0-9]|49?|[1-9])$/.test(token); } const PUNCT_REGEX = /[\s,，.。、+\-*＊\/\\|!@#$%^&*()=+_{}\[\]:;"'<>,.?\/~！@#￥%…&*（）—+【】{}|："；"''《》，。？、]/g; function isValidToken(token) { const clean = token.replace(PUNCT_REGEX, ''); if (clean === '') return false; if (isValidNumber(clean)) return true; if (/^\d+尾$/.test(clean) || /^\d+头$/.test(clean)) return true; if (allCatNames.has(clean)) return true; if (/^[\u4e00-\u9fa5]+$/.test(clean) && clean.length > 1) { const chars = clean.split(''); if (chars.every(ch => allCatNames.has(ch))) return true; } return false; } lines.forEach(line => { line = line.trim(); if (!line) return; const rangeFullMatch = line.match(new RegExp(`^([\\u4e00-\\u9fa5\\-]*?)(\\d{1,2})到(\\d{1,2})\\s*${AMP_ORIGINAL}\\s*(\\d+)\\s*${AMTS}$`)); if (rangeFullMatch) { const prefix = rangeFullMatch[1].replace(/-$/, '').trim(); const startNum = parseInt(rangeFullMatch[2]); const endNum = parseInt(rangeFullMatch[3]); const amt = rangeFullMatch[4]; if (startNum >= 1 && startNum <= 49 && endNum >= 1 && endNum <= 49 && startNum <= endNum) { const numList = []; for (let i = startNum; i <= endNum; i++) { numList.push(i.toString().padStart(2, '0')); } const expanded = numList.join('-'); const finalLine = prefix ? `${prefix}-${expanded}` : expanded; resultLines.push(`${finalLine} 各数 ${amt}`); originalContents.push(finalLine); skipInvalidCheck.add(resultLines.length - 1); return; } } const pairMatch = line.match(SIMPLE_PAIR); if (pairMatch) { let num = pairMatch[1]; const amount = pairMatch[2]; if (num.length === 1) num = '0' + num; resultLines.push(`${num} 各数 ${amount}`); originalContents.push(pairMatch[1]); return; } let cl = line; allPre.forEach(p => { if (cl.startsWith(p)) cl = cl.substring(p.length).trim(); }); cl = cl.replace(/[^\u4e00-\u9fa5\d]+$/, ''); cl = cl.replace(/([一二三四五六七八九十百千]+)/g, (m) => cn2n(m)); while (cl && !/^[\d\u4e00-\u9fa5]/.test(cl)) { cl = cl.substring(1).trim(); } while (cl && !/^\d/.test(cl) && !startsWithCategory(cl)) { cl = cl.substring(1).trim(); } if (!cl) return; const shxMatch = cl.match(new RegExp(`^(.+?)(各肖|各)\\s*(\\d+)${AMTS}$`)); if (shxMatch) { const rawContent = shxMatch[1]; const amtRaw = parseInt(shxMatch[3]) || 0; if (!/\d/.test(rawContent)) { const zodiacs = []; for (const ch of rawContent) { if (ZODIAC_SET.has(ch)) zodiacs.push(ch); } if (zodiacs.length > 0) { const curBenming = document.getElementById('startZodiacSelect')?.value || '马'; const benmingList = [], otherList = []; zodiacs.forEach(z => { if (z === curBenming) benmingList.push(z); else otherList.push(z); }); const amtPerBen = Math.round(amtRaw / 5); const amtPerOther = Math.round(amtRaw / 4); if (benmingList.length > 0) { resultLines.push(`${benmingList.join('-')} 各数 ${amtPerBen}`); originalContents.push(benmingList.join('-')); } if (otherList.length > 0) { resultLines.push(`${otherList.join('-')} 各数 ${amtPerOther}`); originalContents.push(otherList.join('-')); } return; } } } const op = new RegExp(`(${AMP_ORIGINAL}\\s*\\d+${AMTS})`, 'g'); const om = cl.match(op); if (om && om.length > 0) { let rl = cl; om.forEach(om => { const oi = rl.indexOf(om); if (oi !== -1) { const cont = rl.substring(0, oi).trim(); const am = om.match(/(\d+)/); if (am) { const amt = am[1]; if (cont) { const jo = tokenizeAndJoin(cont); if (jo) { resultLines.push(`${jo} 各数 ${amt}`); originalContents.push(cont); } } rl = rl.substring(oi + om.length); } } }); if (rl.trim()) { const jo = tokenizeAndJoin(rl.trim()); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(rl.trim()); } } } else { const pat = new RegExp(`^(.+?)${AMP_ORIGINAL}\\s*(\\d+)$`); const m = cl.match(pat); if (m) { const jo = tokenizeAndJoin(m[1].trim()); if (jo) { resultLines.push(`${jo} 各数 ${m[2]}`); originalContents.push(m[1].trim()); } } else { const sp = new RegExp(`(\\d+)(?:号|${AMP_ORIGINAL})\\s*(\\d+)$`); const sm = cl.match(sp); if (sm) { let num = sm[1].trim(); if (parseInt(num) >= 1 && parseInt(num) <= 49) { num = num.length === 1 ? `0${num}` : num; resultLines.push(`${num} 各数 ${sm[2]}`); originalContents.push(num); } } else { const jo = tokenizeAndJoin(cl); if (jo) { resultLines.push(`${jo} 各数 0`); originalContents.push(cl); } } } } }); const lineInvalidTokens = []; resultLines.forEach((line, idx) => { if (skipInvalidCheck.has(idx)) { lineInvalidTokens.push([]); return; } const originalContent = originalContents[idx] || ''; const rawTokens = originalContent.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim()); const invalidInLine = []; rawTokens.forEach(token => { if (!isValidToken(token)) { const clean = token.replace(PUNCT_REGEX, ''); if (clean) { if (/^[\u4e00-\u9fa5]+$/.test(clean) && clean.length > 1) { const chars = clean.split(''); chars.forEach(ch => { if (!allCatNames.has(ch)) invalidInLine.push(ch); }); } else { invalidInLine.push(clean); } } } }); lineInvalidTokens.push(invalidInLine); }); let html = ''; resultLines.forEach((line, idx) => { const m = line.match(/^(.+?)\s+各数\s+(\d+)$/); if (!m) { html += `<div style="color:red;">${line}</div>`; return; } const content = m[1]; const amt = parseInt(m[2]) || 0; const hasInvalidInSource = lineInvalidTokens[idx].length > 0; const isSkipped = skipInvalidCheck.has(idx); const { numbers, zodiacs } = countItemsInLine(line, cfg, vc); const totalItems = numbers.length + zodiacs.length; const isInvalid = !isSkipped && (totalItems === 0 || amt <= 0 || hasInvalidInSource); if (isInvalid) { html += `<div style="color:red;">${line}</div>`; } else { html += `<div>${line}</div>`; } }); resultEl.innerHTML = html; if (invalidSpan) { const displayLines = []; lineInvalidTokens.forEach(arr => { if (arr.length > 0) { displayLines.push('无效: ' + arr.join(', ')); } }); if (displayLines.length > 0) { invalidSpan.innerHTML = displayLines.join('<br>'); invalidSpan.style.display = 'inline'; } else { invalidSpan.innerHTML = ''; invalidSpan.style.display = 'none'; } } updateOrderTotalDisplay(); }
 
 function getAllValidCategories(cfg) { const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); s.add('蓝大'); s.add('蓝小'); s.add('红大'); s.add('红小'); s.add('绿大'); s.add('绿小'); s.add('蓝波大'); s.add('蓝波小'); s.add('红波大'); s.add('红波小'); s.add('绿波大'); s.add('绿波小'); return s; }
-async function saveOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:''; const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText; if(!textToUse)return; const vl=textToUse.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,true,date); addOperationLog('save_order', content, currentRegion, user, total); const si=document.querySelector('.source-order-input'); if(si)si.value=''; if(resultEl)resultEl.innerHTML=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); calculateStorageUsage(); showStorageDrawerTemporary(5000); renderSmartDecision(); updateSingleBetDisplay(); clearStatsCache(); }
+    async function saveOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:''; const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText; if(!textToUse)return; const vl=textToUse.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,true,date); addOperationLog('save_order', content, currentRegion, user, total); const si=document.querySelector('.source-order-input'); if(si)si.value=''; if(resultEl)resultEl.innerHTML=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); calculateStorageUsage(); showStorageDrawerTemporary(5000); renderSmartDecision(); updateSingleBetDisplay(); clearStatsCache(); }
 async function saveReportOrder(){ const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;} const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:''; const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText; if(!textToUse)return; const vl=textToUse.split('\n').filter(l=>{const m=l.match(/各数\s+(\d+)/);return m&&parseInt(m[1])>0;}); if(!vl.length){showToast('订单无效');return;} const content=vl.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST(); const total=computeCurrentOrderTotal(); await saveReportOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,false,date); addOperationLog('save_report', content, currentRegion, user, total); const si=document.querySelector('.source-order-input'); if(si)si.value=''; if(resultEl)resultEl.innerHTML=''; updateOrderTotalDisplay(); document.querySelectorAll('.category-btn').forEach(b=>b.classList.remove('active')); calculateStorageUsage(); showStorageDrawerTemporary(5000); renderSmartDecision(); clearStatsCache(); }
 function countItemsInLine(line,cfg,keys){ const m=line.match(/([\u4e00-\u9fa5\d\-]+)\s+各数\s+(\d+)/); if(!m)return{numbers:[],zodiacs:[],amount:0}; let cont=m[1]; const amt=parseInt(m[2])||0; const items=cont.split('-').map(i=>i.trim()).filter(i=>i); const nums=[],zods=[]; items.forEach(item=>{ if(/^\d+$/.test(item))nums.push(item.padStart(2,'0')); else if(cfg.shengxiaoAttr[item]){ const zs=cfg.shengxiaoAttr[item]||[]; zs.forEach(z=>zods.push(z)); } else if(cfg.zodiac[item])zods.push(item); else if(cfg.toushuDanshuang&&cfg.toushuDanshuang[item]){ (cfg.toushuDanshuang[item]||[]).forEach(n=>nums.push(n.padStart(2,'0'))); } else { const nl=getNumberListForCategory(item,cfg); if(nl&&nl.length>0)nl.forEach(n=>nums.push(n.padStart(2,'0'))); } }); return{numbers:nums,zodiacs:zods,amount:amt}; }
 function processCurrentOrder(input,user,isNormal,date=null){ const cfg=getAllConfigData(); const keys=getAllValidCategories(cfg); const lines=input.split('\n').filter(l=>l.trim()); if(!userBetData[user])userBetData[user]={}; const curZod=localStorage.getItem('selectedStartZodiac')||'马'; lines.forEach(line=>{ const{numbers,zodiacs,amount}=countItemsInLine(line,cfg,keys); const nMin=parseInt(document.getElementById('numAmountMin')?.value)||1,nMax=parseInt(document.getElementById('numAmountMax')?.value)||50000; const zMin=parseInt(document.getElementById('zodiacAmountMin')?.value)||1,zMax=parseInt(document.getElementById('zodiacAmountMax')?.value)||50000; if(isNormal){ if(zodiacs.length>0){ zodiacs.forEach(z=>{ const w=z===curZod?5:4; zodiacWeightedTotal+=amount*w; }); }else if(numbers.length>0){ numberOrderTotal+=numbers.length*amount; } } numbers.forEach(num=>{ if(isNormal){ userBetData[user][num]=(userBetData[user][num]||0)+amount; tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount; numberCount[num]=(numberCount[num]||0)+1; if(amount>=nMin&&amount<=nMax)numberAmountCount[num]=(numberAmountCount[num]||0)+1; originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount; if(zodiacs.length === 0) directOrderAmount[num] = (directOrderAmount[num]||0) + amount; } else { userBetData[user][num]=(userBetData[user][num]||0)-amount; reportBetData[num]=(reportBetData[num]||0)-amount; reportAmountData[num]=(reportAmountData[num]||0)+amount; if(zodiacs.length === 0) directReportAmount[num] = (directReportAmount[num]||0) + amount; } }); if(isNormal){ zodiacs.forEach(z=>{ zodiacCount[z]=(zodiacCount[z]||0)+1; zodiacDirectAmount[z]=(zodiacDirectAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0); if(amount>=zMin&&amount<=zMax){zodiacAmountCount[z]=(zodiacAmountCount[z]||0)+1; zodiacFilteredAmount[z]=(zodiacFilteredAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);} (cfg.zodiac[z]||[]).forEach(n=>{ const num=n.padStart(2,'0'); userBetData[user][num]=(userBetData[user][num]||0)+amount; tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount; originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount; }); }); } else { zodiacs.forEach(z=>{ zodiacReportAmount[z]=(zodiacReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0); if(amount>=zMin&&amount<=zMax){ zodiacFilteredReportAmount[z]=(zodiacFilteredReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);} (cfg.zodiac[z]||[]).forEach(n=>{ const num=n.padStart(2,'0'); userBetData[user][num]=(userBetData[user][num]||0)-amount; reportBetData[num]=(reportBetData[num]||0)-amount; reportAmountData[num]=(reportAmountData[num]||0)+amount; }); }); } }); generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards(); renderReportAmountTable(); renderOriginalAmountTable(); updateReportAmountTotal(); updateAmountDisplays(); }
@@ -2567,4 +2569,3 @@ window.onload = async () => {
 </script>
 </body>
 </html>
-    
