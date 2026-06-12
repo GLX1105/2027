@@ -383,6 +383,8 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
               <span>平特肖</span>
               <span class="amount-stat-box" id="ptAmountTotalBox" style="display:none; margin-left:4px;"><span>合计：</span><span id="ptAmountTotal">0</span></span>
               <span class="amount-stat-box" id="ptReportTotalBox" style="display:none; margin-left:4px;"><span>上报：</span><span id="ptReportTotal">0</span></span>
+              <button class="btn btn-primary" onclick="showLianxiaoGenerateWin()" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:15px; margin-left:8px;">连肖识别</button>
+              <button class="btn btn-primary" onclick="showLianxiaoStatsWin()" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:15px;">连肖统计</button>
             </div>
             <div id="pingtexiaoTableContainer" style="overflow-x:auto;"></div>
             <div class="pt-summary-bar" id="ptSummaryBar">
@@ -816,7 +818,6 @@ function showStorageDrawerTemporary(duration = 5000) {
   }, duration);
 }
 
-// 点击抽屉面板外部关闭
 document.addEventListener('click', function(e) {
   const drawer = document.getElementById('storageDrawer');
   if (!drawer) return;
@@ -855,7 +856,7 @@ function clearMemoryData() { tableBetData = {}; userBetData = {}; reportBetData 
 let highestZ = 2000;
 function makeWindowDraggable(winId) { const win = document.getElementById(winId); if (!win) return; const header = win.querySelector('.modal-header') || win.querySelector('.database-modal-header'); if (!header) return; let isDragging = false, startX, startY, startLeft, startTop; header.addEventListener('mousedown', (e) => { if (e.target.closest('.window-controls')) return; isDragging = true; const rect = win.getBoundingClientRect(); startX = e.clientX; startY = e.clientY; startLeft = rect.left; startTop = rect.top; win.style.cursor = 'grabbing'; e.preventDefault(); }); document.addEventListener('mousemove', (e) => { if (!isDragging) return; const dx = e.clientX - startX; const dy = e.clientY - startY; win.style.left = (startLeft + dx) + 'px'; win.style.top = (startTop + dy) + 'px'; win.style.transform = 'none'; }); document.addEventListener('mouseup', () => { if (isDragging) { isDragging = false; win.style.cursor = ''; } }); win.addEventListener('mousedown', () => { highestZ += 1; win.style.zIndex = highestZ; }); }
 
-// ===== 最大化窗口（修复移动端偏左问题） =====
+// ===== 最大化窗口 =====
 function maximizeWindow(winId) { const win = document.getElementById(winId); if (!win) return; const isMaximized = win.getAttribute('data-maximized') === 'true'; if (isMaximized) { const origWidth = win.getAttribute('data-orig-width'); const origHeight = win.getAttribute('data-orig-height'); const origLeft = win.getAttribute('data-orig-left'); const origTop = win.getAttribute('data-orig-top'); const origTransform = win.getAttribute('data-orig-transform'); if (origWidth) win.style.width = origWidth; if (origHeight) win.style.height = origHeight; if (origLeft) win.style.left = origLeft; if (origTop) win.style.top = origTop; if (origTransform !== null) win.style.transform = origTransform; win.style.right = ''; win.style.bottom = ''; win.setAttribute('data-maximized', 'false'); win.style.resize = 'both'; win.style.overflow = 'auto'; } else { const rect = win.getBoundingClientRect(); win.setAttribute('data-orig-width', win.style.width || (rect.width + 'px')); win.setAttribute('data-orig-height', win.style.height || (rect.height + 'px')); win.setAttribute('data-orig-left', win.style.left || (rect.left + 'px')); win.setAttribute('data-orig-top', win.style.top || (rect.top + 'px')); win.setAttribute('data-orig-transform', win.style.transform || ''); win.style.left = '0'; win.style.top = '0'; win.style.right = '0'; win.style.bottom = '0'; win.style.width = 'auto'; win.style.height = 'auto'; win.style.transform = 'none'; win.setAttribute('data-maximized', 'true'); win.style.resize = 'none'; win.style.overflow = 'auto'; } }
 
 // ===== 数据库弹窗显示/隐藏 =====
@@ -874,7 +875,8 @@ function insertCategoryText(text) {
   ta.setSelectionRange(start + text.length, start + text.length);
   convertOrderText();
 }
-// ===== 识别弹窗（标题显示当前地区，含平特肖按钮） =====
+
+// ===== 识别弹窗（标题显示当前地区，已移除平特肖按钮） =====
 function showRecognizeModal() {
   if (document.getElementById('recognizeWin')) return;
   const regionLabel = currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港';
@@ -896,7 +898,7 @@ function showRecognizeModal() {
         </div>
         <div class="order-input-container" style="flex:1;"><div class="input-column"><div class="box-label">订单输入框</div><textarea class="source-order-input" oninput="convertOrderText()"></textarea></div><div class="result-column"><div class="box-label">识别结果</div><div class="result-area-new"><div class="result-content" id="orderResult" contenteditable="false"></div></div></div></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-paste" onclick="pasteOrder()">粘贴订单</button><button class="btn btn-save-order" onclick="saveOrder()">保存下单</button><button class="btn btn-report" onclick="saveReportOrder()" style="background:#e74c3c;color:#fff;">上报</button><button class="btn btn-clear" onclick="clearAllInput()">清空</button><button class="btn btn-replace-sep" onclick="replaceSeparators()">换分隔</button><button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button><button class="btn btn-mark" onclick="markSelection()">标记</button><button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button><button class="btn btn-pingtexiao" onclick="fillPingtexiao()" style="background:#3498db;color:#fff;">平特肖</button>
+          <button class="btn btn-paste" onclick="pasteOrder()">粘贴订单</button><button class="btn btn-save-order" onclick="saveOrder()">保存下单</button><button class="btn btn-report" onclick="saveReportOrder()" style="background:#e74c3c;color:#fff;">上报</button><button class="btn btn-clear" onclick="clearAllInput()">清空</button><button class="btn btn-replace-sep" onclick="replaceSeparators()">换分隔</button><button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button><button class="btn btn-mark" onclick="markSelection()">标记</button><button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button>
           <span id="invalidTokensDisplay" style="color:red; font-size:12px; display:none; white-space:pre-line; margin-left:auto;"></span>
         </div>
         <div style="margin-top:8px;font-size:12px;line-height:1.6;">${catSpans}</div>
@@ -927,6 +929,7 @@ function renderCustomConfigContainer() { const container = document.getElementBy
 async function addCustomCategory() { const label = await prompt('请输入新分类名称（如：大尾）'); if (!label) return; const value = await prompt(`请输入"${label}"对应的号码或分类名（空格分隔，例如：01 02 牛 马）`); if (value === null) return; const cats = loadCustomCategories(); cats.push({ label, value: value.trim() }); saveCustomCategories(cats); renderCustomConfigContainer(); showToast('自定义分类已添加，请点击"保存"按钮存储配置'); }
 async function deleteCustomCategory() { const cats = loadCustomCategories(); if (cats.length === 0) { showToast('没有可删除的自定义分类'); return; } const labels = cats.map((c,i) => `${i+1}. ${c.label}`).join('\n'); const idxStr = await prompt(`请输入要删除的分类编号：\n${labels}`); if (!idxStr) return; const idx = parseInt(idxStr) - 1; if (isNaN(idx) || idx < 0 || idx >= cats.length) { showToast('无效编号'); return; } cats.splice(idx, 1); saveCustomCategories(cats); renderCustomConfigContainer(); showToast('自定义分类已删除，请点击"保存"按钮使更改生效'); }
 function deleteCustomCategoryByIndex(index) { const cats = loadCustomCategories(); cats.splice(index, 1); saveCustomCategories(cats); renderCustomConfigContainer(); }
+</script>
 // ===== 订单变量与基础函数 =====
 let tableBetData = {}, userBetData = {}, reportBetData = {}, reportAmountData = {}, reportRiskData = {};
 let numberCount = {}, zodiacCount = {}, numberAmountCount = {}, zodiacAmountCount = {};
@@ -980,8 +983,8 @@ function showLianxiaoGenerateWin() {
   const users = getUsers();
   let userOptions = ''; users.forEach(u => { userOptions += `<option value="${u}">${u}</option>`; });
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoGenerateWin';
-  win.style.width = '850px'; win.style.height = '600px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
-  win.setAttribute('data-orig-width', '850px'); win.setAttribute('data-orig-height', '600px');
+  win.style.width = '850px'; win.style.height = '650px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
+  win.setAttribute('data-orig-width', '850px'); win.setAttribute('data-orig-height', '650px');
   win.innerHTML = `
     <div class="modal-header">连肖识别<div class="window-controls"><button onclick="maximizeWindow('lianxiaoGenerateWin')">🗖</button><button onclick="document.getElementById('lianxiaoGenerateWin').remove()">×</button></div></div>
     <div class="modal-body" style="display:flex; flex-direction:column; gap:10px;">
@@ -992,14 +995,14 @@ function showLianxiaoGenerateWin() {
           <span id="comboLineCount" style="margin-left:10px;font-weight:normal;font-size:13px;display:none;"></span>
         </div>
       </div>
-      <div style="display:flex; gap:10px; margin-bottom:10px;">
+      <div style="display:flex; gap:0; margin-bottom:10px; border:1px solid #ddd; min-height:320px;">
         <div style="flex:1; display:flex; flex-direction:column;">
           <div class="box-label">输入框</div>
-          <textarea id="comboInput" style="width:100%; height:150px; border:1px solid #ddd; padding:8px; resize:none; font-size:13px; outline:none;" oninput="convertComboText()"></textarea>
+          <textarea id="comboInput" style="flex:1; border:none; border-right:1px solid #ddd; padding:8px; resize:none; font-size:13px; outline:none;" oninput="convertComboText()"></textarea>
         </div>
         <div style="flex:1; display:flex; flex-direction:column;">
           <div class="box-label">识别结果</div>
-          <div id="comboResult" style="width:100%; height:150px; border:1px solid #ddd; padding:8px; font-size:13px; overflow-y:auto;"></div>
+          <div id="comboResult" style="flex:1; border:none; padding:8px; font-size:13px; overflow-y:auto;"></div>
         </div>
       </div>
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
@@ -1008,6 +1011,7 @@ function showLianxiaoGenerateWin() {
         <button class="btn btn-remove-sep" onclick="comboRemoveSeparators()" style="padding:4px 10px; font-size:12px; min-height:28px;">去分隔</button>
       </div>
       <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
+        <button class="category-btn" onclick="window.comboGenerate('pingtexiao')">平特肖</button>
         <button class="category-btn" onclick="window.comboGenerate('lianxiao2')">二连肖</button>
         <button class="category-btn" onclick="window.comboGenerate('lianxiao3')">三连肖</button>
         <button class="category-btn" onclick="window.comboGenerate('lianxiao4')">四连肖</button>
@@ -1023,6 +1027,7 @@ function showLianxiaoGenerateWin() {
       </div>
       <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
         <button class="category-btn" onclick="window.comboGenerate('pingma')">平码</button>
+        <button class="category-btn" onclick="window.comboGenerate('pingtewei')">平特尾</button>
         <button class="category-btn" onclick="window.comboGenerate('lianwei2')">二连尾</button>
         <button class="category-btn" onclick="window.comboGenerate('lianwei3')">三连尾</button>
         <button class="category-btn" onclick="window.comboGenerate('lianwei4')">四连尾</button>
@@ -1035,6 +1040,46 @@ function showLianxiaoGenerateWin() {
     </div>`;
   document.body.appendChild(win);
   makeWindowDraggable('lianxiaoGenerateWin'); highestZ += 1; win.style.zIndex = highestZ;
+}
+
+// ===== 赔率弹窗 =====
+function showOddsWin() {
+  if (document.getElementById('oddsWin')) return;
+  const savedOdds = getOddsData();
+  const types = ['平特肖','平特肖带主肖','二连肖','二连肖带主肖','三连肖','三连肖带主肖','四连肖','四连肖带主肖','五连肖','五连肖带主肖','平特尾','平特尾零尾','二连尾','二连尾零尾','三连尾','三连尾零尾','四连尾','四连尾零尾','五连尾','五连尾零尾','五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中','二中二','三中三'];
+  let rows = '';
+  types.forEach(t => {
+    const d = savedOdds[t] || { odds: '', rebate: '4' };
+    rows += `<tr><td style="text-align:center;padding:3px;">${t}</td><td><input type="text" class="odds-input" data-type="${t}" data-field="odds" value="${d.odds}" style="width:60px;text-align:center;border:1px solid #ccc;border-radius:3px;padding:2px;"></td><td><input type="text" class="odds-input" data-type="${t}" data-field="rebate" value="${d.rebate}" style="width:60px;text-align:center;border:1px solid #ccc;border-radius:3px;padding:2px;"></td></tr>`;
+  });
+  const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'oddsWin';
+  win.style.width = '500px'; win.style.height = '600px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
+  win.innerHTML = `
+    <div class="modal-header"><h3>赔率设置</h3><div class="window-controls"><button onclick="maximizeWindow('oddsWin')">🗖</button><button onclick="document.getElementById('oddsWin').remove()">×</button></div></div>
+    <div class="modal-body" style="overflow-y:auto;">
+      <table style="width:100%;"><thead><tr><th style="text-align:center;">玩法</th><th style="text-align:center;">赔率</th><th style="text-align:center;">反水%</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:#28a745;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="saveOddsData()">保存</button>
+      <button class="btn" style="background:#6c757d;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="document.getElementById('oddsWin').remove()">关闭</button>
+    </div>`;
+  document.body.appendChild(win);
+  makeWindowDraggable('oddsWin'); highestZ += 1; win.style.zIndex = highestZ;
+}
+
+function getOddsData() {
+  try { return JSON.parse(localStorage.getItem('comboOddsData') || '{}'); } catch(e) { return {}; }
+}
+function saveOddsData() {
+  const data = {};
+  document.querySelectorAll('.odds-input').forEach(inp => {
+    const type = inp.dataset.type;
+    const field = inp.dataset.field;
+    if (!data[type]) data[type] = { odds: '', rebate: '4' };
+    data[type][field] = inp.value.trim();
+  });
+  localStorage.setItem('comboOddsData', JSON.stringify(data));
+  showToast('赔率已保存');
 }
 
 // ===== 连肖统计弹窗 =====
@@ -1052,6 +1097,7 @@ function showLianxiaoStatsWin() {
         <button class="btn" style="background:#3498db;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="refreshLianxiaoStats()">刷新</button>
         <button class="btn" style="background:#e74c3c;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="clearAllComboOrders()">清空全部</button>
         <button class="btn" style="background:#27ae60;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="screenshotLianxiaoStatsAll()">截图全部</button>
+        <button class="btn" style="background:#8e44ad;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="showOddsWin()">赔率</button>
       </div>
     </div>`;
   document.body.appendChild(win);
@@ -1065,13 +1111,14 @@ function convertComboText() {
   const resultEl = document.getElementById('comboResult');
   if (!inputEl || !resultEl) return;
   const text = inputEl.value.trim();
-  if (!text) { resultEl.innerHTML = ''; return; }
+  if (!text) { resultEl.innerHTML = ''; updateComboTotalDisplay(); return; }
   const lines = text.split('\n');
   let html = '';
   lines.forEach(line => {
     html += `<div>${line}</div>`;
   });
   resultEl.innerHTML = html;
+  updateComboTotalDisplay();
 }
 
 function comboRemoveSeparators() {
@@ -1095,7 +1142,6 @@ async function pasteComboOrder() {
   } catch(err) { showToast('无法访问剪贴板'); }
 }
 
-// ===== 截图连肖统计 =====
 async function screenshotLianxiaoStatsAll() {
   const container = document.getElementById('lianxiaoStatsContainer');
   if (!container) { showToast('无内容'); return; }
@@ -1155,7 +1201,6 @@ window.comboGenerate = function(comboType) {
     const amount = parseInt(match[2]) || 0;
     if (!content || amount <= 0) { allResults.push(line); return; }
 
-    // 统一的 token 拆分，不先按空格分组
     const tokens = content.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
     if (tokens.length === 0) return;
 
@@ -1165,7 +1210,6 @@ window.comboGenerate = function(comboType) {
         numbers.push(t.padStart(2, '0'));
       }
       else if (/^\d{3,}$/.test(t)) {
-        // 数字连写拆分：如 0102030405 → 01 02 03 04 05
         const digits = t.match(/\d{2}/g) || [];
         digits.forEach(d => {
           const n = parseInt(d);
@@ -1206,6 +1250,68 @@ window.comboGenerate = function(comboType) {
       }
     });
 
+    // ===== 平特肖处理 =====
+    if (comboType === 'pingtexiao') {
+      const yearZodiacs = [];
+      const otherZodiacs = [];
+      zodiacs.forEach(z => {
+        if (z === curYearZodiac) yearZodiacs.push(z);
+        else otherZodiacs.push(z);
+      });
+      if (yearZodiacs.length > 0) {
+        const pureLine = `${yearZodiacs.join(' ')} 各组 ${amount}`;
+        const displayLine = `平特肖带主肖 ${yearZodiacs.join(' ')} 各组 ${amount}`;
+        allResults.push(displayLine);
+        window._comboPureContents.push(pureLine);
+      }
+      if (otherZodiacs.length > 0) {
+        const pureLine = `${otherZodiacs.join(' ')} 各组 ${amount}`;
+        const displayLine = `平特肖 ${otherZodiacs.join(' ')} 各组 ${amount}`;
+        allResults.push(displayLine);
+        window._comboPureContents.push(pureLine);
+      }
+      resultEl.innerHTML = allResults.join('<br>');
+      updateComboTotalDisplay();
+      return;
+    }
+
+    // ===== 平特尾处理 =====
+    if (comboType === 'pingtewei') {
+      const allDigits = [];
+      tokens.forEach(t => {
+        if (/^\d{1}$/.test(t)) {
+          allDigits.push(t);
+        } else if (/^\d{2}$/.test(t) && t.startsWith('0')) {
+          allDigits.push(t.charAt(1));
+        } else if (/^[\u4e00-\u9fa5\d]尾$/.test(t)) {
+          const d = t.replace('尾', '');
+          allDigits.push(d);
+        }
+      });
+      // 也可从 weishus 中补充
+      weishus.forEach(d => { if (!allDigits.includes(d)) allDigits.push(d); });
+
+      const zeroDigits = allDigits.filter(d => d === '0');
+      const otherDigits = allDigits.filter(d => d !== '0');
+
+      if (zeroDigits.length > 0) {
+        const pureLine = `0尾 各组 ${amount}`;
+        const displayLine = `平特尾零尾 0尾 各组 ${amount}`;
+        allResults.push(displayLine);
+        window._comboPureContents.push(pureLine);
+      }
+      if (otherDigits.length > 0) {
+        const otherStr = otherDigits.map(d => d + '尾').join(' ');
+        const pureLine = `${otherStr} 各组 ${amount}`;
+        const displayLine = `平特尾 ${otherStr} 各组 ${amount}`;
+        allResults.push(displayLine);
+        window._comboPureContents.push(pureLine);
+      }
+      resultEl.innerHTML = allResults.join('<br>');
+      updateComboTotalDisplay();
+      return;
+    }
+
     let results = [];
     const n = getComboSize(comboType);
 
@@ -1226,14 +1332,12 @@ window.comboGenerate = function(comboType) {
 
     if (results.length === 0) return;
 
-    // 基于实际参与组合的元素重新计算 allTokens
     let actualElements = [];
     if (comboType.startsWith('lianxiao')) {
       actualElements = zodiacs;
     } else if (comboType.startsWith('lianwei')) {
       actualElements = weishus;
     } else if (comboType === 'zhong2' || comboType === 'zhong3') {
-      // 从 results 中提取所有号码
       const allNums = new Set();
       results.forEach(r => r.combo.forEach(n => allNums.add(n)));
       actualElements = [...allNums];
@@ -1337,7 +1441,6 @@ function comboCombine(arr, k) {
 
 function comboProcessZhong(content, comboType, amount, cfg) {
   const results = [];
-  // 二中二/三中三也统一用分隔符拆分
   const tokens = content.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
   const allNums = [];
   tokens.forEach(t => {
@@ -1395,6 +1498,12 @@ async function saveComboOrder() {
   const date = document.getElementById('filterDate')?.value || getTodayCST();
   const pureText = window._comboPureContents.join('\n');
   let totalAmount = 0;
+  const cfg = getAllConfigData();
+  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
+
+  // 同时填充平特肖卡片数据
+  const pingtexiaoData = getPingtexiaoData();
+
   window._comboPureContents.forEach(line => {
     const match = line.match(/^(.+?)\s+各组\s+(\d+)$/);
     if (!match) return;
@@ -1402,10 +1511,25 @@ async function saveComboOrder() {
     const amt = parseInt(match[2]) || 0;
     const combos = combosStr.split(/\s+/).filter(c => c.trim());
     totalAmount += combos.length * amt;
+
+    // 判断是否平特肖数据（纯生肖名，无连字符）
+    combos.forEach(c => {
+      if (/^[\u4e00-\u9fa5]$/.test(c) && cfg.zodiac[c]) {
+        if (!pingtexiaoData[c]) pingtexiaoData[c] = { amount: '', report: '' };
+        const old = parseFloat(pingtexiaoData[c].amount) || 0;
+        pingtexiaoData[c].amount = (old + amt).toString();
+      }
+    });
   });
+
   await saveComboOrderRecordToIDB(pureText, user, date, totalAmount, 'combo');
   addOperationLog('save_order', pureText, currentRegion, user, totalAmount);
-  // 清空输入框和识别结果
+
+  // 保存平特肖数据
+  savePingtexiaoData(pingtexiaoData);
+  renderPingtexiaoTable();
+  updatePingtexiaoTotal();
+
   const inputEl = document.getElementById('comboInput');
   const resultEl = document.getElementById('comboResult');
   if (inputEl) inputEl.value = '';
@@ -1414,7 +1538,7 @@ async function saveComboOrder() {
   updateComboTotalDisplay();
   showToast('已保存连肖订单');
 }
-    // ===== 连肖统计函数 =====
+            // ===== 连肖统计函数 =====
 async function refreshLianxiaoStats() {
   const container = document.getElementById('lianxiaoStatsContainer');
   if (!container) return;
@@ -1435,7 +1559,6 @@ async function refreshLianxiaoStats() {
   const cfg = getAllConfigData();
   const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
 
-  // 读取当天开奖号码
   let drawZodiacs = [];
   const fdYear = fd.substring(0, 4);
   const storageKey = `drawRecord_${currentRegion}_${fdYear}`;
@@ -1467,7 +1590,33 @@ async function refreshLianxiaoStats() {
       const groups = content.split(/\s+/);
       groups.forEach(group => {
         const tokens = group.split('-');
-        if (tokens.some(t => cfg.zodiac[t])) {
+        if (tokens.length === 1 && cfg.zodiac[tokens[0]]) {
+          // 平特肖：单个生肖名
+          const comboType = 'pingtexiao';
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const hasYear = tokens[0] === curYearZodiac;
+          if (hasYear) {
+            const old = stats[comboType].withYear.get(tokens[0]) || 0;
+            stats[comboType].withYear.set(tokens[0], old + amount);
+          } else {
+            const old = stats[comboType].withoutYear.get(tokens[0]) || 0;
+            stats[comboType].withoutYear.set(tokens[0], old + amount);
+          }
+          grandTotal += amount;
+        } else if (tokens.length === 1 && tokens[0].includes('尾')) {
+          // 平特尾：单个尾数
+          const comboType = 'pingtewei';
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const hasZero = tokens[0].replace('尾','') === '0';
+          if (hasZero) {
+            const old = stats[comboType].withYear.get(tokens[0]) || 0;
+            stats[comboType].withYear.set(tokens[0], old + amount);
+          } else {
+            const old = stats[comboType].withoutYear.get(tokens[0]) || 0;
+            stats[comboType].withoutYear.set(tokens[0], old + amount);
+          }
+          grandTotal += amount;
+        } else if (tokens.some(t => cfg.zodiac[t])) {
           const comboType = `lianxiao${tokens.length}`;
           if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
           const hasYear = tokens.some(t => t === curYearZodiac);
@@ -1505,13 +1654,11 @@ async function refreshLianxiaoStats() {
     });
   });
 
-  // 判断某组合是否中奖（所有元素都在开奖列表中）
   function isComboHit(tokens, isZodiac) {
     if (drawZodiacs.length === 0) return false;
     if (isZodiac) {
       return tokens.every(t => drawZodiacs.includes(t));
     } else {
-      // 对于尾数/数字，转换为号码再判断
       const nums = [];
       tokens.forEach(t => {
         if (cfg.zodiac[t]) {
@@ -1534,9 +1681,9 @@ async function refreshLianxiaoStats() {
   }
 
   let html = '';
-  const order = ['lianxiao2','lianxiao3','lianxiao4','lianxiao5','buzhong5','buzhong6','buzhong7','buzhong8','buzhong9','buzhong10','buzhong11','buzhong12','pingma','lianwei2','lianwei3','lianwei4','lianwei5','zhong2','zhong3'];
+  const order = ['pingtexiao','lianxiao2','lianxiao3','lianxiao4','lianxiao5','buzhong5','buzhong6','buzhong7','buzhong8','buzhong9','buzhong10','buzhong11','buzhong12','pingma','pingtewei','lianwei2','lianwei3','lianwei4','lianwei5','zhong2','zhong3'];
 
-  order.forEach((type, typeIdx) => {
+  order.forEach((type) => {
     if (!stats[type]) return;
     const data = stats[type];
     const cardId = `comboCard_${type}`;
@@ -1548,7 +1695,69 @@ async function refreshLianxiaoStats() {
     let totalGroups = 0;
     let totalAmount = 0;
 
-    if (type.startsWith('lianxiao')) {
+    if (type === 'pingtexiao') {
+      if (data.withYear.size > 0) {
+        cardHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖 ──</div>';
+        cardHtml += '<table style="width:100%;"><tr><th style="text-align:center;">生肖</th><th style="text-align:center;">金额</th><th style="text-align:center;">中奖</th></tr>';
+        data.withYear.forEach((v, k) => {
+          const hit = drawZodiacs.includes(k);
+          cardHtml += `<tr><td style="text-align:center;">${k}</td><td style="text-align:center;">${v}</td><td style="text-align:center;">${hit ? `<span class="amount-red-text">${v}</span>` : ''}</td></tr>`;
+          totalGroups++; totalAmount += v;
+        });
+        cardHtml += '</table>';
+      }
+      if (data.withoutYear.size > 0) {
+        cardHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 其他生肖 ──</div>';
+        cardHtml += '<table style="width:100%;"><tr><th style="text-align:center;">生肖</th><th style="text-align:center;">金额</th><th style="text-align:center;">中奖</th></tr>';
+        data.withoutYear.forEach((v, k) => {
+          const hit = drawZodiacs.includes(k);
+          cardHtml += `<tr><td style="text-align:center;">${k}</td><td style="text-align:center;">${v}</td><td style="text-align:center;">${hit ? `<span class="amount-red-text">${v}</span>` : ''}</td></tr>`;
+          totalGroups++; totalAmount += v;
+        });
+        cardHtml += '</table>';
+      }
+    } else if (type === 'pingtewei') {
+      if (data.withYear.size > 0) {
+        cardHtml += '<div style="font-size:11px;color:#333;">── 含0尾 ──</div>';
+        cardHtml += '<table style="width:100%;"><tr><th style="text-align:center;">尾数</th><th style="text-align:center;">金额</th><th style="text-align:center;">中奖</th></tr>';
+        data.withYear.forEach((v, k) => {
+          const hit = drawZodiacs.length > 0 && (() => {
+            const d = k.replace('尾','');
+            for (let i = 0; i <= 4; i++) {
+              const n = (i * 10 + parseInt(d)).toString().padStart(2, '0');
+              if (parseInt(n) >= 1 && parseInt(n) <= 49) {
+                const z = currentZodiacMap[n] || '';
+                if (z && drawZodiacs.includes(z)) return true;
+              }
+            }
+            return false;
+          })();
+          cardHtml += `<tr><td style="text-align:center;">${k}</td><td style="text-align:center;">${v}</td><td style="text-align:center;">${hit ? `<span class="amount-red-text">${v}</span>` : ''}</td></tr>`;
+          totalGroups++; totalAmount += v;
+        });
+        cardHtml += '</table>';
+      }
+      if (data.withoutYear.size > 0) {
+        cardHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 其他尾数 ──</div>';
+        cardHtml += '<table style="width:100%;"><tr><th style="text-align:center;">尾数</th><th style="text-align:center;">金额</th><th style="text-align:center;">中奖</th></tr>';
+        data.withoutYear.forEach((v, k) => {
+          const hit = drawZodiacs.length > 0 && (() => {
+            const d = k.replace('尾','');
+            for (let i = 0; i <= 4; i++) {
+              const n = (i * 10 + parseInt(d)).toString().padStart(2, '0');
+              if (parseInt(n) >= 1 && parseInt(n) <= 49) {
+                const z = currentZodiacMap[n] || '';
+                if (z && drawZodiacs.includes(z)) return true;
+              }
+            }
+            return false;
+          })();
+          cardHtml += `<tr><td style="text-align:center;">${k}</td><td style="text-align:center;">${v}</td><td style="text-align:center;">${hit ? `<span class="amount-red-text">${v}</span>` : ''}</td></tr>`;
+          totalGroups++; totalAmount += v;
+        });
+        cardHtml += '</table>';
+      }
+    } else if (type.startsWith('lianxiao')) {
       if (data.withYear.size > 0) {
         cardHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖 ──</div>';
         cardHtml += '<table style="width:100%;"><tr><th style="text-align:center;">组合</th><th style="text-align:center;">金额</th><th style="text-align:center;">中奖</th></tr>';
@@ -1607,7 +1816,6 @@ async function refreshLianxiaoStats() {
         cardHtml += '</table>';
       }
     }
-    // 底部统计行
     cardHtml += `<div style="border-top:1px solid #ddd;margin-top:4px;padding-top:4px;font-size:11px;text-align:center;">`;
     cardHtml += `<span>小计：${totalGroups}组</span>`;
     cardHtml += `<span style="margin-left:8px;">金额：${totalAmount}</span>`;
@@ -1620,7 +1828,7 @@ async function refreshLianxiaoStats() {
 }
 
 function getComboTypeLabel(type) {
-  const map = { lianxiao2:'二连肖', lianxiao3:'三连肖', lianxiao4:'四连肖', lianxiao5:'五连肖', zhong2:'二中二', zhong3:'三中三', pingma:'平码', lianwei2:'二连尾', lianwei3:'三连尾', lianwei4:'四连尾', lianwei5:'五连尾', buzhong5:'五不中', buzhong6:'六不中', buzhong7:'七不中', buzhong8:'八不中', buzhong9:'九不中', buzhong10:'十不中', buzhong11:'十一不中', buzhong12:'十二不中' };
+  const map = { pingtexiao:'平特肖', pingtewei:'平特尾', lianxiao2:'二连肖', lianxiao3:'三连肖', lianxiao4:'四连肖', lianxiao5:'五连肖', zhong2:'二中二', zhong3:'三中三', pingma:'平码', lianwei2:'二连尾', lianwei3:'三连尾', lianwei4:'四连尾', lianwei5:'五连尾', buzhong5:'五不中', buzhong6:'六不中', buzhong7:'七不中', buzhong8:'八不中', buzhong9:'九不中', buzhong10:'十不中', buzhong11:'十一不中', buzhong12:'十二不中' };
   return map[type] || type;
 }
 
@@ -1714,7 +1922,7 @@ async function saveComboOrderRecordToIDB(content, user, date, totalAmount = 0, c
   if (!success) { showToast('保存失败，请重试'); return false; }
   return true;
 }
-    // ===== 操作日志函数（扩展签名：action, detail, regionOverride, orderUser, orderTotal） =====
+          // ===== 操作日志函数（扩展签名：action, detail, regionOverride, orderUser, orderTotal） =====
 async function addOperationLog(action, detail, regionOverride = null, orderUser = null, orderTotal = 0) {
   if (!db) return;
   const session = getAuthSession();
@@ -2007,7 +2215,7 @@ async function deleteUser(name) { let users = getUsers(); users = users.filter(u
 function rebuildTotal() { tableBetData = {}; for (const u in userBetData) for (const n in userBetData[u]) tableBetData[n] = (tableBetData[n]||0) + userBetData[u][n]; }
 function refreshAll() { updateSelects(); updateTableFromRecords(); }
 function updateSelects() { const users = getUsers(); const orderSel = document.getElementById('orderUserSelect'); if (orderSel) { orderSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; orderSel.appendChild(o); }); } const comboUserSel = document.getElementById('comboUserSelect'); if (comboUserSel) { comboUserSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; comboUserSel.appendChild(o); }); } const viewSel = document.getElementById('viewUserSelect'); if (viewSel) { viewSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; viewSel.appendChild(o); }); } }
-    // ===== 快捷添加与分词 =====
+      // ===== 快捷添加与分词 =====
 function quickAddWithAmount(text, button) { const input = document.querySelector('.source-order-input'); if (!input) return; const lines = input.value.trim().split('\n').filter(l=>l.trim()); const idx = lines.findIndex(l=> l.includes(text) && (l.includes('各数')||l.includes('各号'))); if (idx !== -1) { lines.splice(idx,1); button.classList.remove('active'); } else { lines.push(`${text} 各数 `); button.classList.add('active'); } input.value = lines.join('\n'); convertOrderText(); const lastIndex = input.value.lastIndexOf('各数'); if (lastIndex !== -1) { const pos = lastIndex + 2; input.focus(); input.setSelectionRange(pos, pos); } }
 function getReplacePresets() { try { return JSON.parse(localStorage.getItem('replacePresets') || '[]'); } catch (e) { return []; } }
 function getCategoryAliases() { try { return JSON.parse(localStorage.getItem('categoryAliases') || '[]'); } catch (e) { return []; } }
@@ -2063,7 +2271,7 @@ async function resetPresetsToDefault(){
   localStorage.setItem('categoryAliases',JSON.stringify(defaultAliases));
   renderPresetList(); showToast('已恢复默认替换预设和分类缩写');
 }
-    function applyCategoryAliases(text) { const a=getCategoryAliases(); if(!a.length)return text; const s=[...a].sort((x,y)=>y.alias.length-x.alias.length); let r=text; s.forEach(x=>{ if(x.alias&&x.target)r=r.split(x.alias).join(x.target); }); return r; }
+      function applyCategoryAliases(text) { const a=getCategoryAliases(); if(!a.length)return text; const s=[...a].sort((x,y)=>y.alias.length-x.alias.length); let r=text; s.forEach(x=>{ if(x.alias&&x.target)r=r.split(x.alias).join(x.target); }); return r; }
 
 function applyReplacePresets(text) { const p = getReplacePresets(); let r = text; p.forEach(x => { if (x.old && x.new) { const escapedOld = x.old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(escapedOld, 'g'); r = r.replace(regex, x.new); } }); return r; }
 
@@ -2213,7 +2421,7 @@ async function updateTableFromRecords(){
     calculateStorageUsage(); renderSmartDecision(); updateSingleBetDisplay();
   }catch(e){}
 }
-    function updateDirectAmountTotals() {
+                function updateDirectAmountTotals() {
   let orderTotal = 0; let reportTotal = 0;
   for (let n in directOrderAmount) { orderTotal += directOrderAmount[n] || 0; }
   for (let n in directReportAmount) { reportTotal += directReportAmount[n] || 0; }
@@ -2271,7 +2479,7 @@ function orderContainsTarget(content,targetNum,cfg){ if(!targetNum)return true; 
 function getSpecialAmountFromOrder(content, prizeNum, cfg) { if (!prizeNum) return 0; const targetNum = prizeNum.padStart(2, '0'); const lines = content.split('\n'); let total = 0; for (const line of lines) { const match = line.match(/^(.+?)\s+各数\s+(\d+)$/); if (!match) continue; const tokensPart = match[1]; const amount = parseInt(match[2]) || 0; const tokens = tokensPart.split('-').map(t => t.trim()).filter(t => t); for (const token of tokens) { if (isTokenMatching(token, targetNum, cfg)) { total += amount; } } } return total; }
 function formatTimestampToCST(iso){ const d=new Date(iso); return new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Asia/Shanghai'}).format(d); }
 function getUserColor(u){ let h=0; for(let i=0;i<u.length;i++)h=u.charCodeAt(i)+((h<<5)-h); const hue=(h%360+360)%360; return`hsl(${hue},70%,45%)`; }
-    function renderOrderStats(allOrders, allReports, filterUser, prizeNum) {
+ function renderOrderStats(allOrders, allReports, filterUser, prizeNum) {
   const container = document.getElementById('orderStatsContainer');
   if (!container) return;
   const mul = parseFloat(document.getElementById('multipleVal')?.value) || 1;
@@ -3333,7 +3541,6 @@ function loadPtParams() {
   } catch (e) {}
 }
 
-// ========== 渲染平特肖表格（金额列和上报列均为双击编辑） ==========
 function renderPingtexiaoTable() {
   const container = document.getElementById('pingtexiaoTableContainer');
   if (!container) return;
@@ -3538,7 +3745,6 @@ function updatePingtexiaoTotal() {
   }
 }
 
-// ========== 卡片 A：自定义筛选 ==========
 let zodiacRankVisible = false;
 function toggleZodiacRank() {
   zodiacRankVisible = !zodiacRankVisible;
@@ -4347,8 +4553,6 @@ function renderSmartDecision() {
   finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:${heatVisible?'#2ecc71':'#95a5a6'}; color:#fff; border:none; cursor:pointer;" onclick="toggleHeat()">开奖热度分析</button>`;
   finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:${adviceVisible?'#2ecc71':'#95a5a6'}; color:#fff; border:none; cursor:pointer;" onclick="toggleAdvice()">智能建议</button>`;
   finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:${surgeVisible?'#2ecc71':'#95a5a6'}; color:#fff; border:none; cursor:pointer;" onclick="toggleSurge()">暴增监控</button>`;
-  finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:#3498db; color:#fff; border:none; cursor:pointer;" onclick="showLianxiaoGenerateWin()">连肖识别</button>`;
-  finalHtml += `<button class="btn-copy" style="padding:2px 8px; font-size:11px; min-height:auto; border-radius:20px; background:#3498db; color:#fff; border:none; cursor:pointer;" onclick="showLianxiaoStatsWin()">连肖统计</button>`;
   finalHtml += `</div>`;
 
   if (heatVisible) finalHtml += heatHtml;
@@ -4526,6 +4730,8 @@ window.onload = async () => {
     if (lianxiaoGenerateWin) { lianxiaoGenerateWin.remove(); return true; }
     const lianxiaoStatsWin = document.getElementById('lianxiaoStatsWin');
     if (lianxiaoStatsWin) { lianxiaoStatsWin.remove(); return true; }
+    const oddsWin = document.getElementById('oddsWin');
+    if (oddsWin) { oddsWin.remove(); return true; }
     return false;
   }
 
