@@ -1239,6 +1239,7 @@ function comboExpandTokens(tokenStr, cfg) {
   return nums;
 }
 
+// 修复 saveComboOrder：确保数据写入 combo_orders 存储
 async function saveComboOrder() {
   const resultEl = document.getElementById('comboResult');
   if (!resultEl) return;
@@ -1250,9 +1251,29 @@ async function saveComboOrder() {
   const user = document.getElementById('comboUserSelect')?.value;
   if (!user) { showToast('请先选择用户'); return; }
   const date = document.getElementById('filterDate')?.value || getTodayCST();
-  await saveComboOrderRecordToIDB(text, user, date, 0, 'combo');
-  addOperationLog('save_order', text, currentRegion, user, 0);
-  showToast('已保存连肖订单');
+
+  // 计算合计金额
+  let totalAmount = 0;
+  const lines = text.split('\n');
+  lines.forEach(line => {
+    const match = line.match(/各组\s+(\d+)/);
+    if (match) {
+      const amt = parseInt(match[1]);
+      const groups = line.split(/\s+/).filter(g => g.includes('-') || /^\d+$/.test(g));
+      totalAmount += groups.length * amt;
+    }
+  });
+
+  // 写入 combo_orders
+  const saved = await saveComboOrderRecordToIDB(text, user, date, totalAmount, 'combo');
+  if (saved) {
+    addOperationLog('save_order', text, currentRegion, user, totalAmount);
+    showToast('已保存连肖订单');
+    // 同时写入普通订单表，供订单记录弹窗查看
+    await saveOrderRecordToIDB(text, user, date, totalAmount);
+  } else {
+    showToast('保存失败，请重试');
+  }
 }
 
 // ===== 连肖统计函数 =====
