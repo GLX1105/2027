@@ -1080,6 +1080,28 @@ function comboRemoveSeparators() {
   convertComboText();
 }
 
+// ===== 前缀与 comboType 映射表 =====
+const COMBO_PREFIX_MAP = {
+  '二连肖': 'lianxiao2', '三连肖': 'lianxiao3', '四连肖': 'lianxiao4', '五连肖': 'lianxiao5',
+  '二中二': 'zhong2', '三中三': 'zhong3', '平码': 'pingma',
+  '二连尾': 'lianwei2', '三连尾': 'lianwei3', '四连尾': 'lianwei4', '五连尾': 'lianwei5',
+  '五不中': 'buzhong5', '六不中': 'buzhong6', '七不中': 'buzhong7', '八不中': 'buzhong8',
+  '九不中': 'buzhong9', '十不中': 'buzhong10', '十一不中': 'buzhong11', '十二不中': 'buzhong12'
+};
+
+function getComboLabelFromType(type) {
+  const map = { lianxiao2:'二连肖', lianxiao3:'三连肖', lianxiao4:'四连肖', lianxiao5:'五连肖', zhong2:'二中二', zhong3:'三中三', pingma:'平码', lianwei2:'二连尾', lianwei3:'三连尾', lianwei4:'四连尾', lianwei5:'五连尾', buzhong5:'五不中', buzhong6:'六不中', buzhong7:'七不中', buzhong8:'八不中', buzhong9:'九不中', buzhong10:'十不中', buzhong11:'十一不中', buzhong12:'十二不中' };
+  return map[type] || type;
+}
+
+function extractComboTypeFromLine(line) {
+  // 优先从前缀提取，兼容 二连肖带主肖、二连尾零尾 等变体
+  for (const [prefix, type] of Object.entries(COMBO_PREFIX_MAP)) {
+    if (line.startsWith(prefix)) return type;
+  }
+  return 'combo';
+}
+
 // ===== 组合生成核心函数（挂载到 window 以确保 onclick 能访问） =====
 window.comboGenerate = function(comboType) {
   const inputEl = document.getElementById('comboInput');
@@ -1143,6 +1165,9 @@ window.comboGenerate = function(comboType) {
       const hasDup = tokens.length !== new Set(tokens).size;
       if (hasDup) { hasWarning = true; warningText = warningText ? `${warningText}、有重复` : '有重复'; }
 
+      // 获取基础玩法标签
+      const baseLabel = getComboLabelFromType(comboType);
+
       if (comboType.startsWith('lianxiao')) {
         const withYear = [], withoutYear = [];
         results.forEach(r => {
@@ -1151,8 +1176,10 @@ window.comboGenerate = function(comboType) {
         });
         const withStr = withYear.map(r => r.combo.join('-')).join(' ');
         const withoutStr = withoutYear.map(r => r.combo.join('-')).join(' ');
-        if (withStr) allResults.push(hasWarning ? `<span style="color:red;">${withStr} 各组 ${amount}（${warningText}）</span>` : `${withStr} 各组 ${amount}`);
-        if (withoutStr) allResults.push(hasWarning ? `<span style="color:red;">${withoutStr} 各组 ${amount}（${warningText}）</span>` : `${withoutStr} 各组 ${amount}`);
+        const prefixWith = baseLabel + '带主肖';
+        const prefixWithout = baseLabel;
+        if (withStr) allResults.push(hasWarning ? `<span style="color:red;">${prefixWith} ${withStr} 各组 ${amount}（${warningText}）</span>` : `${prefixWith} ${withStr} 各组 ${amount}`);
+        if (withoutStr) allResults.push(hasWarning ? `<span style="color:red;">${prefixWithout} ${withoutStr} 各组 ${amount}（${warningText}）</span>` : `${prefixWithout} ${withoutStr} 各组 ${amount}`);
       } else if (comboType.startsWith('lianwei')) {
         const withZero = [], withoutZero = [];
         results.forEach(r => {
@@ -1161,11 +1188,13 @@ window.comboGenerate = function(comboType) {
         });
         const withStr = withZero.map(r => r.combo.map(w => w + '尾').join('-')).join(' ');
         const withoutStr = withoutZero.map(r => r.combo.map(w => w + '尾').join('-')).join(' ');
-        if (withStr) allResults.push(hasWarning ? `<span style="color:red;">${withStr} 各组 ${amount}（${warningText}）</span>` : `${withStr} 各组 ${amount}`);
-        if (withoutStr) allResults.push(hasWarning ? `<span style="color:red;">${withoutStr} 各组 ${amount}（${warningText}）</span>` : `${withoutStr} 各组 ${amount}`);
+        const prefixWith = baseLabel + '零尾';
+        const prefixWithout = baseLabel;
+        if (withStr) allResults.push(hasWarning ? `<span style="color:red;">${prefixWith} ${withStr} 各组 ${amount}（${warningText}）</span>` : `${prefixWith} ${withStr} 各组 ${amount}`);
+        if (withoutStr) allResults.push(hasWarning ? `<span style="color:red;">${prefixWithout} ${withoutStr} 各组 ${amount}（${warningText}）</span>` : `${prefixWithout} ${withoutStr} 各组 ${amount}`);
       } else {
         const str = results.map(r => r.combo.join('-')).join(' ');
-        allResults.push(hasWarning ? `<span style="color:red;">${str} 各组 ${amount}（${warningText}）</span>` : `${str} 各组 ${amount}`);
+        allResults.push(hasWarning ? `<span style="color:red;">${baseLabel} ${str} 各组 ${amount}（${warningText}）</span>` : `${baseLabel} ${str} 各组 ${amount}`);
       }
     });
   });
@@ -1239,7 +1268,7 @@ function comboExpandTokens(tokenStr, cfg) {
   return nums;
 }
 
-// 修复 saveComboOrder：确保数据写入 combo_orders 存储
+// 修复 saveComboOrder：从前缀提取 comboType 并写入数据库
 async function saveComboOrder() {
   const resultEl = document.getElementById('comboResult');
   if (!resultEl) return;
@@ -1264,12 +1293,16 @@ async function saveComboOrder() {
     }
   });
 
+  // 从前缀提取 comboType
+  const firstLine = lines[0] || '';
+  const comboType = extractComboTypeFromLine(firstLine);
+
   // 写入 combo_orders
-  const saved = await saveComboOrderRecordToIDB(text, user, date, totalAmount, 'combo');
+  const saved = await saveComboOrderRecordToIDB(text, user, date, totalAmount, comboType);
   if (saved) {
     addOperationLog('save_order', text, currentRegion, user, totalAmount);
     showToast('已保存连肖订单');
-    // 同时写入普通订单表，供订单记录弹窗查看
+    // 同步写入普通订单表，供订单记录弹窗“连肖记录”模式查看
     await saveOrderRecordToIDB(text, user, date, totalAmount);
   } else {
     showToast('保存失败，请重试');
@@ -1303,9 +1336,14 @@ async function refreshLianxiaoStats() {
       const groups = content.split(/\s+/);
       groups.forEach(group => {
         const tokens = group.split('-');
-        if (tokens.some(t => cfg.zodiac[t])) {
-          const comboType = `lianxiao${tokens.length}`;
-          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+        // 优先使用记录中保存的 comboType，如果缺失则按前缀或 token 推断
+        let comboType = rec.comboType;
+        if (!comboType || comboType === 'combo') {
+          // 回退：从前缀提取
+          comboType = extractComboTypeFromLine(line);
+        }
+        if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+        if (comboType.startsWith('lianxiao')) {
           const hasYear = tokens.some(t => t === curYearZodiac);
           const comboKey = tokens.join('-');
           if (hasYear) {
@@ -1315,9 +1353,7 @@ async function refreshLianxiaoStats() {
             const old = stats[comboType].withoutYear.get(comboKey) || 0;
             stats[comboType].withoutYear.set(comboKey, old + amount);
           }
-        } else if (tokens.some(t => t.includes('尾'))) {
-          const comboType = `lianwei${tokens.length}`;
-          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+        } else if (comboType.startsWith('lianwei')) {
           const hasZero = tokens.some(t => t.replace('尾','') === '0');
           const comboKey = tokens.join('-');
           if (hasZero) {
@@ -1328,8 +1364,6 @@ async function refreshLianxiaoStats() {
             stats[comboType].withoutYear.set(comboKey, old + amount);
           }
         } else {
-          const comboType = tokens.length === 1 ? 'pingma' : (tokens.length === 2 ? 'zhong2' : (tokens.length === 3 ? 'zhong3' : 'buzhong' + tokens.length));
-          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
           const comboKey = tokens.join('-');
           const old = stats[comboType].withYear.get(comboKey) || 0;
           stats[comboType].withYear.set(comboKey, old + amount);
@@ -1344,7 +1378,7 @@ async function refreshLianxiaoStats() {
     if (!stats[type]) return;
     const data = stats[type];
     let cardHtml = '<div class="freq-card" style="min-width:280px;margin-bottom:8px;">';
-    cardHtml += `<div class="freq-title">${getComboTypeLabel(type)}</div>`;
+    cardHtml += `<div class="freq-title">${getComboLabelFromType(type)}</div>`;
     if (type.startsWith('lianxiao')) {
       if (data.withYear.size > 0) {
         cardHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖（' + curYearZodiac + '）──</div>';
