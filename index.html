@@ -177,10 +177,8 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .result-area-new{flex:1;}
 .result-content{width:100%;height:100%;border:none;padding:8px;resize:none;font-size:13px;outline:none;overflow-y:auto;}
 
-/* 数据库不可用警告横幅 */
 #dbWarning{display:none;background:#e74c3c;color:#fff;text-align:center;padding:8px;font-size:14px;font-weight:bold;position:sticky;top:0;z-index:9999;}
 
-/* 右侧存储抽屉 - 透明面板，固定在右下角底部 */
 .storage-drawer{position:fixed;right:0;bottom:20px;z-index:1500;display:flex;align-items:flex-end;}
 .storage-tab{background:transparent;color:#3498db;writing-mode:vertical-rl;padding:10px 6px;border-radius:8px 0 0 8px;cursor:pointer;font-size:13px;letter-spacing:2px;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:none;}
 .storage-tab:hover{background:transparent;}
@@ -191,14 +189,8 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .storage-panel .value{font-weight:bold;color:red;}
 .storage-panel .close-drawer{position:absolute;top:5px;right:5px;background:none;border:none;font-size:14px;cursor:pointer;color:#666;}
 
-/* 表格拖拽时禁止移动端菜单 */
-#riskTable tr, #reportTable tr {
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-}
+#riskTable tr, #reportTable tr { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 
-/* 智能决策卡片样式 */
 .hot-item{background:#ffe0e0;font-weight:bold;display:inline-block;padding:1px 4px;border-radius:3px;margin:1px;cursor:pointer;}
 .cold-item{background:#e0e8ff;font-weight:bold;display:inline-block;padding:1px 4px;border-radius:3px;margin:1px;cursor:pointer;}
 .normal-item{display:inline-block;padding:1px 4px;border-radius:3px;margin:1px;}
@@ -209,7 +201,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .copy-advice-btn{padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;background:#8e44ad;color:#fff;border:none;cursor:pointer;margin-left:6px;}
 .advice-num{cursor:pointer;text-decoration:underline;}
 
-/* 其他原有卡片内部并列样式 */
 .freq-container{display:flex;gap:15px;flex-wrap:wrap;}
 .freq-card{flex:1;min-width:220px;background:#fafafa;border:1px solid #eee;border-radius:6px;padding:10px;}
 .number-amount-card {flex: 2;}
@@ -278,35 +269,11 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .monthly-summary-table .pt-sum-pl-green{color:#27ae60!important;font-weight:bold;}
 .monthly-summary-table .pt-sum-pl-red{color:#e74c3c!important;font-weight:bold;}
 
-/* 智能决策中心卡片内强制换行 */
-#smartDecisionContent,
-#smartDecisionContent div,
-#smartDecisionContent span,
-#smartDecisionContent table {
-    word-break: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-}
+#smartDecisionContent, #smartDecisionContent div, #smartDecisionContent span, #smartDecisionContent table { word-break: break-word; overflow-wrap: break-word; white-space: normal; }
+.advice-urgent, .advice-monitor, .advice-bet, .advice-none { word-break: break-word; overflow-wrap: break-word; overflow: hidden; }
+#smartDecisionContent td { word-break: break-word; white-space: normal; }
+#smartDecisionContent input { text-align: center; }
 
-.advice-urgent,
-.advice-monitor,
-.advice-bet,
-.advice-none {
-    word-break: break-word;
-    overflow-wrap: break-word;
-    overflow: hidden;
-}
-
-#smartDecisionContent td {
-    word-break: break-word;
-    white-space: normal;
-}
-
-#smartDecisionContent input {
-    text-align: center;
-}
-
-/* 操作日志样式 */
 .log-type-tag{display:inline-block;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:bold;margin-right:4px;white-space:nowrap;}
 .log-type-save{background:#d4edda;color:#155724;}
 .log-type-delete{background:#f8d7da;color:#721c24;}
@@ -316,24 +283,12 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .log-type-restore{background:#d4edda;color:#155724;}
 .log-type-switch{background:#e8daef;color:#6c3483;}
 
-/* 录开奖输入框无内框样式 */
 .draw-number-input-plain {
-    width: 40px;
-    padding: 2px;
-    text-align: center;
-    font-size: 14px;
-    font-weight: bold;
-    border: none;
-    outline: none;
-    background: transparent;
+    width: 40px; padding: 2px; text-align: center; font-size: 14px; font-weight: bold;
+    border: none; outline: none; background: transparent;
+    border-bottom: 1px dashed #ccc;
 }
-.draw-zodiac-plain {
-    font-size: 12px;
-    font-weight: bold;
-    min-width: 24px;
-    display: inline-block;
-    text-align: center;
-}
+.draw-zodiac-plain { font-size: 12px; font-weight: bold; min-width: 24px; display: inline-block; text-align: center; }
 </style>
 </head>
 <body>
@@ -402,8 +357,8 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
               <span>平特肖</span>
               <span class="amount-stat-box" id="ptAmountTotalBox" style="display:none; margin-left:4px;"><span>合计：</span><span id="ptAmountTotal">0</span></span>
               <span class="amount-stat-box" id="ptReportTotalBox" style="display:none; margin-left:4px;"><span>上报：</span><span id="ptReportTotal">0</span></span>
-              <button class="btn btn-primary" onclick="showLianxiaoGenerateWin()" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:15px; margin-left:8px;">连肖识别</button>
-              <button class="btn btn-primary" onclick="showLianxiaoStatsWin()" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:15px;">连肖统计</button>
+              <button class="btn" onclick="showLianxiaoGenerateWin()" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:15px; margin-left:8px; background:#27ae60; color:#fff;">连肖识别</button>
+              <button class="btn" onclick="showLianxiaoStatsWin()" style="padding:2px 6px; font-size:11px; min-height:auto; border-radius:15px; background:#2980b9; color:#fff;">连肖统计</button>
             </div>
             <div id="pingtexiaoTableContainer" style="overflow-x:auto;"></div>
             <div class="pt-summary-bar" id="ptSummaryBar">
@@ -1114,7 +1069,6 @@ function saveOddsData() {
     if (!data[type]) data[type] = { odds: '', rebate: '4' };
     data[type].rebate = inp.value.trim();
   });
-  // 玩法名称也保存
   document.querySelectorAll('.odds-input[data-field="name"]').forEach(inp => {
     const type = inp.dataset.type;
     if (!data[type]) data[type] = { odds: '', rebate: '4' };
@@ -1123,7 +1077,6 @@ function saveOddsData() {
   localStorage.setItem('comboOddsData', JSON.stringify(data));
   document.querySelectorAll('.odds-input').forEach(inp => { inp.disabled = true; inp.style.border = 'none'; inp.style.background = 'transparent'; });
   showToast('赔率已保存');
-  // 刷新统计以更新盈亏
   if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
 }
 
@@ -1138,7 +1091,6 @@ function showLianxiaoStatsWin() {
   const m = fd.match(/^(\d{4})/); if (m) year = parseInt(m[1]);
   const issueNumber = getCurrentIssueNumber(year, fd);
   const issueDisplay = issueNumber ? `${issueNumber}期` : '';
-  // 读取已保存的开奖数据
   const storageKey = `drawRecord_${currentRegion}_${year}`;
   let savedData = {};
   try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
@@ -1153,24 +1105,30 @@ function showLianxiaoStatsWin() {
       <div id="lianxiaoStatsTotal" style="text-align:center; font-weight:bold; font-size:14px; padding:8px; border-top:2px solid #333; margin-top:8px;"></div>
       <div style="border-top:1px solid #ddd; padding-top:8px; margin-top:4px;">
         <div style="text-align:center; margin-bottom:4px;">录开奖：${issueDisplay}</div>
-        <div style="display:flex; align-items:center; gap:6px; justify-content:center; flex-wrap:wrap;">
-          <span>正码：</span>
-          <input type="text" class="draw-number-input-plain" id="drawNum1" value="${savedNumbers[0]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(1)" maxlength="2">
-          <span class="draw-zodiac-plain" id="drawZodiac1">${savedNumbers[0]?(currentZodiacMap[savedNumbers[0].padStart(2,'0')]||''):''}</span>
-          <input type="text" class="draw-number-input-plain" id="drawNum2" value="${savedNumbers[1]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(2)" maxlength="2">
-          <span class="draw-zodiac-plain" id="drawZodiac2">${savedNumbers[1]?(currentZodiacMap[savedNumbers[1].padStart(2,'0')]||''):''}</span>
-          <input type="text" class="draw-number-input-plain" id="drawNum3" value="${savedNumbers[2]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(3)" maxlength="2">
-          <span class="draw-zodiac-plain" id="drawZodiac3">${savedNumbers[2]?(currentZodiacMap[savedNumbers[2].padStart(2,'0')]||''):''}</span>
-          <input type="text" class="draw-number-input-plain" id="drawNum4" value="${savedNumbers[3]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(4)" maxlength="2">
-          <span class="draw-zodiac-plain" id="drawZodiac4">${savedNumbers[3]?(currentZodiacMap[savedNumbers[3].padStart(2,'0')]||''):''}</span>
-          <input type="text" class="draw-number-input-plain" id="drawNum5" value="${savedNumbers[4]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(5)" maxlength="2">
-          <span class="draw-zodiac-plain" id="drawZodiac5">${savedNumbers[4]?(currentZodiacMap[savedNumbers[4].padStart(2,'0')]||''):''}</span>
-          <input type="text" class="draw-number-input-plain" id="drawNum6" value="${savedNumbers[5]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(6)" maxlength="2">
-          <span class="draw-zodiac-plain" id="drawZodiac6">${savedNumbers[5]?(currentZodiacMap[savedNumbers[5].padStart(2,'0')]||''):''}</span>
-          <span>特码：</span>
-          <input type="text" class="draw-number-input-plain" id="drawNum7" value="${savedNumbers[6]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(7)" maxlength="2">
-          <span class="draw-zodiac-plain" id="drawZodiac7">${savedNumbers[6]?(currentZodiacMap[savedNumbers[6].padStart(2,'0')]||''):''}</span>
-        </div>
+        <table style="margin:0 auto;">
+          <tr>
+            <td style="text-align:center; padding:0 3px;"><span style="font-size:11px;">正码</span></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum1" value="${savedNumbers[0]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(1)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum2" value="${savedNumbers[1]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(2)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum3" value="${savedNumbers[2]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(3)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum4" value="${savedNumbers[3]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(4)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum5" value="${savedNumbers[4]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(5)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum6" value="${savedNumbers[5]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(6)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><span style="font-size:11px;">特码</span></td>
+            <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain" id="drawNum7" value="${savedNumbers[6]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(7)" maxlength="2"></td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac1">${savedNumbers[0]?(currentZodiacMap[savedNumbers[0].padStart(2,'0')]||''):''}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac2">${savedNumbers[1]?(currentZodiacMap[savedNumbers[1].padStart(2,'0')]||''):''}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac3">${savedNumbers[2]?(currentZodiacMap[savedNumbers[2].padStart(2,'0')]||''):''}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac4">${savedNumbers[3]?(currentZodiacMap[savedNumbers[3].padStart(2,'0')]||''):''}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac5">${savedNumbers[4]?(currentZodiacMap[savedNumbers[4].padStart(2,'0')]||''):''}</span></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac6">${savedNumbers[5]?(currentZodiacMap[savedNumbers[5].padStart(2,'0')]||''):''}</span></td>
+            <td></td>
+            <td style="text-align:center;"><span class="draw-zodiac-plain" id="drawZodiac7">${savedNumbers[6]?(currentZodiacMap[savedNumbers[6].padStart(2,'0')]||''):''}</span></td>
+          </tr>
+        </table>
       </div>
       <div style="display:flex; gap:6px; margin-top:6px; justify-content:center;">
         <button class="btn" style="background:#f39c12;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="enableDrawEdit()">修改</button>
@@ -1244,7 +1202,6 @@ async function saveDrawNumbers() {
   try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
   savedData[issueId] = { number: numbers[6] || numbers.join(',') || '', numbers: numbers, pl: '' };
   localStorage.setItem(storageKey, JSON.stringify(savedData));
-  // 重新渲染生肖显示
   for (let i = 1; i <= 7; i++) {
     const zodiacSpan = document.getElementById('drawZodiac' + i);
     const inp = document.getElementById('drawNum' + i);
@@ -1342,7 +1299,8 @@ window.comboGenerate = function(comboType) {
   lines.forEach(line => {
     line = line.trim();
     if (!line) return;
-    const match = line.match(/^(.+?)\s*(?:各组|各)\s*(\d+)$/);
+    // 支持：各组、各、个、组、=
+    const match = line.match(/^(.+?)\s*(?:各组|各|个|组|=)\s*(\d+)$/);
     if (!match) { allResults.push(line); return; }
     const content = match[1].trim();
     const amount = parseInt(match[2]) || 0;
@@ -1526,21 +1484,79 @@ function comboCombine(arr, k) {
   return results;
 }
 
+// ===== 二中二/三中三胆拖处理（支持"拖"和"托"） =====
 function comboProcessZhong(content, comboType, amount, cfg) {
   const results = [];
-  const tokens = content.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
-  const allNums = [];
-  tokens.forEach(t => {
-    if (/^\d{1,2}$/.test(t)) { allNums.push(t.padStart(2, '0')); }
-    else if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) { cfg.zodiac[t].forEach(n => allNums.push(n.padStart(2, '0'))); }
-    else if (/^[\u4e00-\u9fa5\d]尾$/.test(t)) {
-      const w = t.replace('尾', '');
-      for (let i = 0; i <= 4; i++) { const num = (i * 10 + parseInt(w)).toString().padStart(2, '0'); if (parseInt(num) >= 1 && parseInt(num) <= 49) allNums.push(num); }
-    }
-  });
+  // 判断是否包含胆拖分隔符
+  const dragMatch = content.match(/^(.+?)[拖托](.+)$/);
+  let danTokens = [], tuoTokens = [];
+
+  if (dragMatch) {
+    // 胆拖模式
+    const danStr = dragMatch[1];
+    const tuoStr = dragMatch[2];
+    danTokens = danStr.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
+    tuoTokens = tuoStr.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
+  } else {
+    // 非胆拖模式：所有 token 作为普通元素
+    const tokens = content.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
+    const allNums = [];
+    tokens.forEach(t => {
+      if (/^\d{1,2}$/.test(t)) { allNums.push(t.padStart(2, '0')); }
+      else if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) { cfg.zodiac[t].forEach(n => allNums.push(n.padStart(2, '0'))); }
+      else if (/^[\u4e00-\u9fa5\d]尾$/.test(t)) {
+        const w = t.replace('尾', '');
+        for (let i = 0; i <= 4; i++) { const num = (i * 10 + parseInt(w)).toString().padStart(2, '0'); if (parseInt(num) >= 1 && parseInt(num) <= 49) allNums.push(num); }
+      }
+    });
+    const k = comboType === 'zhong3' ? 3 : 2;
+    const combos = comboCombine([...new Set(allNums)], k);
+    combos.forEach(c => results.push({ combo: c.sort((a,b)=>parseInt(a)-parseInt(b)), amount: amount }));
+    return results;
+  }
+
+  // 胆拖展开
+  const expandTokens = (tokenArr) => {
+    const nums = [];
+    tokenArr.forEach(t => {
+      if (/^\d{1,2}$/.test(t)) { nums.push(t.padStart(2, '0')); }
+      else if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) { cfg.zodiac[t].forEach(n => nums.push(n.padStart(2, '0'))); }
+      else if (/^[\u4e00-\u9fa5\d]尾$/.test(t)) {
+        const w = t.replace('尾', '');
+        for (let i = 0; i <= 4; i++) { const num = (i * 10 + parseInt(w)).toString().padStart(2, '0'); if (parseInt(num) >= 1 && parseInt(num) <= 49) nums.push(num); }
+      }
+    });
+    return [...new Set(nums)];
+  };
+
+  const danNums = expandTokens(danTokens);
+  const tuoNums = expandTokens(tuoTokens);
+
   const k = comboType === 'zhong3' ? 3 : 2;
-  const combos = comboCombine([...new Set(allNums)], k);
-  combos.forEach(c => results.push({ combo: c.sort((a,b)=>parseInt(a)-parseInt(b)), amount: amount }));
+
+  if (k === 2) {
+    // 二中二胆拖：胆码1个，拖码中选1个
+    if (danNums.length >= 1) {
+      for (const d of danNums) {
+        for (const t of tuoNums) {
+          if (d !== t) results.push({ combo: [d, t].sort((a,b)=>parseInt(a)-parseInt(b)), amount: amount });
+        }
+      }
+    }
+  } else if (k === 3) {
+    // 三中三胆拖：胆码1-2个，从拖码中补足
+    if (danNums.length >= 1 && danNums.length <= 2) {
+      const need = 3 - danNums.length;
+      const tuoCombos = comboCombine(tuoNums, need);
+      for (const dc of (danNums.length === 1 ? danNums.map(d => [d]) : [danNums])) {
+        for (const tc of tuoCombos) {
+          const combo = [...dc, ...tc].sort((a,b)=>parseInt(a)-parseInt(b));
+          if (new Set(combo).size === 3) results.push({ combo, amount: amount });
+        }
+      }
+    }
+  }
+
   return results;
 }
 
@@ -1777,8 +1793,12 @@ async function refreshLianxiaoStats() {
     html += cardHtml;
   });
   container.innerHTML = html || '<div style="color:#666;text-align:center;padding:10px;">暂无连肖数据</div>';
-  document.getElementById('lianxiaoStatsTotal').innerHTML = `<span style="color:#e74c3c;">全部玩法下单金额：${grandTotal}</span>` +
-    (drawZodiacs.length > 0 || drawNumbers.length > 0 ? ` &nbsp; <span style="color:${grandPL>0?'#27ae60':(grandPL<0?'#e74c3c':'')};">全部玩法总盈亏：${grandPL>0?grandPL:(grandPL<0?grandPL:'')}</span>` : '');
+  // 底部汇总
+  let totalHtml = `<span style="color:#0000ff;">全部玩法下单金额：</span><span style="color:#e74c3c;">${grandTotal}</span>`;
+  if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
+    totalHtml += ` &nbsp; <span style="color:#0000ff;">全部玩法总盈亏：</span><span style="color:${grandPL>0?'#27ae60':(grandPL<0?'#e74c3c':'')};">${grandPL>0?grandPL:(grandPL<0?grandPL:'')}</span>`;
+  }
+  document.getElementById('lianxiaoStatsTotal').innerHTML = totalHtml;
 }
 
 function getComboTypeLabel(type) {
@@ -1808,15 +1828,7 @@ async function saveOrderRecordToIDB(content, user, date, totalAmount = 0, ts = n
   if (!db || !dbAvailable) { showToast('数据库不可用，操作无法保存'); return false; }
   const record = { id: Date.now() + '-' + Math.random().toString(36).substr(2, 9), content, user, date, totalAmount, region: regionOverride || currentRegion, timestamp: ts || new Date().toISOString() };
   let success = false;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction([STORE_NAME], 'readwrite'); const store = tx.objectStore(STORE_NAME); const req = store.add(record);
-        req.onsuccess = () => resolve(true); req.onerror = () => reject(req.error); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error);
-      });
-      success = true; break;
-    } catch (e) { if (attempt < 2) await new Promise(r => setTimeout(r, 300)); }
-  }
+  for (let attempt = 0; attempt < 3; attempt++) { try { await new Promise((resolve, reject) => { const tx = db.transaction([STORE_NAME], 'readwrite'); const store = tx.objectStore(STORE_NAME); const req = store.add(record); req.onsuccess = () => resolve(true); req.onerror = () => reject(req.error); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error); }); success = true; break; } catch (e) { if (attempt < 2) await new Promise(r => setTimeout(r, 300)); } }
   if (!success) { showToast('保存失败，请重试'); return false; }
   return true;
 }
@@ -1824,15 +1836,7 @@ async function saveReportOrderRecordToIDB(content, user, date, totalAmount = 0, 
   if (!db || !dbAvailable) { showToast('数据库不可用，操作无法保存'); return false; }
   const record = { id: Date.now() + '-' + Math.random().toString(36).substr(2, 9), content, user, date, totalAmount, region: regionOverride || currentRegion, timestamp: ts || new Date().toISOString() };
   let success = false;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction([REPORT_STORE_NAME], 'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.add(record);
-        req.onsuccess = () => resolve(true); req.onerror = () => reject(req.error); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error);
-      });
-      success = true; break;
-    } catch (e) { if (attempt < 2) await new Promise(r => setTimeout(r, 300)); }
-  }
+  for (let attempt = 0; attempt < 3; attempt++) { try { await new Promise((resolve, reject) => { const tx = db.transaction([REPORT_STORE_NAME], 'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.add(record); req.onsuccess = () => resolve(true); req.onerror = () => reject(req.error); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error); }); success = true; break; } catch (e) { if (attempt < 2) await new Promise(r => setTimeout(r, 300)); } }
   if (!success) { showToast('保存失败，请重试'); return false; }
   return true;
 }
@@ -1840,15 +1844,7 @@ async function saveComboOrderRecordToIDB(content, user, date, totalAmount = 0, c
   if (!db || !dbAvailable) { showToast('数据库不可用，操作无法保存'); return false; }
   const record = { id: Date.now() + '-' + Math.random().toString(36).substr(2, 9), content, user, date, totalAmount, comboType, region: currentRegion, timestamp: ts || new Date().toISOString() };
   let success = false;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction([COMBO_STORE_NAME], 'readwrite'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.add(record);
-        req.onsuccess = () => resolve(true); req.onerror = () => reject(req.error); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error);
-      });
-      success = true; break;
-    } catch (e) { if (attempt < 2) await new Promise(r => setTimeout(r, 300)); }
-  }
+  for (let attempt = 0; attempt < 3; attempt++) { try { await new Promise((resolve, reject) => { const tx = db.transaction([COMBO_STORE_NAME], 'readwrite'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.add(record); req.onsuccess = () => resolve(true); req.onerror = () => reject(req.error); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error); }); success = true; break; } catch (e) { if (attempt < 2) await new Promise(r => setTimeout(r, 300)); } }
   if (!success) { showToast('保存失败，请重试'); return false; }
   return true;
 }
@@ -2113,12 +2109,10 @@ async function updateTableFromRecords(){
     const fd=document.getElementById('filterDate')?.value;
     const recs=await getOrderRecords();
     const reps=await getReportOrderRecords();
-
     const riskSwitcher = document.getElementById('riskReportSwitcher')?.value || 'total';
     const viewUser = document.getElementById('viewUserSelect')?.value;
     let filterUser = null;
     if (riskSwitcher === 'user' && viewUser) { filterUser = viewUser; }
-
     const cacheKey = getCacheKey(currentRegion, fd || 'all', filterUser || 'all');
     const cached = statsCache.get(cacheKey);
     if (cached) {
@@ -2131,97 +2125,28 @@ async function updateTableFromRecords(){
       numberOrderTotal = cached.numberOrderTotal; zodiacWeightedTotal = cached.zodiacWeightedTotal;
       originalOrderAmount = cached.originalOrderAmount;
       directOrderAmount = cached.directOrderAmount; directReportAmount = cached.directReportAmount;
-
       generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards();
       renderReportAmountTable(); renderOriginalAmountTable(); updateReportAmountTotal(); updateAmountDisplays();
       calculateStorageUsage(); renderSmartDecision(); updateSingleBetDisplay();
       return;
     }
-
     tableBetData={};userBetData={};reportBetData={};reportAmountData={};reportRiskData={};
     numberCount={};zodiacCount={};numberAmountCount={};zodiacAmountCount={};
     zodiacDirectAmount={};zodiacFilteredAmount={};
     zodiacReportAmount={};zodiacFilteredReportAmount={};
     numberOrderTotal=0;zodiacWeightedTotal=0;
     originalOrderAmount={}; directOrderAmount={}; directReportAmount={};
-
     const cfg=getAllConfigData(); const keys=getAllValidCategories(cfg);
     const nMin=parseInt(document.getElementById('numAmountMin')?.value)||1,nMax=parseInt(document.getElementById('numAmountMax')?.value)||50000;
     const zMin=parseInt(document.getElementById('zodiacAmountMin')?.value)||1,zMax=parseInt(document.getElementById('zodiacAmountMax')?.value)||50000;
     const curZod=localStorage.getItem('selectedStartZodiac')||'马';
     const fRecs=fd?recs.filter(r=>r.date===fd):recs;
     const fReps=fd?reps.filter(r=>r.date===fd):reps;
-
     const fRecsFiltered = filterUser ? fRecs.filter(r => r.user === filterUser) : fRecs;
     const fRepsFiltered = filterUser ? fReps.filter(r => r.user === filterUser) : fReps;
-
-    fRecsFiltered.forEach(rec=>{
-      try{
-        if(!userBetData[rec.user])userBetData[rec.user]={};
-        rec.content.split('\n').filter(l=>l.trim()).forEach(line=>{
-          const{numbers,zodiacs,amount}=countItemsInLine(line,cfg,keys);
-          if(zodiacs.length>0){ zodiacs.forEach(z=>{ const w=z===curZod?5:4; zodiacWeightedTotal+=amount*w; }); }
-          else if(numbers.length>0){ numberOrderTotal+=numbers.length*amount; }
-          numbers.forEach(num=>{
-            userBetData[rec.user][num]=(userBetData[rec.user][num]||0)+amount;
-            tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount;
-            numberCount[num]=(numberCount[num]||0)+1;
-            if(amount>=nMin&&amount<=nMax)numberAmountCount[num]=(numberAmountCount[num]||0)+1;
-            originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount;
-            if(zodiacs.length === 0) directOrderAmount[num] = (directOrderAmount[num]||0) + amount;
-          });
-          zodiacs.forEach(z=>{
-            zodiacCount[z]=(zodiacCount[z]||0)+1;
-            zodiacDirectAmount[z]=(zodiacDirectAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);
-            if(amount>=zMin&&amount<=zMax){zodiacAmountCount[z]=(zodiacAmountCount[z]||0)+1; zodiacFilteredAmount[z]=(zodiacFilteredAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);}
-            (cfg.zodiac[z]||[]).forEach(n=>{
-              const num=n.padStart(2,'0');
-              userBetData[rec.user][num]=(userBetData[rec.user][num]||0)+amount;
-              tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount;
-              originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount;
-            });
-          });
-        });
-      }catch(e){}
-    });
-
-    fRepsFiltered.forEach(rec=>{
-      try{
-        const user=rec.user;
-        rec.content.split('\n').filter(l=>l.trim()).forEach(line=>{
-          const{numbers,zodiacs,amount}=countItemsInLine(line,cfg,keys);
-          numbers.forEach(num=>{
-            reportBetData[num]=(reportBetData[num]||0)-amount;
-            reportAmountData[num]=(reportAmountData[num]||0)+amount;
-            if(user && userBetData[user]){ userBetData[user][num]=(userBetData[user][num]||0)-amount; }
-            if(zodiacs.length === 0) directReportAmount[num] = (directReportAmount[num]||0) + amount;
-          });
-          zodiacs.forEach(z=>{
-            zodiacReportAmount[z]=(zodiacReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);
-            if(amount>=zMin&&amount<=zMax){ zodiacFilteredReportAmount[z]=(zodiacFilteredReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);}
-            (cfg.zodiac[z]||[]).forEach(n=>{
-              const num=n.padStart(2,'0');
-              reportBetData[num]=(reportBetData[num]||0)-amount;
-              reportAmountData[num]=(reportAmountData[num]||0)+amount;
-              if(user && userBetData[user]){ userBetData[user][num]=(userBetData[user][num]||0)-amount; }
-            });
-          });
-        });
-      }catch(e){}
-    });
-
-    statsCache.set(cacheKey, {
-      tableBetData: {...tableBetData}, userBetData: {...userBetData}, reportBetData: {...reportBetData},
-      reportAmountData: {...reportAmountData}, reportRiskData: {...reportRiskData},
-      numberCount: {...numberCount}, zodiacCount: {...zodiacCount},
-      numberAmountCount: {...numberAmountCount}, zodiacAmountCount: {...zodiacAmountCount},
-      zodiacDirectAmount: {...zodiacDirectAmount}, zodiacFilteredAmount: {...zodiacFilteredAmount},
-      zodiacReportAmount: {...zodiacReportAmount}, zodiacFilteredReportAmount: {...zodiacFilteredReportAmount},
-      numberOrderTotal, zodiacWeightedTotal,
-      originalOrderAmount: {...originalOrderAmount},
-      directOrderAmount: {...directOrderAmount}, directReportAmount: {...directReportAmount}
-    });
-
+    fRecsFiltered.forEach(rec=>{ try{ if(!userBetData[rec.user])userBetData[rec.user]={}; rec.content.split('\n').filter(l=>l.trim()).forEach(line=>{ const{numbers,zodiacs,amount}=countItemsInLine(line,cfg,keys); if(zodiacs.length>0){ zodiacs.forEach(z=>{ const w=z===curZod?5:4; zodiacWeightedTotal+=amount*w; }); } else if(numbers.length>0){ numberOrderTotal+=numbers.length*amount; } numbers.forEach(num=>{ userBetData[rec.user][num]=(userBetData[rec.user][num]||0)+amount; tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount; numberCount[num]=(numberCount[num]||0)+1; if(amount>=nMin&&amount<=nMax)numberAmountCount[num]=(numberAmountCount[num]||0)+1; originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount; if(zodiacs.length === 0) directOrderAmount[num] = (directOrderAmount[num]||0) + amount; }); zodiacs.forEach(z=>{ zodiacCount[z]=(zodiacCount[z]||0)+1; zodiacDirectAmount[z]=(zodiacDirectAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0); if(amount>=zMin&&amount<=zMax){zodiacAmountCount[z]=(zodiacAmountCount[z]||0)+1; zodiacFilteredAmount[z]=(zodiacFilteredAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);} (cfg.zodiac[z]||[]).forEach(n=>{ const num=n.padStart(2,'0'); userBetData[rec.user][num]=(userBetData[rec.user][num]||0)+amount; tableBetData[num]=(tableBetData[num]||0)+amount; reportBetData[num]=(reportBetData[num]||0)+amount; originalOrderAmount[num]=(originalOrderAmount[num]||0)+amount; }); }); }); }catch(e){} });
+    fRepsFiltered.forEach(rec=>{ try{ const user=rec.user; rec.content.split('\n').filter(l=>l.trim()).forEach(line=>{ const{numbers,zodiacs,amount}=countItemsInLine(line,cfg,keys); numbers.forEach(num=>{ reportBetData[num]=(reportBetData[num]||0)-amount; reportAmountData[num]=(reportAmountData[num]||0)+amount; if(user && userBetData[user]){ userBetData[user][num]=(userBetData[user][num]||0)-amount; } if(zodiacs.length === 0) directReportAmount[num] = (directReportAmount[num]||0) + amount; }); zodiacs.forEach(z=>{ zodiacReportAmount[z]=(zodiacReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0); if(amount>=zMin&&amount<=zMax){ zodiacFilteredReportAmount[z]=(zodiacFilteredReportAmount[z]||0)+amount*(cfg.zodiac[z]?.length||0);} (cfg.zodiac[z]||[]).forEach(n=>{ const num=n.padStart(2,'0'); reportBetData[num]=(reportBetData[num]||0)-amount; reportAmountData[num]=(reportAmountData[num]||0)+amount; if(user && userBetData[user]){ userBetData[user][num]=(userBetData[user][num]||0)-amount; } }); }); }); }catch(e){} });
+    statsCache.set(cacheKey, { tableBetData: {...tableBetData}, userBetData: {...userBetData}, reportBetData: {...reportBetData}, reportAmountData: {...reportAmountData}, reportRiskData: {...reportRiskData}, numberCount: {...numberCount}, zodiacCount: {...zodiacCount}, numberAmountCount: {...numberAmountCount}, zodiacAmountCount: {...zodiacAmountCount}, zodiacDirectAmount: {...zodiacDirectAmount}, zodiacFilteredAmount: {...zodiacFilteredAmount}, zodiacReportAmount: {...zodiacReportAmount}, zodiacFilteredReportAmount: {...zodiacFilteredReportAmount}, numberOrderTotal, zodiacWeightedTotal, originalOrderAmount: {...originalOrderAmount}, directOrderAmount: {...directOrderAmount}, directReportAmount: {...directReportAmount} });
     generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards();
     renderReportAmountTable(); renderOriginalAmountTable(); updateReportAmountTotal(); updateAmountDisplays();
     calculateStorageUsage(); renderSmartDecision(); updateSingleBetDisplay();
@@ -2370,8 +2295,16 @@ async function showOrderRecord(filter='all'){ try{ const recs=await getOrderReco
   }); }
   html+=`</div></div><div class="modal-footer"><button onclick="toggleOrderListMode()" id="comboOrderBtn" style="padding:8px 16px;background:${orderListMode==='combo'?'#3498db':'#6c757d'};color:#fff;border:none;border-radius:4px;">${orderListMode==='combo'?'普通订单':'连肖记录'}</button><button onclick="batchCopyOrders('.order-check')" style="padding:8px 16px;background:#8e44ad;color:#fff;border:none;border-radius:4px;">批量复制</button><button onclick="document.getElementById('orderWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`;
   w.innerHTML=html; document.body.appendChild(w); makeWindowDraggable('orderWin'); highestZ+=1; w.style.zIndex=highestZ;
-  const uv = filter || 'all'; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv);
-  renderOrderStats(userOrders, userReports, uv, ''); }catch(e){showToast('加载失败');} }
+  const uv = filter || 'all';
+  if (orderListMode === 'combo') {
+    const userCombo = uv === 'all' ? fCombo : fCombo.filter(r => r.user === uv);
+    renderOrderStats(userCombo, [], uv, '');
+  } else {
+    const userOrders = uv === 'all' ? fRecs : fRecs.filter(r => r.user === uv);
+    const userReports = uv === 'all' ? fReps : fReps.filter(r => r.user === uv);
+    renderOrderStats(userOrders, userReports, uv, '');
+  }
+  }catch(e){showToast('加载失败');} }
 
 function toggleOrderListMode() { orderListMode = orderListMode === 'combo' ? 'normal' : 'combo'; showOrderRecord(); }
 
@@ -2634,3 +2567,4 @@ window.onload = async () => {
 </script>
 </body>
 </html>
+    
