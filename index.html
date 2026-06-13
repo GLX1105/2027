@@ -949,7 +949,7 @@ function renderCustomConfigContainer() { const container = document.getElementBy
 async function addCustomCategory() { const label = await prompt('请输入新分类名称（如：大尾）'); if (!label) return; const value = await prompt(`请输入"${label}"对应的号码或分类名（空格分隔，例如：01 02 牛 马）`); if (value === null) return; const cats = loadCustomCategories(); cats.push({ label, value: value.trim() }); saveCustomCategories(cats); renderCustomConfigContainer(); showToast('自定义分类已添加，请点击"保存"按钮存储配置'); }
 async function deleteCustomCategory() { const cats = loadCustomCategories(); if (cats.length === 0) { showToast('没有可删除的自定义分类'); return; } const labels = cats.map((c,i) => `${i+1}. ${c.label}`).join('\n'); const idxStr = await prompt(`请输入要删除的分类编号：\n${labels}`); if (!idxStr) return; const idx = parseInt(idxStr) - 1; if (isNaN(idx) || idx < 0 || idx >= cats.length) { showToast('无效编号'); return; } cats.splice(idx, 1); saveCustomCategories(cats); renderCustomConfigContainer(); showToast('自定义分类已删除，请点击"保存"按钮使更改生效'); }
 function deleteCustomCategoryByIndex(index) { const cats = loadCustomCategories(); cats.splice(index, 1); saveCustomCategories(cats); renderCustomConfigContainer(); }
-    // ===== 订单变量与基础函数 =====
+// ===== 订单变量与基础函数 =====
 let tableBetData = {}, userBetData = {}, reportBetData = {}, reportAmountData = {}, reportRiskData = {};
 let numberCount = {}, zodiacCount = {}, numberAmountCount = {}, zodiacAmountCount = {};
 let zodiacDirectAmount = {}, zodiacFilteredAmount = {};
@@ -1152,16 +1152,7 @@ function saveOddsData() {
   if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
 }
 
-// ===== 辅助函数：获取波色背景类 =====
-function getBgClassForNum(num) {
-  const n = num.padStart(2, '0');
-  if (redNumbers.includes(n)) return 'bg-red';
-  if (blueNumbers.includes(n)) return 'bg-blue';
-  if (greenNumbers.includes(n)) return 'bg-green';
-  return '';
-}
-
-// ===== 连肖统计弹窗（录开奖部分已改为色块紧凑风格） =====
+// ===== 连肖统计弹窗（录开奖部分已改为紧凑无背景） =====
 function showLianxiaoStatsWin() {
   if (document.getElementById('lianxiaoStatsWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoStatsWin';
@@ -1180,30 +1171,38 @@ function showLianxiaoStatsWin() {
   const savedNumbers = savedEntry.numbers || [];
   const isReadOnly = savedNumbers.length > 0;
 
-  // 构建录开奖表格HTML（色块填充）
+  // ===== 恢复字体颜色渲染，取消背景填充 =====
+  function getNumColorClass(num) {
+    if (!num) return '';
+    const n = num.padStart(2, '0');
+    if (redNumbers.includes(n)) return 'red-text';
+    if (blueNumbers.includes(n)) return 'blue-text';
+    if (greenNumbers.includes(n)) return 'green-text';
+    return '';
+  }
+
   let drawTableHtml = '<div style="text-align:center; margin-bottom:4px;">录开奖：' + issueDisplay + '</div>';
   drawTableHtml += '<table style="margin:0 auto; border-collapse:collapse;"><tr>';
   for (let i = 0; i < 6; i++) {
     const num = savedNumbers[i] || '';
-    const bgClass = num ? getBgClassForNum(num) : '';
-    const bgStyle = num ? '' : 'background:transparent; color:#333;';
-    drawTableHtml += `<td class="pt-num-cell"><input type="text" class="draw-number-input-plain ${bgClass}" id="drawNum${i+1}" value="${num}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(${i+1})" maxlength="2" style="${bgStyle}"></td>`;
+    const numCls = getNumColorClass(num);
+    drawTableHtml += `<td class="pt-num-cell"><input type="text" class="draw-number-input-plain ${numCls}" id="drawNum${i+1}" value="${num}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(${i+1})" maxlength="2"></td>`;
   }
   drawTableHtml += '<td class="special-tag-cell">特</td>';
   const num7 = savedNumbers[6] || '';
-  const bgClass7 = num7 ? getBgClassForNum(num7) : '';
-  const bgStyle7 = num7 ? '' : 'background:transparent; color:#333;';
-  drawTableHtml += `<td class="pt-num-cell"><input type="text" class="draw-number-input-plain ${bgClass7}" id="drawNum7" value="${num7}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(7)" maxlength="2" style="${bgStyle7}"></td>`;
+  const numCls7 = getNumColorClass(num7);
+  drawTableHtml += `<td class="pt-num-cell"><input type="text" class="draw-number-input-plain ${numCls7}" id="drawNum7" value="${num7}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(7)" maxlength="2"></td>`;
   drawTableHtml += '</tr><tr>';
   for (let i = 0; i < 6; i++) {
     const num = savedNumbers[i] || '';
-    const bgClass = num ? getBgClassForNum(num) : '';
     const zodiac = num ? (currentZodiacMap[num.padStart(2,'0')] || '') : '';
-    drawTableHtml += `<td class="pt-num-cell"><span class="draw-zodiac-plain ${bgClass}" id="drawZodiac${i+1}">${zodiac}</span></td>`;
+    const zCls = getZodiacColorClass(zodiac);
+    drawTableHtml += `<td class="pt-num-cell"><span class="draw-zodiac-plain ${zCls}" id="drawZodiac${i+1}">${zodiac}</span></td>`;
   }
   drawTableHtml += '<td class="special-tag-cell">码</td>';
   const zodiac7 = num7 ? (currentZodiacMap[num7.padStart(2,'0')] || '') : '';
-  drawTableHtml += `<td class="pt-num-cell"><span class="draw-zodiac-plain ${bgClass7}" id="drawZodiac7">${zodiac7}</span></td>`;
+  const zCls7 = getZodiacColorClass(zodiac7);
+  drawTableHtml += `<td class="pt-num-cell"><span class="draw-zodiac-plain ${zCls7}" id="drawZodiac7">${zodiac7}</span></td>`;
   drawTableHtml += '</tr></table>';
 
   win.innerHTML = `
@@ -1225,7 +1224,7 @@ function showLianxiaoStatsWin() {
   makeWindowDraggable('lianxiaoStatsWin'); highestZ += 1; win.style.zIndex = highestZ;
   refreshLianxiaoStats();
 
-  // ===== 点击单元格激活输入框（新增逻辑） =====
+  // ===== 点击单元格激活输入框 =====
   window._lianxiaoEditEnabled = false;
   setTimeout(() => {
     const cells = win.querySelectorAll('.pt-num-cell');
@@ -1242,7 +1241,7 @@ function showLianxiaoStatsWin() {
   }, 100);
 }
 
-// ===== 录开奖输入处理（修改版：色块填充） =====
+// ===== 录开奖输入处理（恢复字体颜色渲染，取消背景填充） =====
 function onDrawInputPlain(idx) {
   const input = document.getElementById('drawNum' + idx);
   const zodiacSpan = document.getElementById('drawZodiac' + idx);
@@ -1256,17 +1255,14 @@ function onDrawInputPlain(idx) {
     if (intVal >= 1 && intVal <= 49) {
       const zodiac = currentZodiacMap[num] || '';
       zodiacSpan.textContent = zodiac;
-      const bgClass = getBgClassForNum(num);
-      input.className = 'draw-number-input-plain ' + bgClass;
-      input.style.background = ''; input.style.color = '#fff';
-      zodiacSpan.className = 'draw-zodiac-plain ' + bgClass;
+      zodiacSpan.className = 'draw-zodiac-plain ' + getZodiacColorClass(zodiac);
+      input.className = 'draw-number-input-plain ' + getNumberColorClass(num);
       return;
     }
   }
   zodiacSpan.textContent = '';
   zodiacSpan.className = 'draw-zodiac-plain';
   input.className = 'draw-number-input-plain';
-  input.style.background = 'transparent'; input.style.color = '#333';
 }
 
 function enableDrawEdit() {
