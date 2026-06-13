@@ -284,10 +284,14 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .log-type-switch{background:#e8daef;color:#6c3483;}
 
 .draw-number-input-plain {
-    width: 28px;
-    padding: 2px; text-align: center; font-size: 14px; font-weight: bold;
+    width: 22px;
+    padding: 2px 1px; text-align: center; font-size: 14px; font-weight: bold;
     border: none; outline: none; background: transparent;
     border-bottom: 1px dashed #ccc;
+}
+.draw-number-input-plain:disabled {
+    background: transparent;
+    color: inherit;
 }
 .draw-zodiac-plain { font-size: 12px; font-weight: bold; min-width: 24px; display: inline-block; text-align: center; }
 </style>
@@ -1014,7 +1018,7 @@ function showLianxiaoGenerateWin() {
   makeWindowDraggable('lianxiaoGenerateWin'); highestZ += 1; win.style.zIndex = highestZ;
 }
 
-// ===== 赔率弹窗 =====
+// ===== 赔率弹窗（含默认值修复、平码玩法、恢复默认按钮） =====
 function showOddsWin() {
   if (document.getElementById('oddsWin')) return;
   const savedOdds = getOddsData();
@@ -1026,13 +1030,15 @@ function showOddsWin() {
     '四连尾':{odds:'14',rebate:'4'},'四连尾零尾':{odds:'15',rebate:'4'},'五连尾':{odds:'28',rebate:'4'},'五连尾零尾':{odds:'30',rebate:'4'},
     '五不中':{odds:'2',rebate:'4'},'六不中':{odds:'2.5',rebate:'4'},'七不中':{odds:'3',rebate:'4'},'八不中':{odds:'3.5',rebate:'4'},
     '九不中':{odds:'4',rebate:'4'},'十不中':{odds:'5',rebate:'4'},'十一不中':{odds:'6',rebate:'4'},'十二不中':{odds:'7',rebate:'4'},
-    '二中二':{odds:'60',rebate:'4'},'三中三':{odds:'600',rebate:'4'}
+    '二中二':{odds:'60',rebate:'4'},'三中三':{odds:'600',rebate:'4'},'平码':{odds:'7',rebate:'4'}
   };
   const types = Object.keys(defaults);
   let rows = '';
   types.forEach(t => {
-    const d = savedOdds[t] || defaults[t];
-    rows += `<tr><td style="text-align:center;padding:3px;"><input type="text" class="odds-input" data-type="${t}" data-field="name" value="${t}" style="width:80px;text-align:center;border:none;background:transparent;outline:none;" disabled></td><td><input type="text" class="odds-input" data-type="${t}" data-field="odds" value="${d.odds}" style="width:60px;text-align:center;border:none;background:transparent;outline:none;" disabled></td><td><input type="text" class="odds-input" data-type="${t}" data-field="rebate" value="${d.rebate}" style="width:60px;text-align:center;border:none;background:transparent;outline:none;" disabled></td></tr>`;
+    const saved = savedOdds[t] || {};
+    const oddsVal = saved.odds || defaults[t].odds;
+    const rebateVal = saved.rebate || defaults[t].rebate;
+    rows += `<tr><td style="text-align:center;padding:3px;"><input type="text" class="odds-input" data-type="${t}" data-field="name" value="${t}" style="width:80px;text-align:center;border:none;background:transparent;outline:none;" disabled></td><td><input type="text" class="odds-input" data-type="${t}" data-field="odds" value="${oddsVal}" style="width:60px;text-align:center;border:none;background:transparent;outline:none;" disabled></td><td><input type="text" class="odds-input" data-type="${t}" data-field="rebate" value="${rebateVal}" style="width:60px;text-align:center;border:none;background:transparent;outline:none;" disabled></td></tr>`;
   });
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'oddsWin';
   win.style.width = '550px'; win.style.height = '600px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
@@ -1044,10 +1050,34 @@ function showOddsWin() {
     <div class="modal-footer">
       <button class="btn" style="background:#f39c12;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="enableOddsEdit()">修改</button>
       <button class="btn" style="background:#28a745;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="saveOddsData()">保存</button>
+      <button class="btn" style="background:#3498db;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="resetOddsToDefault()">恢复默认</button>
       <button class="btn" style="background:#6c757d;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="document.getElementById('oddsWin').remove()">关闭</button>
     </div>`;
   document.body.appendChild(win);
   makeWindowDraggable('oddsWin'); highestZ += 1; win.style.zIndex = highestZ;
+}
+
+// ===== 恢复默认赔率 =====
+function resetOddsToDefault() {
+  const defaults = {
+    '平特肖':{odds:'2',rebate:'4'},'平特肖带主肖':{odds:'1.8',rebate:'4'},'二连肖':{odds:'4',rebate:'4'},'二连肖带主肖':{odds:'3.5',rebate:'4'},
+    '三连肖':{odds:'10',rebate:'4'},'三连肖带主肖':{odds:'9',rebate:'4'},'四连肖':{odds:'30',rebate:'4'},'四连肖带主肖':{odds:'25',rebate:'4'},
+    '五连肖':{odds:'100',rebate:'4'},'五连肖带主肖':{odds:'90',rebate:'4'},'平特尾':{odds:'1.8',rebate:'4'},'平特尾零尾':{odds:'2',rebate:'4'},
+    '二连尾':{odds:'3',rebate:'4'},'二连尾零尾':{odds:'3.5',rebate:'4'},'三连尾':{odds:'6',rebate:'4'},'三连尾零尾':{odds:'6.5',rebate:'4'},
+    '四连尾':{odds:'14',rebate:'4'},'四连尾零尾':{odds:'15',rebate:'4'},'五连尾':{odds:'28',rebate:'4'},'五连尾零尾':{odds:'30',rebate:'4'},
+    '五不中':{odds:'2',rebate:'4'},'六不中':{odds:'2.5',rebate:'4'},'七不中':{odds:'3',rebate:'4'},'八不中':{odds:'3.5',rebate:'4'},
+    '九不中':{odds:'4',rebate:'4'},'十不中':{odds:'5',rebate:'4'},'十一不中':{odds:'6',rebate:'4'},'十二不中':{odds:'7',rebate:'4'},
+    '二中二':{odds:'60',rebate:'4'},'三中三':{odds:'600',rebate:'4'},'平码':{odds:'7',rebate:'4'}
+  };
+  document.querySelectorAll('.odds-input[data-field="odds"]').forEach(inp => {
+    const type = inp.dataset.type;
+    if (defaults[type]) inp.value = defaults[type].odds;
+  });
+  document.querySelectorAll('.odds-input[data-field="rebate"]').forEach(inp => {
+    const type = inp.dataset.type;
+    if (defaults[type]) inp.value = defaults[type].rebate;
+  });
+  showToast('已恢复默认赔率，请点击保存以生效');
 }
 
 function enableOddsEdit() {
@@ -1081,7 +1111,7 @@ function saveOddsData() {
   if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
 }
 
-// ===== 连肖统计弹窗 =====
+// ===== 连肖统计弹窗（删掉正码标签，特码竖排显示，号码生肖自动颜色） =====
 function showLianxiaoStatsWin() {
   if (document.getElementById('lianxiaoStatsWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoStatsWin';
@@ -1100,7 +1130,6 @@ function showLianxiaoStatsWin() {
   const savedNumbers = savedEntry.numbers || [];
   const isReadOnly = savedNumbers.length > 0;
 
-  // 生成带颜色的号码和生肖
   const numCls = (i) => savedNumbers[i] ? getNumberColorClass(savedNumbers[i].padStart(2,'0')) : '';
   const zodCls = (i) => savedNumbers[i] ? getZodiacColorClass(currentZodiacMap[savedNumbers[i].padStart(2,'0')]||'') : '';
   const zodText = (i) => savedNumbers[i] ? (currentZodiacMap[savedNumbers[i].padStart(2,'0')]||'') : '';
@@ -1114,18 +1143,17 @@ function showLianxiaoStatsWin() {
         <div style="text-align:center; margin-bottom:4px;">录开奖：${issueDisplay}</div>
         <table style="margin:0 auto;">
           <tr>
-            <td style="text-align:center; padding:0 3px;"><span style="font-size:11px;">正码</span></td>
             <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(0)}" id="drawNum1" value="${savedNumbers[0]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(1)" maxlength="2"></td>
             <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(1)}" id="drawNum2" value="${savedNumbers[1]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(2)" maxlength="2"></td>
             <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(2)}" id="drawNum3" value="${savedNumbers[2]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(3)" maxlength="2"></td>
             <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(3)}" id="drawNum4" value="${savedNumbers[3]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(4)" maxlength="2"></td>
             <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(4)}" id="drawNum5" value="${savedNumbers[4]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(5)" maxlength="2"></td>
             <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(5)}" id="drawNum6" value="${savedNumbers[5]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(6)" maxlength="2"></td>
-            <td style="text-align:center; padding:0 3px;"><span style="font-size:11px;">特码</span></td>
+            <td style="text-align:center; padding:0 3px;"><span style="font-size:11px;">特</span></td>
             <td style="text-align:center; padding:0 3px;"><input type="text" class="draw-number-input-plain ${numCls(6)}" id="drawNum7" value="${savedNumbers[6]||''}" ${isReadOnly?'disabled':''} oninput="onDrawInputPlain(7)" maxlength="2"></td>
+            <td style="text-align:center; padding:0 3px;"><span style="font-size:11px;">码</span></td>
           </tr>
           <tr>
-            <td></td>
             <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(0)}" id="drawZodiac1">${zodText(0)}</span></td>
             <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(1)}" id="drawZodiac2">${zodText(1)}</span></td>
             <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(2)}" id="drawZodiac3">${zodText(2)}</span></td>
@@ -1134,6 +1162,7 @@ function showLianxiaoStatsWin() {
             <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(5)}" id="drawZodiac6">${zodText(5)}</span></td>
             <td></td>
             <td style="text-align:center;"><span class="draw-zodiac-plain ${zodCls(6)}" id="drawZodiac7">${zodText(6)}</span></td>
+            <td></td>
           </tr>
         </table>
       </div>
@@ -1288,7 +1317,7 @@ async function screenshotSingleComboCard(cardId) {
     }, 'image/png');
   } catch(e) { showToast('截图失败'); }
 }
-    // ===== 组合生成核心函数 =====
+    // ===== 组合生成核心函数（含平特肖/平特尾标红、元素不足标红） =====
 window.comboGenerate = function(comboType) {
   const inputEl = document.getElementById('comboInput');
   const resultEl = document.getElementById('comboResult');
@@ -1306,7 +1335,6 @@ window.comboGenerate = function(comboType) {
   lines.forEach(line => {
     line = line.trim();
     if (!line) return;
-    // 支持：各组、各、个、组、=
     const match = line.match(/^(.+?)\s*(?:各组|各|个|组|=)\s*(\d+)$/);
     if (!match) { allResults.push(line); return; }
     const content = match[1].trim();
@@ -1353,26 +1381,42 @@ window.comboGenerate = function(comboType) {
       else { numbers.push(t); }
     });
 
-    // 平特肖
+    // ===== 平特肖 =====
     if (comboType === 'pingtexiao') {
+      const uniqueZodiacs = [...new Set(zodiacs)];
+      const hasDup = zodiacs.length !== uniqueZodiacs.length;
+      const hasWarning = zodiacs.length === 0 || hasDup;
+      const warningText = zodiacs.length === 0 ? '未识别到有效生肖' : (hasDup ? '有重复' : '');
+
       const yearZodiacs = [], otherZodiacs = [];
-      zodiacs.forEach(z => { if (z === curYearZodiac) yearZodiacs.push(z); else otherZodiacs.push(z); });
+      uniqueZodiacs.forEach(z => { if (z === curYearZodiac) yearZodiacs.push(z); else otherZodiacs.push(z); });
+
       if (yearZodiacs.length > 0) {
         const pureLine = `${yearZodiacs.join(' ')} 各组 ${amount}`;
-        allResults.push(`平特肖带主肖 ${yearZodiacs.join(' ')} 各组 ${amount}`);
+        const displayLine = hasWarning
+          ? `<span style="color:red;">平特肖带主肖 ${yearZodiacs.join(' ')} 各组 ${amount}（${warningText}）</span>`
+          : `平特肖带主肖 ${yearZodiacs.join(' ')} 各组 ${amount}`;
+        allResults.push(displayLine);
         window._comboPureContents.push(pureLine);
       }
       if (otherZodiacs.length > 0) {
         const pureLine = `${otherZodiacs.join(' ')} 各组 ${amount}`;
-        allResults.push(`平特肖 ${otherZodiacs.join(' ')} 各组 ${amount}`);
+        const displayLine = hasWarning
+          ? `<span style="color:red;">平特肖 ${otherZodiacs.join(' ')} 各组 ${amount}（${warningText}）</span>`
+          : `平特肖 ${otherZodiacs.join(' ')} 各组 ${amount}`;
+        allResults.push(displayLine);
         window._comboPureContents.push(pureLine);
       }
+      if (yearZodiacs.length === 0 && otherZodiacs.length === 0) {
+        allResults.push(`<span style="color:red;">平特肖 ${warningText}</span>`);
+      }
+
       resultEl.innerHTML = allResults.join('<br>');
       updateComboTotalDisplay();
       return;
     }
 
-    // 平特尾
+    // ===== 平特尾 =====
     if (comboType === 'pingtewei') {
       const allDigits = [];
       tokens.forEach(t => {
@@ -1382,18 +1426,35 @@ window.comboGenerate = function(comboType) {
       });
       weishus.forEach(d => { if (!allDigits.includes(d)) allDigits.push(d); });
 
-      const zeroDigits = allDigits.filter(d => d === '0');
-      const otherDigits = allDigits.filter(d => d !== '0');
+      const uniqueDigits = [...new Set(allDigits)];
+      const hasDup = allDigits.length !== uniqueDigits.length;
+      const hasWarning = allDigits.length === 0 || hasDup;
+      const warningText = allDigits.length === 0 ? '未识别到有效尾数' : (hasDup ? '有重复' : '');
+
+      const zeroDigits = uniqueDigits.filter(d => d === '0');
+      const otherDigits = uniqueDigits.filter(d => d !== '0');
 
       if (zeroDigits.length > 0) {
-        window._comboPureContents.push(`0尾 各组 ${amount}`);
-        allResults.push(`平特尾零尾 0尾 各组 ${amount}`);
+        const pureLine = `0尾 各组 ${amount}`;
+        const displayLine = hasWarning
+          ? `<span style="color:red;">平特尾零尾 0尾 各组 ${amount}（${warningText}）</span>`
+          : `平特尾零尾 0尾 各组 ${amount}`;
+        allResults.push(displayLine);
+        window._comboPureContents.push(pureLine);
       }
       if (otherDigits.length > 0) {
         const otherStr = otherDigits.map(d => d + '尾').join(' ');
-        window._comboPureContents.push(`${otherStr} 各组 ${amount}`);
-        allResults.push(`平特尾 ${otherStr} 各组 ${amount}`);
+        const pureLine = `${otherStr} 各组 ${amount}`;
+        const displayLine = hasWarning
+          ? `<span style="color:red;">平特尾 ${otherStr} 各组 ${amount}（${warningText}）</span>`
+          : `平特尾 ${otherStr} 各组 ${amount}`;
+        allResults.push(displayLine);
+        window._comboPureContents.push(pureLine);
       }
+      if (zeroDigits.length === 0 && otherDigits.length === 0) {
+        allResults.push(`<span style="color:red;">平特尾 ${warningText}</span>`);
+      }
+
       resultEl.innerHTML = allResults.join('<br>');
       updateComboTotalDisplay();
       return;
@@ -1417,7 +1478,33 @@ window.comboGenerate = function(comboType) {
       results = combos.map(c => ({ combo: c, amount: amount }));
     }
 
-    if (results.length === 0) return;
+    // ===== 无组合结果时标红提示 =====
+    if (results.length === 0) {
+      let actualElements = [];
+      if (comboType.startsWith('lianxiao')) { actualElements = zodiacs; }
+      else if (comboType.startsWith('lianwei')) { actualElements = weishus; }
+      else if (comboType === 'pingma') { actualElements = numbers; }
+      else if (comboType === 'zhong2' || comboType === 'zhong3') {
+        // 从 comboProcessZhong 返回空结果，检查原始 tokens
+        actualElements = tokens;
+      }
+      else { actualElements = numbers; }
+
+      const uniqueElements = [...new Set(actualElements)];
+      const nRequired = getComboSize(comboType);
+      const typeLabel = getComboTypeLabel(comboType);
+
+      if (uniqueElements.length === 0) {
+        allResults.push(`<span style="color:red;">${typeLabel} 未识别到有效元素</span>`);
+      } else if (uniqueElements.length < nRequired) {
+        allResults.push(`<span style="color:red;">${typeLabel} 不足${nRequired}个（仅有${uniqueElements.length}个）</span>`);
+      } else {
+        allResults.push(`<span style="color:red;">${typeLabel} 无法生成组合</span>`);
+      }
+      resultEl.innerHTML = allResults.join('<br>');
+      updateComboTotalDisplay();
+      return;
+    }
 
     let actualElements = [];
     if (comboType.startsWith('lianxiao')) { actualElements = zodiacs; }
@@ -1491,21 +1578,17 @@ function comboCombine(arr, k) {
   return results;
 }
 
-// ===== 二中二/三中三胆拖处理（支持"拖"和"托"） =====
 function comboProcessZhong(content, comboType, amount, cfg) {
   const results = [];
-  // 判断是否包含胆拖分隔符
   const dragMatch = content.match(/^(.+?)[拖托](.+)$/);
   let danTokens = [], tuoTokens = [];
 
   if (dragMatch) {
-    // 胆拖模式
     const danStr = dragMatch[1];
     const tuoStr = dragMatch[2];
     danTokens = danStr.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
     tuoTokens = tuoStr.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
   } else {
-    // 非胆拖模式：所有 token 作为普通元素
     const tokens = content.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
     const allNums = [];
     tokens.forEach(t => {
@@ -1522,7 +1605,6 @@ function comboProcessZhong(content, comboType, amount, cfg) {
     return results;
   }
 
-  // 胆拖展开
   const expandTokens = (tokenArr) => {
     const nums = [];
     tokenArr.forEach(t => {
@@ -1538,11 +1620,9 @@ function comboProcessZhong(content, comboType, amount, cfg) {
 
   const danNums = expandTokens(danTokens);
   const tuoNums = expandTokens(tuoTokens);
-
   const k = comboType === 'zhong3' ? 3 : 2;
 
   if (k === 2) {
-    // 二中二胆拖：胆码1个，拖码中选1个
     if (danNums.length >= 1) {
       for (const d of danNums) {
         for (const t of tuoNums) {
@@ -1551,7 +1631,6 @@ function comboProcessZhong(content, comboType, amount, cfg) {
       }
     }
   } else if (k === 3) {
-    // 三中三胆拖：胆码1-2个，从拖码中补足
     if (danNums.length >= 1 && danNums.length <= 2) {
       const need = 3 - danNums.length;
       const tuoCombos = comboCombine(tuoNums, need);
@@ -1618,7 +1697,7 @@ async function saveComboOrder() {
   updateComboTotalDisplay();
   showToast('已保存连肖订单');
 }
-    // ===== 连肖统计函数 =====
+    // ===== 连肖统计函数（读取独立存储键，优先 comboDrawRecord_，卡片按高度排序） =====
 async function refreshLianxiaoStats() {
   const container = document.getElementById('lianxiaoStatsContainer');
   if (!container) return;
@@ -1639,27 +1718,38 @@ async function refreshLianxiaoStats() {
   const cfg = getAllConfigData();
   const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
 
+  // 读取当天开奖号码：优先读独立存储 comboDrawRecord_，没有则回退读 drawRecord_
   let drawNumbers = [];
   let drawZodiacs = [];
   const fdYear = fd.substring(0, 4);
-  const storageKey = `drawRecord_${currentRegion}_${fdYear}`;
-  try {
-    const savedData = JSON.parse(localStorage.getItem(storageKey) || '{}');
-    const currentIssue = getCurrentIssueNumber(parseInt(fdYear), fd);
-    if (currentIssue) {
-      const issueId = currentIssue.toString().padStart(2, '0');
-      const entry = savedData[issueId];
-      if (entry && entry.numbers && Array.isArray(entry.numbers)) {
-        entry.numbers.forEach(n => {
-          if (n && /^\d{2}$/.test(n) && parseInt(n) >= 1 && parseInt(n) <= 49) {
-            drawNumbers.push(n);
-            const zodiac = currentZodiacMap[n] || '';
-            if (zodiac) drawZodiacs.push(zodiac);
-          }
-        });
+  let storageKey = `comboDrawRecord_${currentRegion}_${fdYear}`;
+  let savedData = {};
+  try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
+  if (Object.keys(savedData).length === 0) {
+    storageKey = `drawRecord_${currentRegion}_${fdYear}`;
+    try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
+  }
+  const currentIssue = getCurrentIssueNumber(parseInt(fdYear), fd);
+  if (currentIssue) {
+    const issueId = currentIssue.toString().padStart(2, '0');
+    const entry = savedData[issueId];
+    if (entry && entry.numbers && Array.isArray(entry.numbers)) {
+      entry.numbers.forEach(n => {
+        if (n && /^\d{2}$/.test(n) && parseInt(n) >= 1 && parseInt(n) <= 49) {
+          drawNumbers.push(n);
+          const zodiac = currentZodiacMap[n] || '';
+          if (zodiac) drawZodiacs.push(zodiac);
+        }
+      });
+    } else if (entry && entry.number && entry.number.trim()) {
+      const n = entry.number.trim().padStart(2, '0');
+      if (/^\d{2}$/.test(n) && parseInt(n) >= 1 && parseInt(n) <= 49) {
+        drawNumbers.push(n);
+        const zodiac = currentZodiacMap[n] || '';
+        if (zodiac) drawZodiacs.push(zodiac);
       }
     }
-  } catch (e) {}
+  }
   const drawZodiacsSet = new Set(drawZodiacs);
   const drawNumbersSet = new Set(drawNumbers);
 
@@ -1721,7 +1811,7 @@ async function refreshLianxiaoStats() {
     'lianwei4':{odds:14,rebate:4},'lianwei4零尾':{odds:15,rebate:4},'lianwei5':{odds:28,rebate:4},'lianwei5零尾':{odds:30,rebate:4},
     'buzhong5':{odds:2,rebate:4},'buzhong6':{odds:2.5,rebate:4},'buzhong7':{odds:3,rebate:4},'buzhong8':{odds:3.5,rebate:4},
     'buzhong9':{odds:4,rebate:4},'buzhong10':{odds:5,rebate:4},'buzhong11':{odds:6,rebate:4},'buzhong12':{odds:7,rebate:4},
-    'zhong2':{odds:60,rebate:4},'zhong3':{odds:600,rebate:4},'pingma':{odds:1,rebate:4}
+    'zhong2':{odds:60,rebate:4},'zhong3':{odds:600,rebate:4},'pingma':{odds:7,rebate:4}
   };
   function getPlayOdds(type, hasSpecial) {
     let key = type;
@@ -1734,7 +1824,7 @@ async function refreshLianxiaoStats() {
   }
 
   let grandPL = 0;
-  let html = '';
+  const cardsArray = [];
   const order = ['pingtexiao','lianxiao2','lianxiao3','lianxiao4','lianxiao5','buzhong5','buzhong6','buzhong7','buzhong8','buzhong9','buzhong10','buzhong11','buzhong12','pingma','pingtewei','lianwei2','lianwei3','lianwei4','lianwei5','zhong2','zhong3'];
 
   order.forEach((type) => {
@@ -1793,13 +1883,19 @@ async function refreshLianxiaoStats() {
       cardHtml += ` 盈亏：<span style="color:${roundedCardPL>0?'#27ae60':(roundedCardPL<0?'#e74c3c':'')};">${roundedCardPL>0?roundedCardPL:(roundedCardPL<0?roundedCardPL:'')}</span>`;
     }
     cardHtml += '</div></div>';
-    html += cardHtml;
+
+    // 存入数组，用于按高度排序
+    cardsArray.push({ html: cardHtml, groups: totalGroups });
   });
-  container.innerHTML = html || '<div style="color:#666;text-align:center;padding:10px;">暂无连肖数据</div>';
+
+  // 按组合数量从矮到高排序
+  cardsArray.sort((a, b) => a.groups - b.groups);
+
+  container.innerHTML = cardsArray.map(c => c.html).join('') || '<div style="color:#666;text-align:center;padding:10px;">暂无连肖数据</div>';
   const roundedGrandPL = Math.round(grandPL);
-  let totalHtml = `<span style="color:#0000ff;">全部玩法下单金额：</span><span style="color:#e74c3c;">${grandTotal}</span>`;
+  let totalHtml = `<span style="color:#0000ff;">总下单金额：</span><span style="color:#e74c3c;">${grandTotal}</span>`;
   if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
-    totalHtml += ` &nbsp; <span style="color:#0000ff;">全部玩法总盈亏：</span><span style="color:${roundedGrandPL>0?'#27ae60':(roundedGrandPL<0?'#e74c3c':'')};">${roundedGrandPL>0?roundedGrandPL:(roundedGrandPL<0?roundedGrandPL:'')}</span>`;
+    totalHtml += ` &nbsp; <span style="color:#0000ff;">总盈亏：</span><span style="color:${roundedGrandPL>0?'#27ae60':(roundedGrandPL<0?'#e74c3c':'')};">${roundedGrandPL>0?roundedGrandPL:(roundedGrandPL<0?roundedGrandPL:'')}</span>`;
   }
   document.getElementById('lianxiaoStatsTotal').innerHTML = totalHtml;
 }
