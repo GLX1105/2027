@@ -88,13 +88,13 @@ input[type="number"]{-moz-appearance:textfield;}
   z-index: 1;
 }
 
-/* ===== 导航栏底部跑马灯光流细线（紧贴静态细线下方） ===== */
+/* ===== 导航栏底部跑马灯光流细线 ===== */
 .navbar::after {
   content: '';
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -4px;                  /* 紧贴静态细线下方 */
+  bottom: -4px;
   height: 2px;
   background: linear-gradient(
     90deg,
@@ -124,40 +124,39 @@ input[type="number"]{-moz-appearance:textfield;}
 .btn-macau{background:#c0392b!important;border-color:#e74c3c!important;color:#fff!important;font-weight:600;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(192,57,43,0.4);}
 .btn-hongkong{background:#2471a3!important;border-color:#2e86c1!important;color:#fff!important;font-weight:600;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(36,113,163,0.4);}
 .btn-yuegang{background:#27ae60!important;border-color:#2ecc71!important;color:#fff!important;font-weight:600;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(39,174,96,0.4);}
-
-/* 地区按钮高亮样式（保留原有静态阴影） */
 .btn-macau.region-active{background:#e74c3c!important;box-shadow:0 0 12px rgba(231,76,60,0.7);border-color:#f1948a!important;}
 .btn-hongkong.region-active{background:#2e86c1!important;box-shadow:0 0 12px rgba(46,134,193,0.7);border-color:#7fb3d8!important;}
 .btn-yuegang.region-active{background:#2ecc71!important;box-shadow:0 0 12px rgba(46,204,113,0.7);border-color:#58d68d!important;}
-
 .btn-recognize{background:#27ae60!important;border-color:#2ecc71!important;color:#fff!important;}
 .btn-recognize:hover{background:#2ecc71!important;}
 
-/* ===== 卡片呼吸灯动画 ===== */
-@keyframes breatheBorder {
-  0%, 100% { box-shadow: 0 0 4px rgba(231,76,60,0.3); }
-  50%      { box-shadow: 0 0 12px rgba(231,76,60,0.7); }
+/* ===== 卡片呼吸灯动画（叠加原有阴影） ===== */
+@keyframes breatheCard {
+  0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 0 4px rgba(231,76,60,0.3); }
+  50%      { box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 0 12px rgba(231,76,60,0.7); }
+}
+@keyframes breatheFloat {
+  0%, 100% { box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 4px rgba(231,76,60,0.3); }
+  50%      { box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 12px rgba(231,76,60,0.7); }
 }
 
-/* ===== 外层大卡片：默认红色边框，宽度1px，JS动态覆盖 ===== */
+/* ===== 卡片：保持原有边框宽度，只叠加呼吸动画 ===== */
 .card {
   background:#fff;
-  border:1px solid #e74c3c;  /* 保持原来的 1px 宽度，避免右侧布局被挤下 */
+  border:1px solid #e74c3c;
   border-radius:14px;
   padding:15px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.08);
   transition:all 0.25s ease, border-color 0.3s ease;
-  animation: breatheBorder 2.5s ease-in-out infinite;
+  animation: breatheCard 2.5s ease-in-out infinite;
 }
-.card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.12);}
+.card:hover{transform:translateY(-2px);}
 
-/* ===== 弹窗：默认红色边框，JS动态覆盖 ===== */
+/* ===== 弹窗：保持原有阴影，叠加呼吸动画 ===== */
 .floating-window {
   position:fixed;
   background:rgba(255,255,255,0.9);
   backdrop-filter:blur(10px);
   border-radius:16px;
-  box-shadow:0 20px 40px rgba(0,0,0,0.3);
   border:2px solid #e74c3c;
   display:flex;
   flex-direction:column;
@@ -167,7 +166,7 @@ input[type="number"]{-moz-appearance:textfield;}
   min-height:250px;
   z-index:2000;
   transition:border-color 0.3s ease;
-  animation: breatheBorder 2.5s ease-in-out infinite;
+  animation: breatheFloat 2.5s ease-in-out infinite;
 }
 
 .card-title{font-size:16px;font-weight:bold;color:#333;margin-bottom:12px;padding:10px 12px 8px;border-bottom:2px solid #e0e0e0;display:flex;align-items:center;flex-wrap:wrap;gap:6px;background-color:#e3f2fd;border-radius:10px 10px 0 0;overflow:visible;}
