@@ -81,7 +81,7 @@ input[type="number"]{-moz-appearance:textfield;}
   align-items:center;
   box-shadow:0 4px 15px rgba(0,0,0,0.15);
   flex-wrap:wrap;
-  border-bottom:2px solid var(--region-color, #e74c3c); /* 静态彩色细线，颜色跟随地区 */
+  border-bottom:2px solid #e74c3c; /* 默认红色，JS动态修改 */
   border-radius:0 0 20px 20px;
   transition: border-bottom-color 0.3s ease;
   position: relative;
@@ -94,7 +94,7 @@ input[type="number"]{-moz-appearance:textfield;}
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -4px;                  /* 紧贴静态细线下方 */
+  bottom: -4px;
   height: 2px;
   background: linear-gradient(
     90deg,
@@ -135,14 +135,14 @@ input[type="number"]{-moz-appearance:textfield;}
 
 /* ===== 卡片呼吸灯动画 ===== */
 @keyframes breatheBorder {
-  0%, 100% { box-shadow: 0 0 4px var(--breathe-color, rgba(231,76,60,0.3)); }
-  50%      { box-shadow: 0 0 12px var(--breathe-color, rgba(231,76,60,0.7)); }
+  0%, 100% { box-shadow: 0 0 4px rgba(231,76,60,0.3); }
+  50%      { box-shadow: 0 0 12px rgba(231,76,60,0.7); }
 }
 
-/* ===== 外层大卡片：加呼吸灯 ===== */
+/* ===== 外层大卡片：默认红色边框，JS动态覆盖 ===== */
 .card {
   background:#fff;
-  border:2px solid var(--region-color, #e74c3c);  /* 边框颜色跟随地区 */
+  border:2px solid #e74c3c;
   border-radius:14px;
   padding:15px;
   box-shadow:0 4px 12px rgba(0,0,0,0.08);
@@ -151,14 +151,14 @@ input[type="number"]{-moz-appearance:textfield;}
 }
 .card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.12);}
 
-/* ===== 弹窗：加呼吸灯 ===== */
+/* ===== 弹窗：默认红色边框，JS动态覆盖 ===== */
 .floating-window {
   position:fixed;
   background:rgba(255,255,255,0.9);
   backdrop-filter:blur(10px);
   border-radius:16px;
   box-shadow:0 20px 40px rgba(0,0,0,0.3);
-  border:2px solid var(--region-color, #e74c3c);  /* 边框颜色跟随地区 */
+  border:2px solid #e74c3c;
   display:flex;
   flex-direction:column;
   resize:both;
@@ -797,7 +797,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
   </div>
 </div>
 <script>
-<script>
 // ===== 密码解码函数 =====
 function decodePassword(encoded) { return atob(encoded); }
 
@@ -841,7 +840,6 @@ function showLoginScreen() { const overlay = document.createElement('div'); over
   document.getElementById('cardCodeInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('cardLoginBtn').click(); });
   document.getElementById('adminLoginBtn').onclick = () => { const pwd = document.getElementById('loginPassword').value.trim(); if (pwd === ADMIN_PASSWORD) { setAuthSession({ role: 'admin' }); overlay.remove(); initMainSystem(); } else showToast('管理员密码错误'); };
   document.getElementById('cardLoginBtn').onclick = () => { const code = document.getElementById('cardCodeInput').value.trim().toUpperCase(); if (!code) { showToast('请输入卡密'); return; } const result = checkCardAccess(code); if (result.valid) { setAuthSession({ role: 'card', cardCode: code }); overlay.remove(); initMainSystem(); } else showToast(result.reason); };
-  // 自动聚焦到管理员密码输入框
   setTimeout(() => { document.getElementById('loginPassword').focus(); }, 100);
 }
 function logout() { clearAuthSession(); location.reload(); }
@@ -884,7 +882,7 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// ===== 地区切换核心逻辑（含导航栏底部细线颜色 + CSS变量切换） =====
+// ===== 地区切换核心逻辑 =====
 let currentRegion = localStorage.getItem('currentRegion') || 'macau';
 function getCurrentRegion() { return currentRegion; }
 function setCurrentRegion(region) {
@@ -896,9 +894,9 @@ function setCurrentRegion(region) {
 
   // 颜色定义
   const colors = {
-    macau: { hex: '#e74c3c', rgb: '231,76,60' },
-    hongkong: { hex: '#3498db', rgb: '52,152,219' },
-    yuegang: { hex: '#27ae60', rgb: '46,204,113' }
+    macau: { hex: '#e74c3c' },
+    hongkong: { hex: '#3498db' },
+    yuegang: { hex: '#27ae60' }
   };
   const c = colors[region] || colors.macau;
 
@@ -906,10 +904,13 @@ function setCurrentRegion(region) {
   const navbar = document.getElementById('mainNavbar');
   if (navbar) navbar.style.borderBottomColor = c.hex;
 
-  // CSS 变量：卡片和弹窗的边框颜色
-  document.documentElement.style.setProperty('--region-color', c.hex);
-  // 呼吸灯颜色（半透明）
-  document.documentElement.style.setProperty('--breathe-color', `rgba(${c.rgb},0.7)`);
+  // 动态设置所有卡片边框
+  document.querySelectorAll('.card').forEach(el => { el.style.borderColor = c.hex; });
+  // 动态设置所有弹窗边框
+  document.querySelectorAll('.floating-window').forEach(el => { el.style.borderColor = c.hex; });
+
+  // 呼吸灯颜色（通过 CSS 变量传给动画）
+  document.documentElement.style.setProperty('--breathe-color', c.hex);
 }
 
 async function switchRegion(region) {
@@ -1497,7 +1498,7 @@ window.comboGenerate = function(comboType) {
   const lines = rawText.split('\n');
   const allResults = [];
   window._comboPureContents = [];
-  window._lastComboType = comboType; // 记录当前玩法类型，供 saveComboOrder 使用
+  window._lastComboType = comboType;
 
   lines.forEach(line => {
     line = line.trim();
@@ -1645,7 +1646,6 @@ window.comboGenerate = function(comboType) {
       results = combos.map(c => ({ combo: c, amount: amount }));
     }
 
-    // ===== 无组合结果时标红提示 =====
     if (results.length === 0) {
       let actualElements = [];
       if (comboType.startsWith('lianxiao')) { actualElements = zodiacs; }
@@ -1687,7 +1687,6 @@ window.comboGenerate = function(comboType) {
     const comboNumberMap = { lianxiao2: '二', lianxiao3: '三', lianxiao4: '四', lianxiao5: '五', lianwei2: '二', lianwei3: '三', lianwei4: '四', lianwei5: '五' };
     const comboNumStr = comboNumberMap[comboType] || '';
 
-    // ===== 拼接时加括号（仅多元素组合） =====
     if (comboType.startsWith('lianxiao')) {
       const withYear = [], withoutYear = [];
       results.forEach(r => { (r.combo.some(z => z === curYearZodiac) ? withYear : withoutYear).push(r); });
@@ -1715,13 +1714,11 @@ window.comboGenerate = function(comboType) {
         allResults.push(hasWarning ? `<span style="color:red;">${comboNumStr}连尾 ${withoutStr} 各组 ${amount}（${warningText}）</span>` : `${comboNumStr}连尾 ${withoutStr} 各组 ${amount}`);
       }
     } else if (comboType === 'pingma') {
-      // 平码不加括号
       const str = results.map(r => r.combo.join('-')).join(' ');
       const pureLine = `${str} 各组 ${amount}`;
       window._comboPureContents.push(pureLine);
       allResults.push(hasWarning ? `<span style="color:red;">平码 ${str} 各组 ${amount}（${warningText}）</span>` : `平码 ${str} 各组 ${amount}`);
     } else {
-      // 不中、二中二、三中三等，加括号
       const typeLabel = getComboTypeLabel(comboType);
       const str = results.map(r => '(' + r.combo.join('-') + ')').join(' ');
       const pureLine = `${str} 各组 ${amount}`;
@@ -1842,7 +1839,7 @@ async function saveComboOrder() {
   const user = document.getElementById('comboUserSelect')?.value;
   if (!user) { showToast('请先选择用户'); return; }
   const date = document.getElementById('filterDate')?.value || getTodayCST();
-  const comboType = window._lastComboType || 'combo'; // 从临时变量获取玩法类型
+  const comboType = window._lastComboType || 'combo';
   const pureText = window._comboPureContents.join('\n');
   let totalAmount = 0;
   const cfg = getAllConfigData();
@@ -1862,7 +1859,7 @@ async function saveComboOrder() {
     });
   });
 
-  await saveComboOrderRecordToIDB(pureText, user, date, totalAmount, comboType); // 传入玩法类型
+  await saveComboOrderRecordToIDB(pureText, user, date, totalAmount, comboType);
   addOperationLog('save_order', pureText, currentRegion, user, totalAmount);
   savePingtexiaoData(pingtexiaoData);
   renderPingtexiaoTable(); updatePingtexiaoTotal();
@@ -2059,7 +2056,6 @@ async function refreshLianxiaoStats() {
     grandPL += cardPL;
     const roundedCardPL = Math.round(cardPL);
 
-    // 滚动容器 max-height 调为 400px
     cardHtml += `<div style="max-height:400px;overflow-y:auto;">${tablesHtml}</div>`;
     cardHtml += `<div style="border-top:1px solid #ddd;margin-top:4px;padding-top:4px;font-size:11px;text-align:center;">小计：${totalGroups}组 金额：${totalAmount}`;
     if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
@@ -2072,7 +2068,6 @@ async function refreshLianxiaoStats() {
   cardsArray.sort((a, b) => a.groups - b.groups);
   container.innerHTML = cardsArray.map(c => c.html).join('') || '<div style="color:#666;text-align:center;padding:10px;">暂无连肖数据</div>';
   const roundedGrandPL = Math.round(grandPL);
-  // 总下单金额数值改为蓝色
   let totalHtml = `<span style="color:#0000ff;">总下单金额：</span><span style="color:#0000ff;">${grandTotal}</span>`;
   if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
     totalHtml += ` &nbsp; <span style="color:#0000ff;">总盈亏：</span><span style="color:${roundedGrandPL>0?'#27ae60':(roundedGrandPL<0?'#e74c3c':'')};">${roundedGrandPL>0?roundedGrandPL:(roundedGrandPL<0?roundedGrandPL:'')}</span>`;
