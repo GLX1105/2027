@@ -98,19 +98,105 @@ input[type="number"]{-moz-appearance:textfield;}
 .btn-yuegang{background:#27ae60!important;border-color:#2ecc71!important;color:#fff!important;font-weight:600;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(39,174,96,0.4);}
 .btn-yuegang.region-active{background:#2ecc71!important;box-shadow:0 0 12px rgba(46,204,113,0.7);border-color:#58d68d!important;}
 
-/* 五颜六色呼吸灯动画 */
-@keyframes breathe-rainbow {
-  0%   { box-shadow: 0 0 8px rgba(231, 76, 60, 0.8); }
-  20%  { box-shadow: 0 0 8px rgba(46, 134, 193, 0.8); }
-  40%  { box-shadow: 0 0 8px rgba(46, 204, 113, 0.8); }
-  60%  { box-shadow: 0 0 8px rgba(241, 196, 15, 0.8); }
-  80%  { box-shadow: 0 0 8px rgba(155, 89, 182, 0.8); }
-  100% { box-shadow: 0 0 8px rgba(231, 76, 60, 0.8); }
+/* 五颜六色跑马灯灯珠旋转动画 */
+@keyframes marquee-lights {
+  0%   { box-shadow:
+          0px -8px 0 2px rgba(231,76,60,1),     /* 上方 - 红 */
+          6px -6px 0 2px rgba(46,134,193,0.8),   /* 右上 - 蓝 */
+          8px 0px 0 2px rgba(46,204,113,0.6),    /* 右 - 绿 */
+          6px 6px 0 2px rgba(241,196,15,0.4),    /* 右下 - 金 */
+          0px 8px 0 2px rgba(155,89,182,0.2),    /* 下 - 紫 */
+          -6px 6px 0 2px rgba(231,76,60,0.1),    /* 左下 */
+          -8px 0px 0 2px rgba(46,134,193,0.1),   /* 左 */
+          -6px -6px 0 2px rgba(46,204,113,0.1);  /* 左上 */
+  }
+  12.5% { box-shadow:
+          0px -8px 0 2px rgba(46,204,113,0.1),
+          6px -6px 0 2px rgba(231,76,60,1),
+          8px 0px 0 2px rgba(46,134,193,0.8),
+          6px 6px 0 2px rgba(46,204,113,0.6),
+          0px 8px 0 2px rgba(241,196,15,0.4),
+          -6px 6px 0 2px rgba(155,89,182,0.2),
+          -8px 0px 0 2px rgba(231,76,60,0.1),
+          -6px -6px 0 2px rgba(46,134,193,0.1);
+  }
+  25%  { box-shadow:
+          0px -8px 0 2px rgba(46,134,193,0.1),
+          6px -6px 0 2px rgba(46,204,113,0.1),
+          6px -6px 0 2px rgba(231,76,60,1),
+          8px 0px 0 2px rgba(46,134,193,0.8),
+          6px 6px 0 2px rgba(46,204,113,0.6),
+          0px 8px 0 2px rgba(241,196,15,0.4),
+          -6px 6px 0 2px rgba(155,89,182,0.2),
+          -8px 0px 0 2px rgba(231,76,60,0.1);
+  }
+  37.5% { box-shadow:
+          0px -8px 0 2px rgba(155,89,182,0.1),
+          6px -6px 0 2px rgba(46,134,193,0.1),
+          8px 0px 0 2px rgba(46,204,113,0.1),
+          6px 6px 0 2px rgba(231,76,60,1),
+          0px 8px 0 2px rgba(46,134,193,0.8),
+          -6px 6px 0 2px rgba(46,204,113,0.6),
+          -8px 0px 0 2px rgba(241,196,15,0.4),
+          -6px -6px 0 2px rgba(155,89,182,0.2);
+  }
+  50%  { box-shadow:
+          0px -8px 0 2px rgba(241,196,15,0.2),
+          6px -6px 0 2px rgba(155,89,182,0.1),
+          8px 0px 0 2px rgba(46,134,193,0.1),
+          6px 6px 0 2px rgba(46,204,113,0.1),
+          0px 8px 0 2px rgba(231,76,60,1),
+          -6px 6px 0 2px rgba(46,134,193,0.8),
+          -8px 0px 0 2px rgba(46,204,113,0.6),
+          -6px -6px 0 2px rgba(241,196,15,0.4);
+  }
+  62.5% { box-shadow:
+          0px -8px 0 2px rgba(46,204,113,0.4),
+          6px -6px 0 2px rgba(241,196,15,0.2),
+          8px 0px 0 2px rgba(155,89,182,0.1),
+          6px 6px 0 2px rgba(46,134,193,0.1),
+          0px 8px 0 2px rgba(46,204,113,0.1),
+          -6px 6px 0 2px rgba(231,76,60,1),
+          -8px 0px 0 2px rgba(46,134,193,0.8),
+          -6px -6px 0 2px rgba(46,204,113,0.6);
+  }
+  75%  { box-shadow:
+          0px -8px 0 2px rgba(46,134,193,0.6),
+          6px -6px 0 2px rgba(46,204,113,0.4),
+          8px 0px 0 2px rgba(241,196,15,0.2),
+          6px 6px 0 2px rgba(155,89,182,0.1),
+          0px 8px 0 2px rgba(46,134,193,0.1),
+          -6px 6px 0 2px rgba(46,204,113,0.1),
+          -8px 0px 0 2px rgba(231,76,60,1),
+          -6px -6px 0 2px rgba(46,134,193,0.8);
+  }
+  87.5% { box-shadow:
+          0px -8px 0 2px rgba(46,134,193,0.8),
+          6px -6px 0 2px rgba(46,134,193,0.6),
+          8px 0px 0 2px rgba(46,204,113,0.4),
+          6px 6px 0 2px rgba(241,196,15,0.2),
+          0px 8px 0 2px rgba(155,89,182,0.1),
+          -6px 6px 0 2px rgba(46,134,193,0.1),
+          -8px 0px 0 2px rgba(46,204,113,0.1),
+          -6px -6px 0 2px rgba(231,76,60,1);
+  }
+  100% { box-shadow:
+          0px -8px 0 2px rgba(231,76,60,1),
+          6px -6px 0 2px rgba(46,134,193,0.8),
+          8px 0px 0 2px rgba(46,204,113,0.6),
+          6px 6px 0 2px rgba(241,196,15,0.4),
+          0px 8px 0 2px rgba(155,89,182,0.2),
+          -6px 6px 0 2px rgba(231,76,60,0.1),
+          -8px 0px 0 2px rgba(46,134,193,0.1),
+          -6px -6px 0 2px rgba(46,204,113,0.1);
+  }
 }
+
+/* 只给当前选中按钮加跑马灯，保留高亮背景色 */
 .btn-macau.region-active,
 .btn-hongkong.region-active,
 .btn-yuegang.region-active {
-  animation: breathe-rainbow 3s ease-in-out infinite;
+  animation: marquee-lights 1.5s linear infinite;
 }
 
 .btn-recognize{background:#27ae60!important;border-color:#2ecc71!important;color:#fff!important;}
