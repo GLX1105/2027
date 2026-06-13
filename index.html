@@ -2308,7 +2308,7 @@ function convertOrderText() { const inputEl = document.querySelector('.source-or
   // ===== 修改：isValidToken 也接受 "分类名+纯数字金额" 格式（如 蓝波100、单100） =====
   function isValidToken(token) { const clean = token.replace(PUNCT_REGEX, ''); if (clean === '') return false; if (isValidNumber(clean)) return true; if (/^\d+尾$/.test(clean) || /^\d+头$/.test(clean)) return true; if (allCatNames.has(clean)) return true; if (/^[\u4e00-\u9fa5]+$/.test(clean) && clean.length > 1) { const chars = clean.split(''); if (chars.every(ch => allCatNames.has(ch))) return true; } // 新增：匹配 "有效分类名+纯数字" 格式 const catMatch = clean.match(/^([\u4e00-\u9fa5]+)(\d+)$/); if (catMatch) { const catName = catMatch[1]; if (allCatNames.has(catName) && getCategoryNumCount(catName, cfg) > 0) return true; } return false; } lines.forEach(line => { line = line.trim(); if (!line) return;
     // ===== 新增：优先匹配 "有效分类名 + 纯数字金额" 格式 =====
-    const quickMatch = line.match(new RegExp(`^([\\u4e00-\\u9fa5]+)(\\d+)${AMTS}$`));
+    const quickMatch = line.match(new RegExp("^([\\u4e00-\\u9fa5]+)(\\d+)" + AMTS + "$"));
     if (quickMatch) {
       const catName = quickMatch[1];
       const rawAmount = parseInt(quickMatch[2]);
