@@ -94,7 +94,7 @@ input[type="number"]{-moz-appearance:textfield;}
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -4px;
+  bottom: -4px;                  /* 紧贴静态细线下方 */
   height: 2px;
   background: linear-gradient(
     90deg,
@@ -139,10 +139,10 @@ input[type="number"]{-moz-appearance:textfield;}
   50%      { box-shadow: 0 0 12px rgba(231,76,60,0.7); }
 }
 
-/* ===== 外层大卡片：默认红色边框，JS动态覆盖 ===== */
+/* ===== 外层大卡片：默认红色边框，宽度1px，JS动态覆盖 ===== */
 .card {
   background:#fff;
-  border:2px solid #e74c3c;
+  border:1px solid #e74c3c;  /* 保持原来的 1px 宽度，避免右侧布局被挤下 */
   border-radius:14px;
   padding:15px;
   box-shadow:0 4px 12px rgba(0,0,0,0.08);
