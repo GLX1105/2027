@@ -277,7 +277,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .log-type-restore{background:#d4edda;color:#155724;}
 .log-type-switch{background:#e8daef;color:#6c3483;}
 
-/* ===== 修改：录开奖输入框样式（去掉下划线，支持色块） ===== */
 .draw-number-input-plain {
     width: 24px;
     padding: 2px 1px; 
@@ -295,7 +294,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
     color: inherit; 
 }
 
-/* 波色背景 */
 .draw-number-input-plain.bg-red, 
 .draw-zodiac-plain.bg-red { background: #e74c3c; color: #fff; }
 .draw-number-input-plain.bg-blue, 
@@ -303,7 +301,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .draw-number-input-plain.bg-green, 
 .draw-zodiac-plain.bg-green { background: #27ae60; color: #fff; }
 
-/* 生肖文字样式 */
 .draw-zodiac-plain { 
     font-size: 12px; 
     font-weight: bold; 
@@ -314,7 +311,6 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
     padding: 2px 0; 
 }
 
-/* 单元格紧凑 */
 .pt-num-cell { 
     padding: 0 1px; 
     text-align: center; 
@@ -1150,7 +1146,6 @@ function getBgClassForNum(num) {
 
 // ===== 辅助函数：获取分类包含的号码总数（用于均分逻辑） =====
 function getCategoryNumCount(cat, cfg) {
-  // 直接分类
   if (cfg.wuxing[cat]) return cfg.wuxing[cat].length;
   if (cfg.bose[cat]) return cfg.bose[cat].length;
   if (cfg.banbo[cat]) return cfg.banbo[cat].length;
@@ -1168,7 +1163,6 @@ function getCategoryNumCount(cat, cfg) {
   if (cfg.heshudanshuang[cat]) return cfg.heshudanshuang[cat].length;
   if (cfg.toushuDanshuang[cat]) return cfg.toushuDanshuang[cat].length;
   if (cfg.zodiac[cat]) return cfg.zodiac[cat].length;
-  // 生肖属性
   if (cfg.shengxiaoAttr[cat]) {
     let total = 0;
     cfg.shengxiaoAttr[cat].forEach(z => {
@@ -1176,36 +1170,35 @@ function getCategoryNumCount(cat, cfg) {
     });
     return total;
   }
-  // 半波颜色+大小的组合
   if (cat === '蓝大' || cat === '蓝波大') {
     const lanbo = cfg.bose['蓝波']||[];
     const dashu = cfg.daxiao['大']||[];
-    return lanbo.filter(n => dashu.includes(n)).length;
+    return lanbo.filter(x => dashu.includes(x)).length;
   }
   if (cat === '蓝小' || cat === '蓝波小') {
     const lanbo = cfg.bose['蓝波']||[];
     const xiao = cfg.daxiao['小']||[];
-    return lanbo.filter(n => xiao.includes(n)).length;
+    return lanbo.filter(x => xiao.includes(x)).length;
   }
   if (cat === '红大' || cat === '红波大') {
     const hongbo = cfg.bose['红波']||[];
     const dashu = cfg.daxiao['大']||[];
-    return hongbo.filter(n => dashu.includes(n)).length;
+    return hongbo.filter(x => dashu.includes(x)).length;
   }
   if (cat === '红小' || cat === '红波小') {
     const hongbo = cfg.bose['红波']||[];
     const xiao = cfg.daxiao['小']||[];
-    return hongbo.filter(n => xiao.includes(n)).length;
+    return hongbo.filter(x => xiao.includes(x)).length;
   }
   if (cat === '绿大' || cat === '绿波大') {
     const lvbo = cfg.bose['绿波']||[];
     const dashu = cfg.daxiao['大']||[];
-    return lvbo.filter(n => dashu.includes(n)).length;
+    return lvbo.filter(x => dashu.includes(x)).length;
   }
   if (cat === '绿小' || cat === '绿波小') {
     const lvbo = cfg.bose['绿波']||[];
     const xiao = cfg.daxiao['小']||[];
-    return lvbo.filter(n => xiao.includes(n)).length;
+    return lvbo.filter(x => xiao.includes(x)).length;
   }
   return 0;
 }
@@ -2304,7 +2297,7 @@ async function resetPresetsToDefault(){
   localStorage.setItem('categoryAliases',JSON.stringify(defaultAliases));
   renderPresetList(); showToast('已恢复默认替换预设和分类缩写');
 }
-   function applyCategoryAliases(text) { const a=getCategoryAliases(); if(!a.length)return text; const s=[...a].sort((x,y)=>y.alias.length-x.alias.length); let r=text; s.forEach(x=>{ if(x.alias&&x.target)r=r.split(x.alias).join(x.target); }); return r; }
+    function applyCategoryAliases(text) { const a=getCategoryAliases(); if(!a.length)return text; const s=[...a].sort((x,y)=>y.alias.length-x.alias.length); let r=text; s.forEach(x=>{ if(x.alias&&x.target)r=r.split(x.alias).join(x.target); }); return r; }
 
 function applyReplacePresets(text) { const p = getReplacePresets(); let r = text; p.forEach(x => { if (x.old && x.new) { const escapedOld = x.old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const regex = new RegExp(escapedOld, 'g'); r = r.replace(regex, x.new); } }); return r; }
 
@@ -2674,8 +2667,7 @@ async function disableCard(index) { if (!(await confirm('确定禁用该卡密�
 async function enableCard(index) { const keys = getCardKeys(); keys[index].status = 'active'; saveCardKeys(keys); renderCardList(); }
 async function deleteCard(index) { if (!(await confirm('确定删除该卡密？'))) return; const keys = getCardKeys(); keys.splice(index, 1); saveCardKeys(keys); renderCardList(); }
 
-function showUserManager() { if (document.getElementById('userManagerWin')) return; const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'userManagerWin'; win.style.width = '450px'; win.style.height = '400px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; win.innerHTML = `<div class="modal-header"><h3>管理用户</h3><div class="window-controls"><button onclick="maximizeWindow('userManagerWin')">🗖</button><button onclick="document.getElementById('userManagerWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newUserName" placeholder="用户名" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addUserAction()" style="padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="userList"></div></div><div class="modal-footer"><button onclick="document.getElementById('userManagerWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(win); renderUserList(); makeWindowDraggable('userManagerWin'); highestZ += 1; win.style.zIndex = highestZ;
-  setTimeout(() => { const input = document.getElementById('newUserName'); if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { addUserAction(); } }); }, 100); }
+function showUserManager() { if (document.getElementById('userManagerWin')) return; const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'userManagerWin'; win.style.width = '450px'; win.style.height = '400px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)'; win.innerHTML = `<div class="modal-header"><h3>管理用户</h3><div class="window-controls"><button onclick="maximizeWindow('userManagerWin')">🗖</button><button onclick="document.getElementById('userManagerWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newUserName" placeholder="用户名" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addUserAction()" style="padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="userList"></div></div><div class="modal-footer"><button onclick="document.getElementById('userManagerWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(win); renderUserList(); makeWindowDraggable('userManagerWin'); highestZ += 1; win.style.zIndex = highestZ; }
 function renderUserList() { const users = getUsers(); const container = document.getElementById('userList'); if (!container) return; if (users.length === 0) { container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">暂无用户</div>'; return; } container.innerHTML = users.map(u => `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px;border:1px solid #eee;border-radius:4px;"><span style="flex:1;">${u}</span><button onclick="deleteUserAction('${u}')" style="background:#e74c3c;color:#fff;border:none;padding:2px 8px;border-radius:3px;">删除</button></div>`).join(''); }
 async function addUserAction() { const name = document.getElementById('newUserName')?.value.trim(); if (!name) { showToast('请输入用户名'); return; } if (addUser(name)) { document.getElementById('newUserName').value = ''; renderUserList(); updateSelects(); showToast('用户添加成功'); } }
 async function deleteUserAction(name) { if (!(await confirm(`确定删除用户"${name}"及其数据吗？`))) return; deleteUser(name); renderUserList(); updateSelects(); showToast('用户已删除'); }
