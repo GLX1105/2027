@@ -205,8 +205,6 @@ body[data-region="yuegang"] .floating-window::after { border-color: #27ae60; }
     white-space:nowrap;
     letter-spacing:0.5px;
 }
-/* 合计行数用黑色字体 */
-#orderLineCount { color: #000 !important; }
 /* 最大亏损显示 */
 #maxLossDisplay {
     font-size:12px;
@@ -2579,7 +2577,7 @@ function updateOrderTotalDisplay(){
   const lines=txt.split('\n'); const cfg=getAllConfigData(); const keys=getAllValidCategories(cfg); let total=0; let validLineCount=0;
   lines.forEach(line=>{ const{numbers,zodiacs,amount}=countItemsInLine(line,cfg,keys); let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(cfg.zodiac[z]||[]).length;}); if(cnt>0 && amount>0){ total+=cnt*amount; validLineCount++; } });
   span.textContent=total;
-  if(total>0){ box.style.display='inline-flex'; if(lineCountSpan){ lineCountSpan.textContent = validLineCount+'行'; lineCountSpan.style.display = 'inline'; } }
+  if(total>0){ box.style.display='inline-flex'; if(lineCountSpan){ lineCountSpan.innerHTML = '<span style="color:#000;">' + validLineCount + '</span>行'; lineCountSpan.style.display = 'inline'; } }
   else { box.style.display='none'; if(lineCountSpan) lineCountSpan.style.display='none'; }
 }
 function computeCurrentOrderTotal(){ const re=document.getElementById('orderResult'); if(!re)return 0; const txt=re.innerText.trim(); if(!txt)return 0; const lines=txt.split('\n'); const cfg=getAllConfigData(); const keys=getAllValidCategories(cfg); let total=0; lines.forEach(line=>{ const{numbers,zodiacs,amount}=countItemsInLine(line,cfg,keys); let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(cfg.zodiac[z]||[]).length;}); if(cnt>0)total+=cnt*amount; }); return total; }
