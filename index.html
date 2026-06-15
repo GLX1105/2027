@@ -1055,7 +1055,7 @@ function renderCustomConfigContainer() { const container = document.getElementBy
 async function addCustomCategory() { const label = await prompt('请输入新分类名称（如：大尾）'); if (!label) return; const value = await prompt(`请输入"${label}"对应的号码或分类名（空格分隔，例如：01 02 牛 马）`); if (value === null) return; const cats = loadCustomCategories(); cats.push({ label, value: value.trim() }); saveCustomCategories(cats); renderCustomConfigContainer(); showToast('自定义分类已添加，请点击"保存"按钮存储配置'); }
 async function deleteCustomCategory() { const cats = loadCustomCategories(); if (cats.length === 0) { showToast('没有可删除的自定义分类'); return; } const labels = cats.map((c,i) => `${i+1}. ${c.label}`).join('\n'); const idxStr = await prompt(`请输入要删除的分类编号：\n${labels}`); if (!idxStr) return; const idx = parseInt(idxStr) - 1; if (isNaN(idx) || idx < 0 || idx >= cats.length) { showToast('无效编号'); return; } cats.splice(idx, 1); saveCustomCategories(cats); renderCustomConfigContainer(); showToast('自定义分类已删除，请点击"保存"按钮使更改生效'); }
 function deleteCustomCategoryByIndex(index) { const cats = loadCustomCategories(); cats.splice(index, 1); saveCustomCategories(cats); renderCustomConfigContainer(); }
-    // ===== 订单变量与基础函数 =====
+   // ===== 订单变量与基础函数 =====
 let tableBetData = {}, userBetData = {}, reportBetData = {}, reportAmountData = {}, reportRiskData = {};
 let numberCount = {}, zodiacCount = {}, numberAmountCount = {}, zodiacAmountCount = {};
 let zodiacDirectAmount = {}, zodiacFilteredAmount = {};
@@ -1441,17 +1441,17 @@ function showDuiJiangWin() {
   drawTableHtml += '</tr></table>';
 
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'duiJiangWin';
-  win.style.width = '900px'; win.style.height = '750px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
-  win.setAttribute('data-orig-width', '900px'); win.setAttribute('data-orig-height', '750px');
+  win.style.width = '950px'; win.style.height = '750px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
+  win.setAttribute('data-orig-width', '950px'); win.setAttribute('data-orig-height', '750px');
   win.innerHTML = `
     <div class="modal-header">🏆 兑奖窗口<div class="window-controls"><button onclick="maximizeWindow('duiJiangWin')">🗖</button><button onclick="document.getElementById('duiJiangWin').remove()">×</button></div></div>
     <div class="modal-body" style="overflow-y:auto; padding:10px;">
       <div class="duijiang-section-title">📋 下单统计</div>
-      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangOrderTable"><thead><tr><th>用户</th><th>下单总额</th><th>中奖详情</th><th>盈亏</th></tr></thead><tbody id="duiJiangOrderBody"><tr><td colspan="4" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
+      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangOrderTable"><thead><tr><th>用户</th><th>下单总额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead><tbody id="duiJiangOrderBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
       <div class="duijiang-section-title">📤 上报统计</div>
-      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangReportTable"><thead><tr><th>用户</th><th>上报总额</th><th>中奖详情</th><th>盈亏</th></tr></thead><tbody id="duiJiangReportBody"><tr><td colspan="4" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
+      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangReportTable"><thead><tr><th>用户</th><th>上报总额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead><tbody id="duiJiangReportBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
       <div class="duijiang-section-title">📊 最终合计</div>
-      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangFinalTable"><thead><tr><th>净金额</th><th>中奖详情</th><th>总返水</th><th>净盈亏</th></tr></thead><tbody id="duiJiangFinalBody"><tr><td colspan="4" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
+      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangFinalTable"><thead><tr><th>净金额</th><th>净返水</th><th>中奖详情</th><th>净盈亏</th></tr></thead><tbody id="duiJiangFinalBody"><tr><td colspan="4" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
       <div class="duijiang-section-title">🎰 录开奖</div>
       ${drawTableHtml}
       <div style="display:flex; gap:6px; margin-top:6px; justify-content:center;">
@@ -1469,6 +1469,30 @@ async function saveDuiJiangDraw() {
   refreshDuiJiangStats();
 }
 
+function formatHitDetails(hitMap) {
+  if (!hitMap || Object.keys(hitMap).length === 0) return '未中奖';
+  const order = ['特码','平特肖','二连肖','三连肖','四连肖','五连肖','平特尾','二连尾','三连尾','四连尾','五连尾','五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中','二中二','三中三','平码'];
+  const parts = [];
+  order.forEach(type => { if (hitMap[type] && hitMap[type] > 0) parts.push(type + hitMap[type]); });
+  for (const k in hitMap) { if (!order.includes(k) && hitMap[k] > 0) parts.push(k + hitMap[k]); }
+  return parts.length > 0 ? parts.join(' ') : '未中奖';
+}
+
+function getComboOddsConfig(comboType) {
+  const defaults = { lianxiao2: { odds: 4, rebate: 4 }, lianxiao3: { odds: 10, rebate: 4 }, lianxiao4: { odds: 30, rebate: 4 }, lianxiao5: { odds: 100, rebate: 4 }, lianwei2: { odds: 3, rebate: 4 }, lianwei3: { odds: 6, rebate: 4 }, lianwei4: { odds: 14, rebate: 4 }, lianwei5: { odds: 28, rebate: 4 }, buzhong5: { odds: 2, rebate: 4 }, buzhong6: { odds: 2.5, rebate: 4 }, buzhong7: { odds: 3, rebate: 4 }, buzhong8: { odds: 3.5, rebate: 4 }, buzhong9: { odds: 4, rebate: 4 }, buzhong10: { odds: 5, rebate: 4 }, buzhong11: { odds: 6, rebate: 4 }, buzhong12: { odds: 7, rebate: 4 }, pingtexiao: { odds: 2, rebate: 4 }, pingtewei: { odds: 1.8, rebate: 4 }, zhong2: { odds: 60, rebate: 4 }, zhong3: { odds: 600, rebate: 4 }, pingma: { odds: 7, rebate: 4 } };
+  const def = defaults[comboType] || { odds: 2, rebate: 4 };
+  const oddsData = getOddsData();
+  let odds = def.odds, rebate = def.rebate;
+  if (oddsData[comboType]) { odds = parseFloat(oddsData[comboType].odds) || def.odds; rebate = parseFloat(oddsData[comboType].rebate) || def.rebate; }
+  return { odds, rebate };
+}
+
+function formatPLColor(value) {
+  if (value > 0) return 'color:#008000;font-weight:bold;';
+  if (value < 0) return 'color:#ff0000;font-weight:bold;';
+  return '';
+}
+
 function refreshDuiJiangStats() {
   const orderBody = document.getElementById('duiJiangOrderBody');
   const reportBody = document.getElementById('duiJiangReportBody');
@@ -1480,13 +1504,17 @@ function refreshDuiJiangStats() {
   const storageKey = `comboDrawRecord_${currentRegion}_${year}`;
   let savedData = {}; try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
   const issueNumber = getCurrentIssueNumber(year, fd);
-  if (!issueNumber) { orderBody.innerHTML = '<tr><td colspan="4">无法获取期号</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = orderBody.innerHTML; return; }
+  if (!issueNumber) { orderBody.innerHTML = '<tr><td colspan="5">无法获取期号</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = '<tr><td colspan="4">无法获取期号</td></tr>'; return; }
   const issueId = issueNumber.toString().padStart(2, '0');
   const entry = savedData[issueId];
-  if (!entry || !entry.numbers || entry.numbers.length === 0) { orderBody.innerHTML = '<tr><td colspan="4">未录入开奖号码</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = orderBody.innerHTML; return; }
+  if (!entry || !entry.numbers || entry.numbers.length === 0) { orderBody.innerHTML = '<tr><td colspan="5">未录入开奖号码</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = '<tr><td colspan="4">未录入开奖号码</td></tr>'; return; }
   const drawNumbers = []; const drawZodiacs = [];
   entry.numbers.forEach(n => { if (n && /^\d{2}$/.test(n) && parseInt(n) >= 1 && parseInt(n) <= 49) { drawNumbers.push(n); const z = currentZodiacMap[n] || ''; if (z) drawZodiacs.push(z); } });
-  if (drawNumbers.length === 0) { orderBody.innerHTML = '<tr><td colspan="4">开奖号码无效</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = orderBody.innerHTML; return; }
+  if (drawNumbers.length === 0) { orderBody.innerHTML = '<tr><td colspan="5">开奖号码无效</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = '<tr><td colspan="4">开奖号码无效</td></tr>'; return; }
+
+  const drawZodiacsSet = new Set(drawZodiacs);
+  const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
+  const multiple = parseFloat(document.getElementById('multipleVal')?.value) || 47;
 
   const allOrdersPromise = getOrderRecords().then(recs => recs.filter(r => r.date === fd));
   const allReportsPromise = getReportOrderRecords().then(recs => recs.filter(r => r.date === fd));
@@ -1497,99 +1525,112 @@ function refreshDuiJiangStats() {
     const userStats = {};
     const allRecords = [...orders, ...combos];
     allRecords.forEach(rec => {
-      const user = rec.user || '未知'; if (!userStats[user]) userStats[user] = { orderTotal: 0, orderHitDetails: [], orderPL: 0, reportTotal: 0, reportHitDetails: [], reportPL: 0 };
+      const user = rec.user || '未知'; if (!userStats[user]) userStats[user] = { orderTotal: 0, orderHitMap: {}, orderPL: 0, orderRebate: 0, reportTotal: 0, reportHitMap: {}, reportPL: 0, reportRebate: 0 };
       const lines = rec.content.split('\n');
       lines.forEach(line => {
         const comboMatch = line.match(/^(.+?)\s+各组\s+(\d+)$/);
-        if (comboMatch) { processComboLine(userStats[user], comboMatch, drawZodiacs, rec); return; }
+        if (comboMatch) { processDuiJiangComboLine(userStats[user], comboMatch, drawZodiacsSet, drawNumbers, rebateRate, multiple); return; }
         const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-        if (normalMatch) { processNormalLine(userStats[user], normalMatch, drawNumbers, cfg, rec); }
+        if (normalMatch) { processDuiJiangNormalLine(userStats[user], normalMatch, drawNumbers, cfg, rebateRate, multiple, 'order'); }
       });
     });
     reports.forEach(rec => {
-      const user = rec.user || '未知'; if (!userStats[user]) userStats[user] = { orderTotal: 0, orderHitDetails: [], orderPL: 0, reportTotal: 0, reportHitDetails: [], reportPL: 0 };
+      const user = rec.user || '未知'; if (!userStats[user]) userStats[user] = { orderTotal: 0, orderHitMap: {}, orderPL: 0, orderRebate: 0, reportTotal: 0, reportHitMap: {}, reportPL: 0, reportRebate: 0 };
       const lines = rec.content.split('\n');
       lines.forEach(line => {
         const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-        if (normalMatch) { processReportLine(userStats[user], normalMatch, drawNumbers, cfg); }
+        if (normalMatch) { processDuiJiangNormalLine(userStats[user], normalMatch, drawNumbers, cfg, rebateRate, multiple, 'report'); }
       });
     });
 
-    let orderHtml = '', reportHtml = '', sumOrderTotal = 0, sumOrderPL = 0, sumReportTotal = 0, sumReportPL = 0, sumOrderHit = 0, sumReportHit = 0;
+    let orderHtml = '', reportHtml = '';
+    let sumOrderTotal = 0, sumOrderRebate = 0, sumOrderPL = 0;
+    let sumReportTotal = 0, sumReportRebate = 0, sumReportPL = 0;
+    const sumOrderHitMap = {}, sumReportHitMap = {};
+
     const sortedUsers = Object.keys(userStats).sort();
-    if (sortedUsers.length === 0) { orderBody.innerHTML = '<tr><td colspan="4">当天无数据</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = orderBody.innerHTML; return; }
+    if (sortedUsers.length === 0) { orderBody.innerHTML = '<tr><td colspan="5">当天无数据</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = '<tr><td colspan="4">当天无数据</td></tr>'; return; }
+
     sortedUsers.forEach(user => {
       const s = userStats[user];
-      sumOrderTotal += s.orderTotal; sumOrderPL += s.orderPL; sumReportTotal += s.reportTotal; sumReportPL += s.reportPL;
-      const orderHitDetail = s.orderHitDetails.length > 0 ? s.orderHitDetails.join('<br>') : '未中奖';
-      const reportHitDetail = s.reportHitDetails.length > 0 ? s.reportHitDetails.join('<br>') : '未中奖';
-      const orderPLColor = s.orderPL > 0 ? 'color:#008000;font-weight:bold;' : (s.orderPL < 0 ? 'color:#ff0000;font-weight:bold;' : '');
-      const reportPLColor = s.reportPL > 0 ? 'color:#008000;font-weight:bold;' : (s.reportPL < 0 ? 'color:#ff0000;font-weight:bold;' : '');
-      orderHtml += `<tr><td>${user}</td><td>${s.orderTotal}</td><td>${orderHitDetail}</td><td style="${orderPLColor}">${s.orderPL !== 0 ? s.orderPL : ''}</td></tr>`;
-      reportHtml += `<tr><td>${user}</td><td>${s.reportTotal}</td><td>${reportHitDetail}</td><td style="${reportPLColor}">${s.reportPL !== 0 ? s.reportPL : ''}</td></tr>`;
+      sumOrderTotal += s.orderTotal; sumOrderRebate += s.orderRebate; sumOrderPL += s.orderPL;
+      sumReportTotal += s.reportTotal; sumReportRebate += s.reportRebate; sumReportPL += s.reportPL;
+      for (const type in s.orderHitMap) { sumOrderHitMap[type] = (sumOrderHitMap[type] || 0) + s.orderHitMap[type]; }
+      for (const type in s.reportHitMap) { sumReportHitMap[type] = (sumReportHitMap[type] || 0) + s.reportHitMap[type]; }
+
+      const orderHitDetail = formatHitDetails(s.orderHitMap);
+      const reportHitDetail = formatHitDetails(s.reportHitMap);
+      const orderPLColor = formatPLColor(s.orderPL);
+      const reportPLColor = formatPLColor(s.reportPL);
+      orderHtml += `<tr><td>${user}</td><td>${s.orderTotal}</td><td>${s.orderRebate}</td><td>${orderHitDetail}</td><td style="${orderPLColor}">${s.orderPL !== 0 ? s.orderPL : ''}</td></tr>`;
+      reportHtml += `<tr><td>${user}</td><td>${s.reportTotal}</td><td>${s.reportRebate}</td><td>${reportHitDetail}</td><td style="${reportPLColor}">${s.reportPL !== 0 ? s.reportPL : ''}</td></tr>`;
     });
-    const orderPLColor = sumOrderPL > 0 ? 'color:#008000;font-weight:bold;' : (sumOrderPL < 0 ? 'color:#ff0000;font-weight:bold;' : '');
-    const reportPLColor = sumReportPL > 0 ? 'color:#008000;font-weight:bold;' : (sumReportPL < 0 ? 'color:#ff0000;font-weight:bold;' : '');
-    orderHtml += `<tr class="summary-row"><td>合计</td><td>${sumOrderTotal}</td><td>—</td><td style="${orderPLColor}">${sumOrderPL !== 0 ? sumOrderPL : ''}</td></tr>`;
-    reportHtml += `<tr class="summary-row"><td>合计</td><td>${sumReportTotal}</td><td>—</td><td style="${reportPLColor}">${sumReportPL !== 0 ? sumReportPL : ''}</td></tr>`;
+
+    const orderSumHitDetail = formatHitDetails(sumOrderHitMap);
+    const reportSumHitDetail = formatHitDetails(sumReportHitMap);
+    const sumOrderPLColor = formatPLColor(sumOrderPL);
+    const sumReportPLColor = formatPLColor(sumReportPL);
+    orderHtml += `<tr class="summary-row"><td>合计</td><td>${sumOrderTotal}</td><td>${sumOrderRebate}</td><td>${orderSumHitDetail}</td><td style="${sumOrderPLColor}">${sumOrderPL !== 0 ? sumOrderPL : ''}</td></tr>`;
+    reportHtml += `<tr class="summary-row"><td>合计</td><td>${sumReportTotal}</td><td>${sumReportRebate}</td><td>${reportSumHitDetail}</td><td style="${sumReportPLColor}">${sumReportPL !== 0 ? sumReportPL : ''}</td></tr>`;
     orderBody.innerHTML = orderHtml; reportBody.innerHTML = reportHtml;
+
     const netAmount = sumOrderTotal - sumReportTotal;
-    const netHitAmount = sumOrderHit - sumReportHit;
-    const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
-    const totalRebate = Math.round(netAmount * rebateRate / 100);
+    const netRebate = Math.round(netAmount * rebateRate / 100);
+    const netHitMap = {};
+    for (const type in sumOrderHitMap) { netHitMap[type] = (sumOrderHitMap[type] || 0) - (sumReportHitMap[type] || 0); }
+    const netHitDetail = formatHitDetails(netHitMap);
     const netPL = sumOrderPL - sumReportPL;
-    const netPLColor = netPL > 0 ? 'color:#008000;font-weight:bold;' : (netPL < 0 ? 'color:#ff0000;font-weight:bold;' : '');
-    finalBody.innerHTML = `<tr><td>${netAmount}</td><td>${netHitAmount !== 0 ? netHitAmount : ''}</td><td>${totalRebate}</td><td style="${netPLColor}">${netPL !== 0 ? netPL : ''}</td></tr>`;
+    const netPLColor = formatPLColor(netPL);
+    finalBody.innerHTML = `<tr><td>${netAmount}</td><td>${netRebate}</td><td>${netHitDetail}</td><td style="${netPLColor}">${netPL !== 0 ? netPL : ''}</td></tr>`;
   });
 }
 
-function processNormalLine(stats, match, drawNumbers, cfg, rec) {
+function processDuiJiangNormalLine(stats, match, drawNumbers, cfg, rebateRate, multiple, mode) {
   const cont = match[1]; const amt = parseInt(match[2]) || 0;
   const { numbers, zodiacs } = countItemsInLine(match[0], cfg, getAllValidCategories(cfg));
-  stats.orderTotal += numbers.length * amt;
-  zodiacs.forEach(z => { const znums = cfg.zodiac[z] || []; stats.orderTotal += znums.length * amt; });
-  const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
-  const multiple = parseFloat(document.getElementById('multipleVal')?.value) || 47;
-  const allNums = new Set([...numbers]);
+  let totalLineAmount = 0; const allNums = new Set([...numbers]);
   zodiacs.forEach(z => { (cfg.zodiac[z] || []).forEach(n => allNums.add(n.padStart(2, '0'))); });
-  let lineHitAmount = 0; let hitDetails = [];
-  allNums.forEach(num => { if (drawNumbers.includes(num)) { lineHitAmount += amt; hitDetails.push(num); } });
-  if (hitDetails.length > 0) { stats.orderHitDetails.push('特码' + hitDetails.join(',') + '中各' + amt + '元'); }
-  stats.orderPL += lineHitAmount * amt - lineHitAmount * amt * (rebateRate / 100) - lineHitAmount * amt * multiple;
+  totalLineAmount = numbers.length * amt; zodiacs.forEach(z => { totalLineAmount += (cfg.zodiac[z] || []).length * amt; });
+  const lineRebate = Math.round(totalLineAmount * rebateRate / 100);
+  let lineHitAmount = 0;
+  allNums.forEach(num => { if (drawNumbers.includes(num)) lineHitAmount += amt; });
+  const linePL = Math.round(totalLineAmount - lineRebate - lineHitAmount * multiple);
+
+  if (mode === 'order') {
+    stats.orderTotal += totalLineAmount; stats.orderRebate += lineRebate; stats.orderPL += linePL;
+    if (lineHitAmount > 0) stats.orderHitMap['特码'] = (stats.orderHitMap['特码'] || 0) + lineHitAmount;
+  } else {
+    stats.reportTotal += totalLineAmount; stats.reportRebate += lineRebate; stats.reportPL += linePL;
+    if (lineHitAmount > 0) stats.reportHitMap['特码'] = (stats.reportHitMap['特码'] || 0) + lineHitAmount;
+  }
 }
 
-function processComboLine(stats, match, drawZodiacs, rec) {
+function processDuiJiangComboLine(stats, match, drawZodiacsSet, drawNumbers, rebateRate, multiple) {
   const combosStr = match[1]; const amt = parseInt(match[2]) || 0;
   const cleaned = combosStr.replace(/[()]/g, ''); const combos = cleaned.split(/\s+/).filter(c => c.trim());
-  const cfg = getAllConfigData(); const oddsData = getOddsData();
+  const cfg = getAllConfigData();
   combos.forEach(combo => {
     const tokens = combo.split('-');
     stats.orderTotal += amt;
-    const allZodiacs = tokens.every(t => cfg.zodiac[t] && drawZodiacs.some(dz => cfg.zodiac[t].includes(dz)));
-    if (allZodiacs) {
-      const comboType = 'lianxiao' + tokens.length;
-      const defaults = { lianxiao2: { odds: 4, rebate: 4 }, lianxiao3: { odds: 10, rebate: 4 }, lianxiao4: { odds: 30, rebate: 4 }, lianxiao5: { odds: 100, rebate: 4 } };
-      const def = defaults[comboType] || { odds: 2, rebate: 4 }; let odds = def.odds, rebate = def.rebate;
-      if (oddsData[comboType]) { odds = parseFloat(oddsData[comboType].odds) || def.odds; rebate = parseFloat(oddsData[comboType].rebate) || def.rebate; }
-      stats.orderHitDetails.push(comboType.replace('lianxiao', '') + '连肖(' + combo + ')中' + amt + '元');
-      stats.orderPL += amt - amt * (rebate / 100) - amt * odds;
-    }
-  });
-}
+    const lineRebate = Math.round(amt * rebateRate / 100);
+    stats.orderRebate += lineRebate;
 
-function processReportLine(stats, match, drawNumbers, cfg) {
-  const cont = match[1]; const amt = parseInt(match[2]) || 0;
-  const { numbers, zodiacs } = countItemsInLine(match[0], cfg, getAllValidCategories(cfg));
-  stats.reportTotal += numbers.length * amt;
-  zodiacs.forEach(z => { const znums = cfg.zodiac[z] || []; stats.reportTotal += znums.length * amt; });
-  const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
-  const multiple = parseFloat(document.getElementById('multipleVal')?.value) || 47;
-  const allNums = new Set([...numbers]);
-  zodiacs.forEach(z => { (cfg.zodiac[z] || []).forEach(n => allNums.add(n.padStart(2, '0'))); });
-  let lineHitAmount = 0; let hitDetails = [];
-  allNums.forEach(num => { if (drawNumbers.includes(num)) { lineHitAmount += amt; hitDetails.push(num); } });
-  if (hitDetails.length > 0) { stats.reportHitDetails.push('特码' + hitDetails.join(',') + '中各' + amt + '元'); }
-  stats.reportPL += -lineHitAmount * amt + lineHitAmount * amt * (rebateRate / 100) + lineHitAmount * amt * multiple;
+    let hit = false; let comboType = '';
+    if (tokens.length === 1 && cfg.zodiac[tokens[0]]) { comboType = 'pingtexiao'; hit = drawZodiacsSet.has(tokens[0]); }
+    else if (tokens.length === 1 && tokens[0].includes('尾')) { comboType = 'pingtewei'; hit = tokens.some(t => { const d = t.replace('尾',''); for (let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbers.includes(n)) return true; } return false; }); }
+    else if (tokens.some(t => cfg.zodiac[t])) { comboType = 'lianxiao' + tokens.length; hit = tokens.every(t => drawZodiacsSet.has(t)); }
+    else if (tokens.some(t => t.includes('尾'))) { comboType = 'lianwei' + tokens.length; hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbers.includes(n)) return true; } return false; }); }
+    else if (tokens.length >= 5 && tokens.length <= 12 && tokens.every(t => /^\d{2}$/.test(t))) { comboType = 'buzhong' + tokens.length; hit = !tokens.some(t => drawNumbers.includes(t)); }
+    else if (tokens.length === 2 || tokens.length === 3) { comboType = tokens.length === 2 ? 'zhong2' : 'zhong3'; const zhengma = drawNumbers.slice(0, 6); hit = tokens.every(t => zhengma.includes(t)); }
+    else if (tokens.length === 1 && /^\d{2}$/.test(tokens[0])) { comboType = 'pingma'; hit = drawNumbers.includes(tokens[0]); }
+
+    const config = getComboOddsConfig(comboType);
+    const comboPL = Math.round(amt - lineRebate - (hit ? amt * config.odds : 0));
+    stats.orderPL += comboPL;
+
+    const label = getComboTypeLabel(comboType) || comboType;
+    if (hit) stats.orderHitMap[label] = (stats.orderHitMap[label] || 0) + amt;
+  });
 }
     // ===== 组合生成核心函数（含平特肖/平特尾标红、元素不足标红，多元素组合加括号） =====
 window.comboGenerate = function(comboType) {
