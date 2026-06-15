@@ -1475,7 +1475,7 @@ function formatHitDetails(hitMap) {
   const parts = [];
   order.forEach(type => { if (hitMap[type] && hitMap[type] > 0) parts.push(type + hitMap[type]); });
   for (const k in hitMap) { if (!order.includes(k) && hitMap[k] > 0) parts.push(k + hitMap[k]); }
-  return parts.length > 0 ? parts.join(' ') : '未中奖';
+  return parts.length > 0 ? ('<span style="color:#ff0000;">' + parts.join(' ') + '</span>') : '未中奖';
 }
 
 function getComboOddsConfig(comboType) {
@@ -1508,11 +1508,19 @@ function refreshDuiJiangStats() {
   const issueId = issueNumber.toString().padStart(2, '0');
   const entry = savedData[issueId];
   if (!entry || !entry.numbers || entry.numbers.length === 0) { orderBody.innerHTML = '<tr><td colspan="5">未录入开奖号码</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = '<tr><td colspan="4">未录入开奖号码</td></tr>'; return; }
-  const drawNumbers = []; const drawZodiacs = [];
-  entry.numbers.forEach(n => { if (n && /^\d{2}$/.test(n) && parseInt(n) >= 1 && parseInt(n) <= 49) { drawNumbers.push(n); const z = currentZodiacMap[n] || ''; if (z) drawZodiacs.push(z); } });
-  if (drawNumbers.length === 0) { orderBody.innerHTML = '<tr><td colspan="5">开奖号码无效</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = '<tr><td colspan="4">开奖号码无效</td></tr>'; return; }
+  const allDrawNumbers = []; const drawZodiacs = [];
+  entry.numbers.forEach(n => { if (n && /^\d{2}$/.test(n) && parseInt(n) >= 1 && parseInt(n) <= 49) { allDrawNumbers.push(n); const z = currentZodiacMap[n] || ''; if (z) drawZodiacs.push(z); } });
+  if (allDrawNumbers.length === 0) { orderBody.innerHTML = '<tr><td colspan="5">开奖号码无效</td></tr>'; reportBody.innerHTML = orderBody.innerHTML; finalBody.innerHTML = '<tr><td colspan="4">开奖号码无效</td></tr>'; return; }
 
-  const drawZodiacsSet = new Set(drawZodiacs);
+  const zhengmaNumbers = allDrawNumbers.slice(0, 6);
+  const specialNumber = allDrawNumbers[6] || '';
+  const allDrawSet = new Set(allDrawNumbers);
+  const zhengmaSet = new Set(zhengmaNumbers);
+  const allDrawZodiacSet = new Set(drawZodiacs);
+  const zhengmaZodiacSet = new Set(drawZodiacs.slice(0, 6));
+  const allWeishuSet = new Set(allDrawNumbers.map(n => n.slice(-1) + '尾'));
+  const zhengmaWeishuSet = new Set(zhengmaNumbers.map(n => n.slice(-1) + '尾'));
+
   const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
   const multiple = parseFloat(document.getElementById('multipleVal')?.value) || 47;
 
@@ -1529,9 +1537,9 @@ function refreshDuiJiangStats() {
       const lines = rec.content.split('\n');
       lines.forEach(line => {
         const comboMatch = line.match(/^(.+?)\s+各组\s+(\d+)$/);
-        if (comboMatch) { processDuiJiangComboLine(userStats[user], comboMatch, drawZodiacsSet, drawNumbers, rebateRate, multiple); return; }
+        if (comboMatch) { processDuiJiangComboLine(userStats[user], comboMatch, allDrawZodiacSet, zhengmaZodiacSet, allDrawSet, zhengmaSet, allWeishuSet, zhengmaWeishuSet, specialNumber, rebateRate); return; }
         const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-        if (normalMatch) { processDuiJiangNormalLine(userStats[user], normalMatch, drawNumbers, cfg, rebateRate, multiple, 'order'); }
+        if (normalMatch) { processDuiJiangNormalLine(userStats[user], normalMatch, specialNumber, cfg, rebateRate, multiple, 'order'); }
       });
     });
     reports.forEach(rec => {
@@ -1539,7 +1547,7 @@ function refreshDuiJiangStats() {
       const lines = rec.content.split('\n');
       lines.forEach(line => {
         const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-        if (normalMatch) { processDuiJiangNormalLine(userStats[user], normalMatch, drawNumbers, cfg, rebateRate, multiple, 'report'); }
+        if (normalMatch) { processDuiJiangNormalLine(userStats[user], normalMatch, specialNumber, cfg, rebateRate, multiple, 'report'); }
       });
     });
 
@@ -1585,7 +1593,7 @@ function refreshDuiJiangStats() {
   });
 }
 
-function processDuiJiangNormalLine(stats, match, drawNumbers, cfg, rebateRate, multiple, mode) {
+function processDuiJiangNormalLine(stats, match, specialNumber, cfg, rebateRate, multiple, mode) {
   const cont = match[1]; const amt = parseInt(match[2]) || 0;
   const { numbers, zodiacs } = countItemsInLine(match[0], cfg, getAllValidCategories(cfg));
   let totalLineAmount = 0; const allNums = new Set([...numbers]);
@@ -1593,7 +1601,7 @@ function processDuiJiangNormalLine(stats, match, drawNumbers, cfg, rebateRate, m
   totalLineAmount = numbers.length * amt; zodiacs.forEach(z => { totalLineAmount += (cfg.zodiac[z] || []).length * amt; });
   const lineRebate = Math.round(totalLineAmount * rebateRate / 100);
   let lineHitAmount = 0;
-  allNums.forEach(num => { if (drawNumbers.includes(num)) lineHitAmount += amt; });
+  allNums.forEach(num => { if (num === specialNumber) lineHitAmount += amt; });
   const linePL = Math.round(totalLineAmount - lineRebate - lineHitAmount * multiple);
 
   if (mode === 'order') {
@@ -1605,7 +1613,7 @@ function processDuiJiangNormalLine(stats, match, drawNumbers, cfg, rebateRate, m
   }
 }
 
-function processDuiJiangComboLine(stats, match, drawZodiacsSet, drawNumbers, rebateRate, multiple) {
+function processDuiJiangComboLine(stats, match, allDrawZodiacSet, zhengmaZodiacSet, allDrawSet, zhengmaSet, allWeishuSet, zhengmaWeishuSet, specialNumber, rebateRate) {
   const combosStr = match[1]; const amt = parseInt(match[2]) || 0;
   const cleaned = combosStr.replace(/[()]/g, ''); const combos = cleaned.split(/\s+/).filter(c => c.trim());
   const cfg = getAllConfigData();
@@ -1616,13 +1624,30 @@ function processDuiJiangComboLine(stats, match, drawZodiacsSet, drawNumbers, reb
     stats.orderRebate += lineRebate;
 
     let hit = false; let comboType = '';
-    if (tokens.length === 1 && cfg.zodiac[tokens[0]]) { comboType = 'pingtexiao'; hit = drawZodiacsSet.has(tokens[0]); }
-    else if (tokens.length === 1 && tokens[0].includes('尾')) { comboType = 'pingtewei'; hit = tokens.some(t => { const d = t.replace('尾',''); for (let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbers.includes(n)) return true; } return false; }); }
-    else if (tokens.some(t => cfg.zodiac[t])) { comboType = 'lianxiao' + tokens.length; hit = tokens.every(t => drawZodiacsSet.has(t)); }
-    else if (tokens.some(t => t.includes('尾'))) { comboType = 'lianwei' + tokens.length; hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbers.includes(n)) return true; } return false; }); }
-    else if (tokens.length >= 5 && tokens.length <= 12 && tokens.every(t => /^\d{2}$/.test(t))) { comboType = 'buzhong' + tokens.length; hit = !tokens.some(t => drawNumbers.includes(t)); }
-    else if (tokens.length === 2 || tokens.length === 3) { comboType = tokens.length === 2 ? 'zhong2' : 'zhong3'; const zhengma = drawNumbers.slice(0, 6); hit = tokens.every(t => zhengma.includes(t)); }
-    else if (tokens.length === 1 && /^\d{2}$/.test(tokens[0])) { comboType = 'pingma'; hit = drawNumbers.includes(tokens[0]); }
+
+    if (tokens.length === 1 && cfg.zodiac[tokens[0]]) {
+      comboType = 'pingtexiao';
+      hit = allDrawZodiacSet.has(tokens[0]);
+    } else if (tokens.length === 1 && tokens[0].includes('尾')) {
+      comboType = 'pingtewei';
+      const digit = tokens[0].replace('尾', '');
+      hit = allWeishuSet.has(digit + '尾');
+    } else if (tokens.some(t => cfg.zodiac[t])) {
+      comboType = 'lianxiao' + tokens.length;
+      hit = tokens.every(t => allDrawZodiacSet.has(t));
+    } else if (tokens.some(t => t.includes('尾'))) {
+      comboType = 'lianwei' + tokens.length;
+      hit = tokens.every(t => allWeishuSet.has(t));
+    } else if (tokens.length >= 5 && tokens.length <= 12 && tokens.every(t => /^\d{2}$/.test(t))) {
+      comboType = 'buzhong' + tokens.length;
+      hit = !tokens.some(t => allDrawSet.has(t));
+    } else if (tokens.length === 2 || tokens.length === 3) {
+      comboType = tokens.length === 2 ? 'zhong2' : 'zhong3';
+      hit = tokens.every(t => zhengmaSet.has(t));
+    } else if (tokens.length === 1 && /^\d{2}$/.test(tokens[0])) {
+      comboType = 'pingma';
+      hit = zhengmaSet.has(tokens[0]);
+    }
 
     const config = getComboOddsConfig(comboType);
     const comboPL = Math.round(amt - lineRebate - (hit ? amt * config.odds : 0));
