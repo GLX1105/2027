@@ -1412,7 +1412,7 @@ async function screenshotSingleComboCard(cardId) {
     canvas.toBlob(async blob => { if (!blob) { showToast('生成图片失败'); return; } try { const item = new ClipboardItem({ 'image/png': blob }); await navigator.clipboard.write([item]); showToast('截图已复制'); } catch(e) { showToast('复制失败'); } }, 'image/png');
   } catch(e) { showToast('截图失败'); }
 }
-    // ===== 兑奖窗口（含返水列、中奖详情红色、所有用户行不加粗、列宽固定、截图按钮） =====
+  // ===== 兑奖窗口（含返水列、中奖详情红色、所有用户行不加粗、列宽等宽、截图按钮） =====
 function showDuiJiangWin() {
   if (document.getElementById('duiJiangWin')) return;
   const fd = document.getElementById('filterDate')?.value || getTodayCST();
@@ -1449,19 +1449,19 @@ function showDuiJiangWin() {
     <div class="modal-body" style="overflow-y:auto; padding:10px;">
       <div class="duijiang-section-title">📋 下单统计 <button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;margin-left:8px;" onclick="screenshotDuiJiangSection('duiJiangOrderTable')">截图</button></div>
       <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangOrderTable">
-        <colgroup><col style="width:70px;"><col style="width:84px;"><col style="width:56px;"><col><col style="width:56px;"></colgroup>
+        <colgroup><col style="width:70px;"><col style="width:70px;"><col style="width:70px;"><col><col style="width:70px;"></colgroup>
         <thead><tr><th>用户</th><th>下单金额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead>
         <tbody id="duiJiangOrderBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody>
       </table></div>
       <div class="duijiang-section-title">📤 上报统计 <button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;margin-left:8px;" onclick="screenshotDuiJiangSection('duiJiangReportTable')">截图</button></div>
       <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangReportTable">
-        <colgroup><col style="width:70px;"><col style="width:84px;"><col style="width:56px;"><col><col style="width:56px;"></colgroup>
+        <colgroup><col style="width:70px;"><col style="width:70px;"><col style="width:70px;"><col><col style="width:70px;"></colgroup>
         <thead><tr><th>用户</th><th>上报金额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead>
         <tbody id="duiJiangReportBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody>
       </table></div>
       <div class="duijiang-section-title">📊 最终合计 <button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;margin-left:8px;" onclick="screenshotDuiJiangSection('duiJiangFinalTable')">截图</button></div>
       <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangFinalTable">
-        <colgroup><col style="width:70px;"><col style="width:56px;"><col><col style="width:56px;"></colgroup>
+        <colgroup><col style="width:70px;"><col style="width:70px;"><col><col style="width:70px;"></colgroup>
         <thead><tr><th>净金额</th><th>净返水</th><th>中奖详情</th><th>净盈亏</th></tr></thead>
         <tbody id="duiJiangFinalBody"><tr><td colspan="4" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody>
       </table></div>
@@ -1515,7 +1515,7 @@ async function screenshotDuiJiangAll() {
   } catch(e) { showToast('截图失败'); }
 }
 
-// ===== 兑奖统计核心函数（含各玩法中奖判断、返水、盈亏计算，中奖详情红色，所有用户行不加粗，无数据留空） =====
+// ===== 兑奖统计核心函数（含各玩法中奖判断、返水、盈亏计算，中奖详情红色，所有用户行不加粗，无数据留空，所有用户单元格不换行） =====
 function refreshDuiJiangStats() {
   const orderBody = document.getElementById('duiJiangOrderBody');
   const reportBody = document.getElementById('duiJiangReportBody');
@@ -1608,8 +1608,8 @@ function refreshDuiJiangStats() {
     const sumOrderRebateDisplay = sumOrderRebate > 0 ? Math.round(sumOrderRebate) : '';
     const sumReportTotalDisplay = sumReportTotal > 0 ? sumReportTotal : '';
     const sumReportRebateDisplay = sumReportRebate > 0 ? Math.round(sumReportRebate) : '';
-    orderHtml += `<tr class="summary-row"><td>所有用户</td><td>${sumOrderTotalDisplay}</td><td>${sumOrderRebateDisplay}</td><td class="duijiang-hit-col" style="color:#ff0000;">${sumOrderHitDetail}</td><td style="${orderPLColor}">${orderPL !== 0 ? orderPL : ''}</td></tr>`;
-    reportHtml += `<tr class="summary-row"><td>所有用户</td><td>${sumReportTotalDisplay}</td><td>${sumReportRebateDisplay}</td><td class="duijiang-hit-col" style="color:#ff0000;">${sumReportHitDetail}</td><td style="${reportPLColor}">${reportPL !== 0 ? reportPL : ''}</td></tr>`;
+    orderHtml += `<tr class="summary-row"><td style="white-space:nowrap;">所有用户</td><td>${sumOrderTotalDisplay}</td><td>${sumOrderRebateDisplay}</td><td class="duijiang-hit-col" style="color:#ff0000;">${sumOrderHitDetail}</td><td style="${orderPLColor}">${orderPL !== 0 ? orderPL : ''}</td></tr>`;
+    reportHtml += `<tr class="summary-row"><td style="white-space:nowrap;">所有用户</td><td>${sumReportTotalDisplay}</td><td>${sumReportRebateDisplay}</td><td class="duijiang-hit-col" style="color:#ff0000;">${sumReportHitDetail}</td><td style="${reportPLColor}">${reportPL !== 0 ? reportPL : ''}</td></tr>`;
     orderBody.innerHTML = orderHtml; reportBody.innerHTML = reportHtml;
     const netAmount = sumOrderTotal - sumReportTotal;
     const netRebate = Math.round(sumOrderRebate - sumReportRebate);
