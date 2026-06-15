@@ -1055,7 +1055,7 @@ function renderCustomConfigContainer() { const container = document.getElementBy
 async function addCustomCategory() { const label = await prompt('请输入新分类名称（如：大尾）'); if (!label) return; const value = await prompt(`请输入"${label}"对应的号码或分类名（空格分隔，例如：01 02 牛 马）`); if (value === null) return; const cats = loadCustomCategories(); cats.push({ label, value: value.trim() }); saveCustomCategories(cats); renderCustomConfigContainer(); showToast('自定义分类已添加，请点击"保存"按钮存储配置'); }
 async function deleteCustomCategory() { const cats = loadCustomCategories(); if (cats.length === 0) { showToast('没有可删除的自定义分类'); return; } const labels = cats.map((c,i) => `${i+1}. ${c.label}`).join('\n'); const idxStr = await prompt(`请输入要删除的分类编号：\n${labels}`); if (!idxStr) return; const idx = parseInt(idxStr) - 1; if (isNaN(idx) || idx < 0 || idx >= cats.length) { showToast('无效编号'); return; } cats.splice(idx, 1); saveCustomCategories(cats); renderCustomConfigContainer(); showToast('自定义分类已删除，请点击"保存"按钮使更改生效'); }
 function deleteCustomCategoryByIndex(index) { const cats = loadCustomCategories(); cats.splice(index, 1); saveCustomCategories(cats); renderCustomConfigContainer(); }
-  // ===== 订单变量与基础函数 =====
+ // ===== 订单变量与基础函数 =====
 let tableBetData = {}, userBetData = {}, reportBetData = {}, reportAmountData = {}, reportRiskData = {};
 let numberCount = {}, zodiacCount = {}, numberAmountCount = {}, zodiacAmountCount = {};
 let zodiacDirectAmount = {}, zodiacFilteredAmount = {};
@@ -1448,10 +1448,10 @@ function showDuiJiangWin() {
     <div class="modal-body" style="overflow-y:auto; padding:10px;">
       <div class="duijiang-section-title">📋 下单统计</div>
       <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangOrderTable"><thead><tr><th>用户</th><th>下单总额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead><tbody id="duiJiangOrderBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
-      <div style="overflow-x:auto; margin-top:0;"><table class="duijiang-table" id="duiJiangOrderSumTable"><tbody id="duiJiangOrderSumBody"></tbody></table></div>
+      <div style="overflow-x:auto; margin-top:0;"><table class="duijiang-table" id="duiJiangOrderSumTable" style="border-top:none;"><tbody id="duiJiangOrderSumBody"></tbody></table></div>
       <div class="duijiang-section-title">📤 上报统计</div>
       <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangReportTable"><thead><tr><th>用户</th><th>上报总额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead><tbody id="duiJiangReportBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
-      <div style="overflow-x:auto; margin-top:0;"><table class="duijiang-table" id="duiJiangReportSumTable"><tbody id="duiJiangReportSumBody"></tbody></table></div>
+      <div style="overflow-x:auto; margin-top:0;"><table class="duijiang-table" id="duiJiangReportSumTable" style="border-top:none;"><tbody id="duiJiangReportSumBody"></tbody></table></div>
       <div class="duijiang-section-title">📊 最终合计</div>
       <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangFinalTable"><thead><tr><th>净金额</th><th>净返水</th><th>中奖详情</th><th>净盈亏</th></tr></thead><tbody id="duiJiangFinalBody"><tr><td colspan="4" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
       <div class="duijiang-section-title">🎰 录开奖</div>
@@ -2343,7 +2343,7 @@ async function getAllOrdersUnfiltered() { return new Promise((resolve) => { if (
 async function getAllReportsUnfiltered() { return new Promise((resolve) => { if (!db) resolve([]); const tx = db.transaction([REPORT_STORE_NAME],'readonly'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.getAll(); req.onsuccess = (e) => resolve(e.target.result || []); }); }
 async function getOrderRecords() { const all = await getAllOrdersUnfiltered(); return all.filter(r => r.region === currentRegion); }
 async function getReportOrderRecords() { const all = await getAllReportsUnfiltered(); return all.filter(r => r.region === currentRegion); }
-async function getComboOrders() { return new Promise((resolve) => { if (!db) resolve([]); const tx = db.transaction([COMBO_STORE_NAME],'readonly'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.getAll(); req.onsuccess = (e) => resolve(e.target.result || []); }); }
+async function getComboOrders() { return new Promise((resolve) => { if (!db) resolve([]); const tx = db.transaction([COMBO_STORE_NAME],'readonly'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.getAll(); req.onsuccess = (e) => resolve((e.target.result || []).filter(r => r.region === currentRegion)); }); }
 
 async function saveOrderRecordToIDB(content, user, date, totalAmount = 0, ts = null, regionOverride = null) {
   if (!db || !dbAvailable) { showToast('数据库不可用，操作无法保存'); return false; }
