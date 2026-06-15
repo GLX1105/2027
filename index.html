@@ -1104,6 +1104,7 @@ async function switchRiskReport() {
 
 // ===== 计算最大亏损 =====
 function computeMaxLoss() {
+  if (typeof countItemsInLine !== 'function') return 0;
   const resultEl = document.getElementById('orderResult');
   if (!resultEl) return 0;
   const txt = resultEl.innerText.trim();
@@ -1144,6 +1145,7 @@ function computeMaxLoss() {
 function updateMaxLossDisplay() {
   const display = document.getElementById('maxLossDisplay');
   if (!display) return;
+  if (typeof countItemsInLine !== 'function') { display.textContent = ''; display.style.display = 'none'; return; }
   const maxLoss = computeMaxLoss();
   if (maxLoss !== 0) {
     display.textContent = '最大亏损：' + maxLoss;
