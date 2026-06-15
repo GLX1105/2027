@@ -2107,268 +2107,191 @@ async function saveComboOrder() {
   const lossSpan = document.getElementById('comboMaxLossDisplay'); if (lossSpan) { lossSpan.textContent = ''; lossSpan.style.display = 'none'; }
   showToast('已保存连肖订单');
 }
-    // ===== 连肖统计函数（卡片内容超400px滚动，汇总行固定底部，显示去括号，总金额蓝色，盈亏排名高亮，中奖总金额） =====
-async function refreshLianxiaoStats() {
-  const container = document.getElementById('lianxiaoStatsContainer');
-  if (!container) return;
-  if (!db) { container.innerHTML = '数据库不可用'; return; }
-  const fd = document.getElementById('filterDate')?.value || getTodayCST();
-  const tx = db.transaction([COMBO_STORE_NAME], 'readonly');
-  const store = tx.objectStore(COMBO_STORE_NAME);
-  const all = await new Promise(resolve => {
+   // ===== 操作日志函数 =====
+async function addOperationLog(action, detail, regionOverride = null, orderUser = null, orderTotal = 0) {
+  if (!db) return;
+  const session = getAuthSession();
+  const username = session ? (session.role === 'admin' ? '管理员' : '卡密用户') : '未知';
+  const now = new Date();
+  const cstTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const cstTimestamp = cstTime.toISOString().replace('Z', '+08:00');
+  const record = {
+    id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+    timestamp: cstTimestamp, user: username, action: action,
+    detail: detail, orderUser: orderUser, orderTotal: orderTotal,
+    region: regionOverride || currentRegion
+  };
+  try {
+    const tx = db.transaction([LOG_STORE_NAME], 'readwrite');
+    const store = tx.objectStore(LOG_STORE_NAME);
+    store.add(record);
+    const allReq = store.getAll();
+    allReq.onsuccess = () => {
+      const allLogs = allReq.result;
+      if (allLogs.length > 1000) {
+        const sorted = allLogs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const earliestDate = sorted[0].timestamp.slice(0, 10);
+        sorted.forEach(log => { if (log.timestamp.slice(0, 10) === earliestDate) store.delete(log.id); });
+      }
+    };
+  } catch (e) {}
+}
+
+async function getAllLogs() {
+  return new Promise((resolve) => {
+    if (!db) resolve([]);
+    const tx = db.transaction([LOG_STORE_NAME], 'readonly');
+    const store = tx.objectStore(LOG_STORE_NAME);
     const req = store.getAll();
     req.onsuccess = (e) => resolve(e.target.result || []);
   });
-  const records = all.filter(r => r.region === currentRegion && r.date === fd);
-  if (records.length === 0) {
-    container.innerHTML = '<div style="color:#666;text-align:center;padding:10px;">暂无连肖数据</div>';
-    document.getElementById('lianxiaoStatsTotal').innerHTML = '';
-    return;
-  }
-  const cfg = getAllConfigData();
-  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
+}
 
-  let drawNumbers = [];
-  let drawZodiacs = [];
-  const fdYear = fd.substring(0, 4);
-  let storageKey = `comboDrawRecord_${currentRegion}_${fdYear}`;
-  let savedData = {};
-  try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
-  if (Object.keys(savedData).length === 0) {
-    storageKey = `drawRecord_${currentRegion}_${fdYear}`;
-    try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
-  }
-  const currentIssue = getCurrentIssueNumber(parseInt(fdYear), fd);
-  if (currentIssue) {
-    const issueId = currentIssue.toString().padStart(2, '0');
-    const entry = savedData[issueId];
-    if (entry && entry.numbers && Array.isArray(entry.numbers)) {
-      entry.numbers.forEach(n => {
-        if (n && /^\d{2}$/.test(n) && parseInt(n) >= 1 && parseInt(n) <= 49) {
-          drawNumbers.push(n);
-          const zodiac = currentZodiacMap[n] || '';
-          if (zodiac) drawZodiacs.push(zodiac);
-        }
-      });
-    } else if (entry && entry.number && entry.number.trim()) {
-      const n = entry.number.trim().padStart(2, '0');
-      if (/^\d{2}$/.test(n) && parseInt(n) >= 1 && parseInt(n) <= 49) {
-        drawNumbers.push(n);
-        const zodiac = currentZodiacMap[n] || '';
-        if (zodiac) drawZodiacs.push(zodiac);
-      }
-    }
-  }
-  const drawZodiacsSet = new Set(drawZodiacs);
-  const drawNumbersSet = new Set(drawNumbers);
+async function clearAllLogs() {
+  return new Promise((resolve) => {
+    if (!db) { resolve(false); return; }
+    const tx = db.transaction([LOG_STORE_NAME], 'readwrite');
+    const store = tx.objectStore(LOG_STORE_NAME);
+    const req = store.clear();
+    req.onsuccess = () => resolve(true);
+    req.onerror = () => resolve(false);
+  });
+}
 
-  const stats = {};
-  let grandTotal = 0;
-  records.forEach(rec => {
-    const lines = rec.content.split('\n');
-    lines.forEach(line => {
-      const match = line.match(/^(.+?)\s*(?:各组|各)\s*(\d+)$/);
-      if (!match) return;
-      const content = match[1];
-      const amount = parseInt(match[2]) || 0;
-      const groups = content.split(/\s+/);
-      groups.forEach(group => {
-        const rawGroup = group.replace(/^\(|\)$/g, '');
-        const tokens = rawGroup.split('-');
-        if (tokens.length === 1 && cfg.zodiac[tokens[0]]) {
-          const comboType = 'pingtexiao';
-          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
-          const hasYear = tokens[0] === curYearZodiac;
-          (hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).set(tokens[0], ((hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).get(tokens[0]) || 0) + amount);
-          grandTotal += amount;
-        } else if (tokens.length === 1 && tokens[0].includes('尾')) {
-          const comboType = 'pingtewei';
-          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
-          const hasZero = tokens[0].replace('尾','') === '0';
-          (hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).set(tokens[0], ((hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).get(tokens[0]) || 0) + amount);
-          grandTotal += amount;
-        } else if (tokens.some(t => cfg.zodiac[t])) {
-          const comboType = `lianxiao${tokens.length}`;
-          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
-          const hasYear = tokens.some(t => t === curYearZodiac);
-          const comboKey = tokens.join('-');
-          (hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).set(comboKey, ((hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).get(comboKey) || 0) + amount);
-          grandTotal += amount;
-        } else if (tokens.some(t => t.includes('尾'))) {
-          const comboType = `lianwei${tokens.length}`;
-          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
-          const hasZero = tokens.some(t => t.replace('尾','') === '0');
-          const comboKey = tokens.join('-');
-          (hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).set(comboKey, ((hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).get(comboKey) || 0) + amount);
-          grandTotal += amount;
-        } else {
-          const comboType = tokens.length === 1 ? 'pingma' : (tokens.length === 2 ? 'zhong2' : (tokens.length === 3 ? 'zhong3' : 'buzhong' + tokens.length));
-          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
-          const comboKey = tokens.join('-');
-          stats[comboType].withYear.set(comboKey, (stats[comboType].withYear.get(comboKey) || 0) + amount);
-          grandTotal += amount;
-        }
-      });
+async function updateLogCount() {
+  const span = document.getElementById('logCount');
+  if (!span) return;
+  try { const logs = await getAllLogs(); span.textContent = logs.length; } catch (e) { span.textContent = '0'; }
+}
+
+async function showOperationLog() {
+  if (document.getElementById('operationLogWin')) return;
+  const allLogs = await getAllLogs();
+  allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  window._allLogs = allLogs; window._logPage = 0; window._logPageSize = 50;
+  const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'operationLogWin';
+  win.style.width = '800px'; win.style.height = '600px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
+  let html = `<div class="modal-header"><h3>📋 操作日志</h3><div class="window-controls"><button onclick="maximizeWindow('operationLogWin')">🗖</button><button onclick="document.getElementById('operationLogWin').remove()">×</button></div></div>`;
+  html += `<div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 60px);">`;
+  html += `<div style="margin-bottom:10px;display:flex;gap:12px;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;">
+    <select id="logTypeFilter" onchange="filterOperationLog()" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;">
+      <option value="all">全部操作</option><option value="save_order">保存订单</option><option value="save_report">保存上报</option>
+      <option value="delete_order">删除订单</option><option value="delete_report">删除上报</option><option value="restore">恢复记录</option>
+      <option value="permanent_delete">彻底删除</option><option value="reset">清空数据</option><option value="export">导出数据</option>
+      <option value="import">导入数据</option><option value="switch">切换地区</option><option value="login">登录</option>
+    </select>
+    <input type="date" id="logDateFilter" onchange="filterOperationLog()" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;" value="${getTodayCST()}">
+    <button onclick="filterOperationLog()" style="padding:4px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">筛选</button>
+    <button onclick="clearOperationLog()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;margin-left:auto;">清除全部日志</button>
+  </div>`;
+  html += `<div id="operationLogList" style="flex:1; overflow-y:auto;"></div></div>`;
+  win.innerHTML = html; document.body.appendChild(win);
+  makeWindowDraggable('operationLogWin'); highestZ += 1; win.style.zIndex = highestZ;
+  updateLogCount(); renderLogPage();
+}
+
+function renderLogPage() {
+  const container = document.getElementById('operationLogList');
+  if (!container) return;
+  const filter = document.getElementById('logTypeFilter')?.value || 'all';
+  const dateFilter = document.getElementById('logDateFilter')?.value || '';
+  let filteredLogs = window._allLogs || [];
+  if (filter !== 'all') filteredLogs = filteredLogs.filter(log => log.action === filter);
+  if (dateFilter) filteredLogs = filteredLogs.filter(log => log.timestamp.slice(0, 10) === dateFilter);
+  const pageSize = window._logPageSize; const start = 0;
+  const pageLogs = filteredLogs.slice(start, start + pageSize);
+  const actionLabels = { 'save_order':'保存订单','save_report':'保存上报','delete_order':'删除订单','delete_report':'删除上报','restore':'恢复记录','permanent_delete':'彻底删除','reset':'清空数据','export':'导出数据','import':'导入数据','switch':'切换地区','login':'登录','logout':'退出登录' };
+  const actionColors = { 'save_order':'log-type-save','save_report':'log-type-save','delete_order':'log-type-delete','delete_report':'log-type-delete','restore':'log-type-restore','permanent_delete':'log-type-delete','reset':'log-type-reset','export':'log-type-export','import':'log-type-export','switch':'log-type-switch','login':'log-type-login','logout':'log-type-login' };
+  let html = '';
+  if (pageLogs.length === 0) { html = '<div style="padding:20px;text-align:center;color:#666;">暂无操作日志</div>'; }
+  else {
+    pageLogs.forEach(log => {
+      const ts = formatTimestampToCST(log.timestamp);
+      const actionLabel = actionLabels[log.action] || log.action;
+      const colorClass = actionColors[log.action] || 'log-type-login';
+      const orderContent = log.detail || ''; const orderUser = log.orderUser || ''; const orderTotal = log.orderTotal || 0;
+      html += `<div class="order-item log-item" data-date="${log.timestamp.slice(0,10)}" data-action="${log.action}">
+        <div class="order-content">${orderContent.replace(/\n/g,'<br>')}</div>
+        <div class="order-info"><span class="order-total" style="color:#000;">${orderTotal>0?'合计：'+orderTotal:''}</span>
+        <span class="order-meta"><span style="color:#2980b9;">${orderUser?'用户：'+orderUser:''}</span> &nbsp; <span class="log-type-tag ${colorClass}">${actionLabel}</span> &nbsp; ${ts}</span></div></div>`;
     });
-  });
-
-  const oddsData = getOddsData();
-  const defaults = {
-    'pingtexiao':{odds:2,rebate:4},'pingtexiao带主肖':{odds:1.8,rebate:4},'lianxiao2':{odds:4,rebate:4},'lianxiao2带主肖':{odds:3.5,rebate:4},
-    'lianxiao3':{odds:10,rebate:4},'lianxiao3带主肖':{odds:9,rebate:4},'lianxiao4':{odds:30,rebate:4},'lianxiao4带主肖':{odds:25,rebate:4},
-    'lianxiao5':{odds:100,rebate:4},'lianxiao5带主肖':{odds:90,rebate:4},'pingtewei':{odds:1.8,rebate:4},'pingtewei零尾':{odds:2,rebate:4},
-    'lianwei2':{odds:3,rebate:4},'lianwei2零尾':{odds:3.5,rebate:4},'lianwei3':{odds:6,rebate:4},'lianwei3零尾':{odds:6.5,rebate:4},
-    'lianwei4':{odds:14,rebate:4},'lianwei4零尾':{odds:15,rebate:4},'lianwei5':{odds:28,rebate:4},'lianwei5零尾':{odds:30,rebate:4},
-    'buzhong5':{odds:2,rebate:4},'buzhong6':{odds:2.5,rebate:4},'buzhong7':{odds:3,rebate:4},'buzhong8':{odds:3.5,rebate:4},
-    'buzhong9':{odds:4,rebate:4},'buzhong10':{odds:5,rebate:4},'buzhong11':{odds:6,rebate:4},'buzhong12':{odds:7,rebate:4},
-    'zhong2':{odds:60,rebate:4},'zhong3':{odds:600,rebate:4},'pingma':{odds:7,rebate:4}
-  };
-  function getPlayOdds(type, hasSpecial) {
-    let key = type;
-    if (hasSpecial && type === 'pingtexiao') key = 'pingtexiao带主肖';
-    else if (hasSpecial && type.startsWith('lianxiao')) key = type + '带主肖';
-    else if (hasSpecial && type === 'pingtewei') key = 'pingtewei零尾';
-    else if (hasSpecial && type.startsWith('lianwei')) key = type + '零尾';
-    const saved = oddsData[key] || {};
-    return { odds: parseFloat(saved.odds) || defaults[key]?.odds || 1, rebate: parseFloat(saved.rebate) || defaults[key]?.rebate || 4 };
+    if (start + pageSize < filteredLogs.length) {
+      html += `<div style="text-align:center;padding:10px;" id="loadMoreBtn"><button onclick="loadMoreLogs()" style="padding:6px 20px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">加载更多（${start+pageSize}/${filteredLogs.length}）</button></div>`;
+    }
   }
+  container.innerHTML = html;
+}
 
-  let grandPL = 0;
-  const cardsArray = [];
-  const order = ['pingtexiao','lianxiao2','lianxiao3','lianxiao4','lianxiao5','buzhong5','buzhong6','buzhong7','buzhong8','buzhong9','buzhong10','buzhong11','buzhong12','pingma','pingtewei','lianwei2','lianwei3','lianwei4','lianwei5','zhong2','zhong3'];
-
-  order.forEach((type) => {
-    if (!stats[type]) return;
-    const data = stats[type];
-    const cardId = `comboCard_${type}`;
-    let totalGroups = 0, totalAmount = 0, cardPL = 0, totalHitAmount = 0;
-
-    let tablesHtml = '';
-
-    function renderTable(map, hasSpecial) {
-      if (map.size === 0) return '';
-      let html2 = '';
-      const { odds, rebate } = getPlayOdds(type, hasSpecial);
-      html2 += '<table style="width:100%;"><tr><th style="text-align:center;">' + (type.startsWith('lianxiao')||type==='pingtexiao'?'生肖':(type.includes('wei')?'尾数':'组合')) + '</th><th style="text-align:center;">金额</th><th style="text-align:center;">中奖</th><th style="text-align:center;">盈亏</th></tr>';
-      map.forEach((v, k) => {
-        const displayKey = k.replace(/^\(|\)$/g, '');
-        const tokens = displayKey.split('-');
-        let hit = false;
-        if (type === 'pingtexiao') { hit = drawZodiacsSet.has(k); }
-        else if (type === 'pingtewei') { hit = drawZodiacs.length > 0 && tokens.some(t => { const d = t.replace('尾',''); for (let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
-        else if (type === 'pingma' || type === 'zhong2' || type === 'zhong3') { const zhengma = drawNumbers.slice(0,6); hit = tokens.every(t => zhengma.includes(t)); }
-        else if (type.startsWith('buzhong')) { hit = !tokens.some(t => drawNumbersSet.has(t)); }
-        else if (type.startsWith('lianxiao')) { hit = tokens.every(t => drawZodiacsSet.has(t)); }
-        else if (type.startsWith('lianwei')) { hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
-        let pl = 0;
-        if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
-          pl = hit ? (v - v * (rebate / 100) - v * odds) : (v - v * (rebate / 100));
-        }
-        cardPL += pl;
-        if (hit) totalHitAmount += v;
-        html2 += `<tr><td style="text-align:center;">${displayKey}</td><td style="text-align:center;">${v}</td><td style="text-align:center;">${hit ? `<span class="amount-red-text">${v}</span>` : ''}</td><td style="text-align:center;${pl>0?'color:#27ae60;':(pl<0?'color:#e74c3c;':'')}">${pl!==0?Math.round(pl):''}</td></tr>`;
-        totalGroups++; totalAmount += v;
-      });
-      html2 += '</table>';
-      return html2;
-    }
-
-    if (type === 'pingtexiao') {
-      if (data.withYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖 ──</div>'; tablesHtml += renderTable(data.withYear, true); }
-      if (data.withoutYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 其他生肖 ──</div>'; tablesHtml += renderTable(data.withoutYear, false); }
-    } else if (type === 'pingtewei') {
-      if (data.withYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;">── 含0尾 ──</div>'; tablesHtml += renderTable(data.withYear, true); }
-      if (data.withoutYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 其他尾数 ──</div>'; tablesHtml += renderTable(data.withoutYear, false); }
-    } else if (type.startsWith('lianxiao')) {
-      if (data.withYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖 ──</div>'; tablesHtml += renderTable(data.withYear, true); }
-      if (data.withoutYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 不含本年生肖 ──</div>'; tablesHtml += renderTable(data.withoutYear, false); }
-    } else if (type.startsWith('lianwei')) {
-      if (data.withYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;">── 含0尾 ──</div>'; tablesHtml += renderTable(data.withYear, true); }
-      if (data.withoutYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 不含0尾 ──</div>'; tablesHtml += renderTable(data.withoutYear, false); }
-    } else {
-      if (data.withYear.size > 0) { tablesHtml += renderTable(data.withYear, false); }
-    }
-
-    grandPL += cardPL;
-    const roundedCardPL = Math.round(cardPL);
-
-    let cardBgStyle = '';
-    if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
-      if (cardPL <= -500) cardBgStyle = 'background:#fff0f0;';
-      else if (cardPL < 0) cardBgStyle = 'background:#fff8f8;';
-      else if (cardPL > 500) cardBgStyle = 'background:#f0fff0;';
-      else if (cardPL > 0) cardBgStyle = 'background:#f8fff8;';
-    }
-
-    let cardHtml = `<div class="freq-card" id="${cardId}" style="break-inside:avoid; margin-bottom:10px; min-width:180px;${cardBgStyle}">`;
-    cardHtml += `<div class="freq-title" style="display:flex; align-items:center; justify-content:space-between;"><span>${getComboTypeLabel(type)}</span><button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;" onclick="screenshotSingleComboCard('${cardId}')">截图</button></div>`;
-
-    cardHtml += `<div style="max-height:400px;overflow-y:auto;">${tablesHtml}</div>`;
-    cardHtml += `<div style="border-top:1px solid #ddd;margin-top:4px;padding-top:4px;font-size:11px;text-align:center;">小计：${totalGroups}组 金额：${totalAmount}`;
-    if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
-      cardHtml += ` 中：${totalHitAmount}`;
-      cardHtml += ` 盈亏：<span style="color:${roundedCardPL>0?'#27ae60':(roundedCardPL<0?'#e74c3c':'')};">${roundedCardPL>0?roundedCardPL:(roundedCardPL<0?roundedCardPL:'')}</span>`;
-    }
-    cardHtml += '</div></div>';
-    cardsArray.push({ html: cardHtml, groups: totalGroups });
+function loadMoreLogs() {
+  window._logPage = (window._logPage || 0) + 1;
+  const container = document.getElementById('operationLogList'); if (!container) return;
+  const filter = document.getElementById('logTypeFilter')?.value || 'all';
+  const dateFilter = document.getElementById('logDateFilter')?.value || '';
+  let filteredLogs = window._allLogs || [];
+  if (filter !== 'all') filteredLogs = filteredLogs.filter(log => log.action === filter);
+  if (dateFilter) filteredLogs = filteredLogs.filter(log => log.timestamp.slice(0, 10) === dateFilter);
+  const pageSize = window._logPageSize; const currentPage = window._logPage;
+  const start = currentPage * pageSize; const pageLogs = filteredLogs.slice(start, start + pageSize);
+  const actionLabels = { 'save_order':'保存订单','save_report':'保存上报','delete_order':'删除订单','delete_report':'删除上报','restore':'恢复记录','permanent_delete':'彻底删除','reset':'清空数据','export':'导出数据','import':'导入数据','switch':'切换地区','login':'登录','logout':'退出登录' };
+  const actionColors = { 'save_order':'log-type-save','save_report':'log-type-save','delete_order':'log-type-delete','delete_report':'log-type-delete','restore':'log-type-restore','permanent_delete':'log-type-delete','reset':'log-type-reset','export':'log-type-export','import':'log-type-export','switch':'log-type-switch','login':'log-type-login','logout':'log-type-login' };
+  const oldBtn = document.getElementById('loadMoreBtn'); if (oldBtn) oldBtn.remove();
+  let html = '';
+  pageLogs.forEach(log => {
+    const ts = formatTimestampToCST(log.timestamp);
+    const actionLabel = actionLabels[log.action] || log.action;
+    const colorClass = actionColors[log.action] || 'log-type-login';
+    const orderContent = log.detail || ''; const orderUser = log.orderUser || ''; const orderTotal = log.orderTotal || 0;
+    html += `<div class="order-item log-item" data-date="${log.timestamp.slice(0,10)}" data-action="${log.action}">
+      <div class="order-content">${orderContent.replace(/\n/g,'<br>')}</div>
+      <div class="order-info"><span class="order-total" style="color:#000;">${orderTotal>0?'合计：'+orderTotal:''}</span>
+      <span class="order-meta"><span style="color:#2980b9;">${orderUser?'用户：'+orderUser:''}</span> &nbsp; <span class="log-type-tag ${colorClass}">${actionLabel}</span> &nbsp; ${ts}</span></div></div>`;
   });
-
-  cardsArray.sort((a, b) => a.groups - b.groups);
-  container.innerHTML = cardsArray.map(c => c.html).join('') || '<div style="color:#666;text-align:center;padding:10px;">暂无连肖数据</div>';
-  const roundedGrandPL = Math.round(grandPL);
-  let totalHtml = `<span style="color:#0000ff;">总下单金额：</span><span style="color:#0000ff;">${grandTotal}</span>`;
-  if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
-    totalHtml += ` &nbsp; <span style="color:#0000ff;">总盈亏：</span><span style="color:${roundedGrandPL>0?'#27ae60':(roundedGrandPL<0?'#e74c3c':'')};">${roundedGrandPL>0?roundedGrandPL:(roundedGrandPL<0?roundedGrandPL:'')}</span>`;
+  container.insertAdjacentHTML('beforeend', html);
+  if (start + pageSize < filteredLogs.length) {
+    container.insertAdjacentHTML('beforeend', `<div style="text-align:center;padding:10px;" id="loadMoreBtn"><button onclick="loadMoreLogs()" style="padding:6px 20px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">加载更多（${start+pageSize}/${filteredLogs.length}）</button></div>`);
   }
-  document.getElementById('lianxiaoStatsTotal').innerHTML = totalHtml;
 }
 
-function getComboTypeLabel(type) {
-  const map = { pingtexiao:'平特肖', pingtewei:'平特尾', lianxiao2:'二连肖', lianxiao3:'三连肖', lianxiao4:'四连肖', lianxiao5:'五连肖', zhong2:'二中二', zhong3:'三中三', pingma:'平码', lianwei2:'二连尾', lianwei3:'三连尾', lianwei4:'四连尾', lianwei5:'五连尾', buzhong5:'五不中', buzhong6:'六不中', buzhong7:'七不中', buzhong8:'八不中', buzhong9:'九不中', buzhong10:'十不中', buzhong11:'十一不中', buzhong12:'十二不中' };
-  return map[type] || type;
+function filterOperationLog() { window._logPage = 0; renderLogPage(); }
+
+async function clearOperationLog() {
+  if (!(await confirm('确定清除全部操作日志吗？'))) return;
+  await clearAllLogs(); await updateLogCount();
+  const win = document.getElementById('operationLogWin'); if (win) win.remove();
+  showToast('操作日志已清除');
 }
 
-async function clearAllComboOrders() {
-  if (!(await confirm('确定清空全部连肖订单吗？此操作不可恢复！'))) return;
-  if (!db) return;
-  const tx = db.transaction([COMBO_STORE_NAME], 'readwrite');
-  const store = tx.objectStore(COMBO_STORE_NAME);
-  store.clear();
-  refreshLianxiaoStats();
-  showToast('已清空全部连肖订单');
-}
+// ===== 回收站数据操作 =====
+async function getRecycleBinRecords() { return new Promise((resolve) => { if (!db) resolve([]); const tx = db.transaction([RECYCLE_STORE_NAME],'readonly'); const store = tx.objectStore(RECYCLE_STORE_NAME); const req = store.getAll(); req.onsuccess = (e) => resolve(e.target.result || []); }); }
+async function moveToRecycleBin(record, type) { return new Promise((resolve) => { if (!db) { resolve(false); return; } const tx = db.transaction([RECYCLE_STORE_NAME],'readwrite'); const store = tx.objectStore(RECYCLE_STORE_NAME); const recycleRecord = { id: record.id, type: type, content: record.content, user: record.user, date: record.date, totalAmount: record.totalAmount || 0, region: record.region || currentRegion, timestamp: record.timestamp, deletedAt: new Date().toISOString() }; const req = store.add(recycleRecord); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); }
+async function deleteFromRecycleBin(id) { return new Promise((resolve) => { if (!db) { resolve(false); return; } const tx = db.transaction([RECYCLE_STORE_NAME],'readwrite'); const store = tx.objectStore(RECYCLE_STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); }
+async function clearRecycleBin(region = null) { return new Promise((resolve) => { if (!db) resolve(false); const tx = db.transaction([RECYCLE_STORE_NAME],'readwrite'); const store = tx.objectStore(RECYCLE_STORE_NAME); if (region) { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result.filter(r => r.region === region); records.forEach(r => store.delete(r.id)); resolve(true); }; } else { const req = store.clear(); req.onsuccess = () => resolve(true); } }); }
+async function batchDeleteFromRecycleBin(ids) { return new Promise((resolve) => { if (!db) { resolve(false); return; } const tx = db.transaction([RECYCLE_STORE_NAME],'readwrite'); const store = tx.objectStore(RECYCLE_STORE_NAME); let count = 0; ids.forEach(id => { const req = store.delete(id); req.onsuccess = () => { count++; if (count === ids.length) resolve(true); }; req.onerror = () => { console.error('彻底删除失败', id); }; }); }); }
 
-function initIndexedDB() { return new Promise((resolve) => { const request = indexedDB.open(DB_NAME, DB_VERSION); request.onerror = () => { dbAvailable = false; document.getElementById('dbWarning').style.display = 'block'; const dbStatusEl = document.getElementById('dbStatus'); if (dbStatusEl) { dbStatusEl.textContent = '异常'; dbStatusEl.style.color = '#e74c3c'; } resolve(false); }; request.onsuccess = (event) => { db = event.target.result; dbAvailable = true; document.getElementById('dbWarning').style.display = 'none'; const dbStatusEl = document.getElementById('dbStatus'); if (dbStatusEl) { dbStatusEl.textContent = '正常'; dbStatusEl.style.color = '#27ae60'; } resolve(true); }; request.onupgradeneeded = (event) => { db = event.target.result; if (!db.objectStoreNames.contains(STORE_NAME)) { db.createObjectStore(STORE_NAME, { keyPath: 'id' }); } if (!db.objectStoreNames.contains(REPORT_STORE_NAME)) { db.createObjectStore(REPORT_STORE_NAME, { keyPath: 'id' }); } if (!db.objectStoreNames.contains(RECYCLE_STORE_NAME)) { db.createObjectStore(RECYCLE_STORE_NAME, { keyPath: 'id' }); } if (!db.objectStoreNames.contains(LOG_STORE_NAME)) { db.createObjectStore(LOG_STORE_NAME, { keyPath: 'id' }); } if (!db.objectStoreNames.contains(COMBO_STORE_NAME)) { db.createObjectStore(COMBO_STORE_NAME, { keyPath: 'id' }); } const tx = event.target.transaction; const orderStore = tx.objectStore(STORE_NAME); const reportStore = tx.objectStore(REPORT_STORE_NAME); const addRegion = (store) => { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result; records.forEach(r => { if (!r.region) { r.region = 'macau'; store.put(r); } }); }; }; addRegion(orderStore); addRegion(reportStore); }; }); }
-async function getAllOrdersUnfiltered() { return new Promise((resolve) => { if (!db) resolve([]); const tx = db.transaction([STORE_NAME],'readonly'); const store = tx.objectStore(STORE_NAME); const req = store.getAll(); req.onsuccess = (e) => resolve(e.target.result || []); }); }
-async function getAllReportsUnfiltered() { return new Promise((resolve) => { if (!db) resolve([]); const tx = db.transaction([REPORT_STORE_NAME],'readonly'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.getAll(); req.onsuccess = (e) => resolve(e.target.result || []); }); }
-async function getOrderRecords() { const all = await getAllOrdersUnfiltered(); return all.filter(r => r.region === currentRegion); }
-async function getReportOrderRecords() { const all = await getAllReportsUnfiltered(); return all.filter(r => r.region === currentRegion); }
-async function getComboOrders() { return new Promise((resolve) => { if (!db) resolve([]); const tx = db.transaction([COMBO_STORE_NAME],'readonly'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.getAll(); req.onsuccess = (e) => resolve((e.target.result || []).filter(r => r.region === currentRegion)); }); }
+// ===== 单条删除函数 =====
+async function deleteOrderRecordFromIDB(id) { if (!db || !dbAvailable) return false; const record = await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readonly'); const store = tx.objectStore(STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (!record) return false; await moveToRecycleBin(record, 'order'); await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readwrite'); const store = tx.objectStore(STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); return true; }
+async function deleteReportOrderRecordFromIDB(id) { if (!db || !dbAvailable) return false; const record = await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readonly'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (!record) return false; await moveToRecycleBin(record, 'report'); await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); return true; }
+async function deleteComboOrderRecordFromIDB(id) { if (!db || !dbAvailable) return false; const record = await new Promise((resolve) => { const tx = db.transaction([COMBO_STORE_NAME], 'readonly'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (!record) return false; await moveToRecycleBin(record, 'combo'); await new Promise((resolve) => { const tx = db.transaction([COMBO_STORE_NAME], 'readwrite'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); return true; }
 
-async function saveOrderRecordToIDB(content, user, date, totalAmount = 0, ts = null, regionOverride = null) {
-  if (!db || !dbAvailable) { showToast('数据库不可用，操作无法保存'); return false; }
-  const record = { id: Date.now() + '-' + Math.random().toString(36).substr(2, 9), content, user, date, totalAmount, region: regionOverride || currentRegion, timestamp: ts || new Date().toISOString() };
-  let success = false;
-  for (let attempt = 0; attempt < 3; attempt++) { try { await new Promise((resolve, reject) => { const tx = db.transaction([STORE_NAME], 'readwrite'); const store = tx.objectStore(STORE_NAME); const req = store.add(record); req.onsuccess = () => resolve(true); req.onerror = () => reject(req.error); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error); }); success = true; break; } catch (e) { if (attempt < 2) await new Promise(r => setTimeout(r, 300)); } }
-  if (!success) { showToast('保存失败，请重试'); return false; }
-  return true;
-}
-async function saveReportOrderRecordToIDB(content, user, date, totalAmount = 0, ts = null, regionOverride = null) {
-  if (!db || !dbAvailable) { showToast('数据库不可用，操作无法保存'); return false; }
-  const record = { id: Date.now() + '-' + Math.random().toString(36).substr(2, 9), content, user, date, totalAmount, region: regionOverride || currentRegion, timestamp: ts || new Date().toISOString() };
-  let success = false;
-  for (let attempt = 0; attempt < 3; attempt++) { try { await new Promise((resolve, reject) => { const tx = db.transaction([REPORT_STORE_NAME], 'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.add(record); req.onsuccess = () => resolve(true); req.onerror = () => reject(req.error); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error); }); success = true; break; } catch (e) { if (attempt < 2) await new Promise(r => setTimeout(r, 300)); } }
-  if (!success) { showToast('保存失败，请重试'); return false; }
-  return true;
-}
-async function saveComboOrderRecordToIDB(content, user, date, totalAmount = 0, comboType = '', ts = null) {
-  if (!db || !dbAvailable) { showToast('数据库不可用，操作无法保存'); return false; }
-  const record = { id: Date.now() + '-' + Math.random().toString(36).substr(2, 9), content, user, date, totalAmount, comboType, region: currentRegion, timestamp: ts || new Date().toISOString() };
-  let success = false;
-  for (let attempt = 0; attempt < 3; attempt++) { try { await new Promise((resolve, reject) => { const tx = db.transaction([COMBO_STORE_NAME], 'readwrite'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.add(record); req.onsuccess = () => resolve(true); req.onerror = () => reject(req.error); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error); }); success = true; break; } catch (e) { if (attempt < 2) await new Promise(r => setTimeout(r, 300)); } }
-  if (!success) { showToast('保存失败，请重试'); return false; }
-  return true;
-}
+// ===== 批量删除函数 =====
+async function batchDeleteOrderRecordFromIDB(ids) { if (!db || !dbAvailable) return false; try { for (const id of ids) { const record = await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readonly'); const store = tx.objectStore(STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (record) { await moveToRecycleBin(record, 'order'); await new Promise((resolve) => { const tx = db.transaction([STORE_NAME], 'readwrite'); const store = tx.objectStore(STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); } } return true; } catch (e) { console.error('批量删除订单失败', e); return false; } }
+async function batchDeleteReportOrderRecordFromIDB(ids) { if (!db || !dbAvailable) return false; try { for (const id of ids) { const record = await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readonly'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (record) { await moveToRecycleBin(record, 'report'); await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); } } return true; } catch (e) { console.error('批量删除上报记录失败', e); return false; } }
+async function batchDeleteComboOrderRecordFromIDB(ids) { if (!db || !dbAvailable) return false; try { for (const id of ids) { const record = await new Promise((resolve) => { const tx = db.transaction([COMBO_STORE_NAME], 'readonly'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (record) { await moveToRecycleBin(record, 'combo'); await new Promise((resolve) => { const tx = db.transaction([COMBO_STORE_NAME], 'readwrite'); const store = tx.objectStore(COMBO_STORE_NAME); const req = store.delete(id); req.onsuccess = () => resolve(true); req.onerror = () => resolve(false); }); } } return true; } catch (e) { console.error('批量删除连肖记录失败', e); return false; } }
+
+// ===== 清空函数 =====
+async function clearAllOrderRecordsFromIDB(region = null) { return new Promise((resolve) => { if (!db) resolve(false); const tx = db.transaction([STORE_NAME],'readwrite'); const store = tx.objectStore(STORE_NAME); if (region) { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result.filter(r => r.region === region); records.forEach(r => store.delete(r.id)); resolve(true); }; } else { const req = store.clear(); req.onsuccess = () => resolve(true); } }); }
+async function clearAllReportOrderRecordsFromIDB(region = null) { return new Promise((resolve) => { if (!db) resolve(false); const tx = db.transaction([REPORT_STORE_NAME],'readwrite'); const store = tx.objectStore(REPORT_STORE_NAME); if (region) { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result.filter(r => r.region === region); records.forEach(r => store.delete(r.id)); resolve(true); }; } else { const req = store.clear(); req.onsuccess = () => resolve(true); } }); }
+async function clearAllComboOrderRecordsFromIDB(region = null) { return new Promise((resolve) => { if (!db) resolve(false); const tx = db.transaction([COMBO_STORE_NAME],'readwrite'); const store = tx.objectStore(COMBO_STORE_NAME); if (region) { const allReq = store.getAll(); allReq.onsuccess = () => { const records = allReq.result.filter(r => r.region === region); records.forEach(r => store.delete(r.id)); resolve(true); }; } else { const req = store.clear(); req.onsuccess = () => resolve(true); } }); }
+
+async function calculateStorageUsage() { const records = await getOrderRecords(); const reportRecords = await getReportOrderRecords(); const comboRecords = await getComboOrders(); const orderCount = records.length + reportRecords.length + comboRecords.length; let usedBytes = 0; records.forEach(r => usedBytes += JSON.stringify(r).length * 2); reportRecords.forEach(r => usedBytes += JSON.stringify(r).length * 2); comboRecords.forEach(r => usedBytes += JSON.stringify(r).length * 2); usedBytes += JSON.stringify(getAllConfigData()).length * 2; const usedMB = (usedBytes / (1024*1024)).toFixed(2); const maxStorage = 50*1024*1024; const freeMB = ((maxStorage - usedBytes) / (1024*1024)).toFixed(2); document.getElementById('orderCount').textContent = orderCount; document.getElementById('usedSpace').textContent = `${usedMB} MB`; document.getElementById('freeSpace').textContent = `${freeMB} MB`; const filterDate = document.getElementById('filterDate')?.value || getTodayCST(); const todayRecords = records.filter(r => r.date === filterDate); document.getElementById('todayOrderCount').textContent = todayRecords.length; updateLogCount(); }
+
+function getUsers() { const key = `users_${currentRegion}`; return JSON.parse(localStorage.getItem(key) || '[]'); }
+function saveUsers(users) { const key = `users_${currentRegion}`; localStorage.setItem(key, JSON.stringify(users)); }
+function addUser(name) { const users = getUsers(); if (users.includes(name)) { showToast('用户已存在'); return false; } users.push(name); saveUsers(users); return true; }
+async function deleteUser(name) { let users = getUsers(); users = users.filter(u => u !== name); saveUsers(users); if (userBetData[name]) delete userBetData[name]; rebuildTotal(); refreshAll(); }
+function rebuildTotal() { tableBetData = {}; for (const u in userBetData) for (const n in userBetData[u]) tableBetData[n] = (tableBetData[n]||0) + userBetData[u][n]; }
+function refreshAll() { updateSelects(); updateTableFromRecords(); }
+function updateSelects() { const users = getUsers(); const orderSel = document.getElementById('orderUserSelect'); if (orderSel) { orderSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; orderSel.appendChild(o); }); } const comboUserSel = document.getElementById('comboUserSelect'); if (comboUserSel) { comboUserSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; comboUserSel.appendChild(o); }); } const viewSel = document.getElementById('viewUserSelect'); if (viewSel) { viewSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; viewSel.appendChild(o); }); } }
     // ===== 操作日志函数 =====
 async function addOperationLog(action, detail, regionOverride = null, orderUser = null, orderTotal = 0) {
   if (!db) return;
