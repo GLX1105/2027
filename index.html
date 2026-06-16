@@ -223,11 +223,10 @@ body[data-region="yuegang"] .floating-window::after { border-color: #27ae60; }
 #lianxiaoStatsContainer table {min-width:auto!important;width:auto!important;table-layout:auto!important;}
 #lianxiaoStatsContainer th,#lianxiaoStatsContainer td {white-space:nowrap!important;font-size:12px!important;padding:2px 4px!important;}
 
-.duijiang-table {width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;table-layout:fixed;}
+.duijiang-table {width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;}
 .duijiang-table th {background:#f0f0f0;font-weight:bold;color:#1a1a2e;padding:6px 8px;border:1px solid #ddd;white-space:nowrap;text-align:center;}
-.duijiang-table td {border:1px solid #ddd;padding:5px 8px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.duijiang-table td.duijiang-hit-col {white-space:normal;word-break:break-word;}
-.duijiang-table .summary-row td {font-weight:normal;background:#f8f9fa;border-top:2px solid #ccc;}
+.duijiang-table td {border:1px solid #ddd;padding:5px 8px;text-align:center;white-space:nowrap;}
+.duijiang-table .summary-row td {font-weight:normal;background:#f8f9fa;border-top:none;}
 .duijiang-section-title {font-size:14px;font-weight:bold;color:#1a1a2e;margin:10px 0 4px 0;padding:4px 8px;background:#eaf2f8;border-radius:4px;}
 
 .year-zodiac-area{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:normal;}
@@ -1303,7 +1302,7 @@ function saveOddsData() {
   showToast('赔率已保存'); if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
 }
 
-// ===== 连肖统计弹窗（移除录开奖区域） =====
+// ===== 连肖统计弹窗（移除赔率按钮） =====
 function showLianxiaoStatsWin() {
   if (document.getElementById('lianxiaoStatsWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoStatsWin';
@@ -1314,9 +1313,6 @@ function showLianxiaoStatsWin() {
     <div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 60px);">
       <div id="lianxiaoStatsContainer" style="column-count:4; column-gap:10px; flex:1; overflow-y:auto;"></div>
       <div id="lianxiaoStatsTotal" style="text-align:center; font-weight:bold; font-size:14px; padding:8px; border-top:2px solid #333; margin-top:8px;"></div>
-      <div style="display:flex; gap:6px; margin-top:6px; justify-content:center;">
-        <button class="btn" style="background:#8e44ad;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="showOddsWin()">赔率</button>
-      </div>
     </div>`;
   document.body.appendChild(win);
   makeWindowDraggable('lianxiaoStatsWin'); highestZ += 1; win.style.zIndex = highestZ;
@@ -1412,7 +1408,7 @@ async function screenshotSingleComboCard(cardId) {
     canvas.toBlob(async blob => { if (!blob) { showToast('生成图片失败'); return; } try { const item = new ClipboardItem({ 'image/png': blob }); await navigator.clipboard.write([item]); showToast('截图已复制'); } catch(e) { showToast('复制失败'); } }, 'image/png');
   } catch(e) { showToast('截图失败'); }
 }
-// ===== 兑奖窗口（含返水列、中奖详情红色、所有用户行不加粗、列宽固定等宽、中奖详情min-width:70px、截图按钮、赔率按钮移到此处、所有用户在同一行） =====
+    // ===== 兑奖窗口（含返水列、中奖详情红色、所有用户行镶入不加粗、截图按钮、赔率按钮） =====
 function showDuiJiangWin() {
   if (document.getElementById('duiJiangWin')) return;
   const fd = document.getElementById('filterDate')?.value || getTodayCST();
@@ -1447,31 +1443,19 @@ function showDuiJiangWin() {
   win.innerHTML = `
     <div class="modal-header">🏆 兑奖窗口<div class="window-controls"><button onclick="maximizeWindow('duiJiangWin')">🗖</button><button onclick="document.getElementById('duiJiangWin').remove()">×</button></div></div>
     <div class="modal-body" style="overflow-y:auto; padding:10px;">
-      <div class="duijiang-section-title">📋 下单统计 <button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;margin-left:8px;" onclick="screenshotDuiJiangSection('duiJiangOrderTable')">截图</button></div>
-      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangOrderTable">
-        <colgroup><col style="width:70px;"><col style="width:70px;"><col style="width:70px;"><col style="min-width:70px;"><col style="width:70px;"></colgroup>
-        <thead><tr><th>用户</th><th>下单金额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead>
-        <tbody id="duiJiangOrderBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody>
-      </table></div>
-      <div class="duijiang-section-title">📤 上报统计 <button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;margin-left:8px;" onclick="screenshotDuiJiangSection('duiJiangReportTable')">截图</button></div>
-      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangReportTable">
-        <colgroup><col style="width:70px;"><col style="width:70px;"><col style="width:70px;"><col style="min-width:70px;"><col style="width:70px;"></colgroup>
-        <thead><tr><th>用户</th><th>上报金额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead>
-        <tbody id="duiJiangReportBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody>
-      </table></div>
-      <div class="duijiang-section-title">📊 最终合计 <button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;margin-left:8px;" onclick="screenshotDuiJiangSection('duiJiangFinalTable')">截图</button></div>
-      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangFinalTable">
-        <colgroup><col style="width:70px;"><col style="width:70px;"><col style="min-width:70px;"><col style="width:70px;"></colgroup>
-        <thead><tr><th>净金额</th><th>净返水</th><th>中奖详情</th><th>净盈亏</th></tr></thead>
-        <tbody id="duiJiangFinalBody"><tr><td colspan="4" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody>
-      </table></div>
+      <div class="duijiang-section-title">📋 下单统计 <button class="btn" onclick="screenshotDuiJiangTable('duiJiangOrderTable')" style="padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;background:#27ae60;color:#fff;border:none;cursor:pointer;margin-left:8px;">截图</button></div>
+      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangOrderTable"><thead><tr><th>用户</th><th>下单金额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead><tbody id="duiJiangOrderBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
+      <div class="duijiang-section-title">📤 上报统计 <button class="btn" onclick="screenshotDuiJiangTable('duiJiangReportTable')" style="padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;background:#27ae60;color:#fff;border:none;cursor:pointer;margin-left:8px;">截图</button></div>
+      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangReportTable"><thead><tr><th>用户</th><th>上报金额</th><th>返水</th><th>中奖详情</th><th>盈亏</th></tr></thead><tbody id="duiJiangReportBody"><tr><td colspan="5" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
+      <div class="duijiang-section-title">📊 最终合计 <button class="btn" onclick="screenshotDuiJiangTable('duiJiangFinalTable')" style="padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;background:#27ae60;color:#fff;border:none;cursor:pointer;margin-left:8px;">截图</button></div>
+      <div style="overflow-x:auto;"><table class="duijiang-table" id="duiJiangFinalTable"><thead><tr><th>净金额</th><th>净返水</th><th>中奖详情</th><th>净盈亏</th></tr></thead><tbody id="duiJiangFinalBody"><tr><td colspan="4" style="text-align:center;color:#888;">请先录入开奖号码并保存兑奖</td></tr></tbody></table></div>
       <div class="duijiang-section-title">🎰 录开奖</div>
       ${drawTableHtml}
       <div style="display:flex; gap:6px; margin-top:6px; justify-content:center;">
         <button class="btn" style="background:#f39c12;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="enableDrawEdit()">修改</button>
         <button class="btn" style="background:#28a745;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="saveDuiJiangDraw()">保存兑奖</button>
         <button class="btn" style="background:#8e44ad;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="showOddsWin()">赔率</button>
-        <button class="btn" style="background:#8e44ad;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="screenshotDuiJiangAll()">截图全部</button>
+        <button class="btn" style="background:#3498db;color:#fff;padding:4px 12px;font-size:12px;min-height:28px;" onclick="screenshotDuiJiangAll()">截图全部</button>
       </div>
     </div>`;
   document.body.appendChild(win);
@@ -1484,8 +1468,8 @@ async function saveDuiJiangDraw() {
   refreshDuiJiangStats();
 }
 
-// ===== 截图兑奖某个表格区域 =====
-async function screenshotDuiJiangSection(tableId) {
+// ===== 兑奖表格截图函数 =====
+async function screenshotDuiJiangTable(tableId) {
   const tbl = document.getElementById(tableId);
   if (!tbl) { showToast('表格不存在'); return; }
   try {
@@ -1497,26 +1481,28 @@ async function screenshotDuiJiangSection(tableId) {
   } catch(e) { showToast('截图失败'); }
 }
 
-// ===== 截图兑奖窗口全部内容 =====
+// ===== 截图兑奖窗口全部内容（非可视区域） =====
 async function screenshotDuiJiangAll() {
   const win = document.getElementById('duiJiangWin');
-  if (!win) { showToast('兑奖窗口不存在'); return; }
-  const body = win.querySelector('.modal-body');
-  if (!body) { showToast('内容区域不存在'); return; }
+  if (!win) return;
+  const modalBody = win.querySelector('.modal-body');
+  if (!modalBody) return;
   try {
-    const origOverflow = body.style.overflow; const origMaxHeight = body.style.maxHeight;
-    body.style.overflow = 'visible'; body.style.maxHeight = 'none';
-    body.offsetHeight;
-    const canvas = await html2canvas(body, { backgroundColor: '#ffffff', scale: 2, logging: false });
-    body.style.overflow = origOverflow; body.style.maxHeight = origMaxHeight;
+    const origOverflow = modalBody.style.overflow;
+    const origMaxHeight = modalBody.style.maxHeight;
+    modalBody.style.overflow = 'visible';
+    modalBody.style.maxHeight = 'none';
+    const canvas = await html2canvas(modalBody, { backgroundColor: '#ffffff', scale: 2, logging: false });
+    modalBody.style.overflow = origOverflow;
+    modalBody.style.maxHeight = origMaxHeight;
     canvas.toBlob(async blob => {
       if (!blob) { showToast('生成图片失败'); return; }
-      try { const item = new ClipboardItem({ 'image/png': blob }); await navigator.clipboard.write([item]); showToast('截图已复制'); } catch(e) { showToast('复制失败'); }
+      try { const item = new ClipboardItem({ 'image/png': blob }); await navigator.clipboard.write([item]); showToast('截图全部已复制'); } catch(e) { showToast('复制失败'); }
     }, 'image/png');
   } catch(e) { showToast('截图失败'); }
 }
 
-// ===== 兑奖统计核心函数（含各玩法中奖判断、返水、盈亏计算，中奖详情红色，所有用户行不加粗，无数据留空，所有用户在同一行） =====
+// ===== 兑奖统计核心函数（所有用户行镶入tbody，无特殊class，中奖详情未中奖留空，金额0留空，盈亏0留空，返水盈亏取整） =====
 function refreshDuiJiangStats() {
   const orderBody = document.getElementById('duiJiangOrderBody');
   const reportBody = document.getElementById('duiJiangReportBody');
@@ -1592,12 +1578,8 @@ function refreshDuiJiangStats() {
       const reportPL = Math.round(s.reportPL);
       const orderPLColor = orderPL > 0 ? 'color:#008000;' : (orderPL < 0 ? 'color:#ff0000;' : '');
       const reportPLColor = reportPL > 0 ? 'color:#008000;' : (reportPL < 0 ? 'color:#ff0000;' : '');
-      const orderTotalDisplay = s.orderTotal > 0 ? s.orderTotal : '';
-      const orderRebateDisplay = s.orderRebate > 0 ? Math.round(s.orderRebate) : '';
-      const reportTotalDisplay = s.reportTotal > 0 ? s.reportTotal : '';
-      const reportRebateDisplay = s.reportRebate > 0 ? Math.round(s.reportRebate) : '';
-      orderHtml += `<tr><td>${user}</td><td>${orderTotalDisplay}</td><td>${orderRebateDisplay}</td><td class="duijiang-hit-col" style="color:#ff0000;">${orderHitDetail}</td><td style="${orderPLColor}">${orderPL !== 0 ? orderPL : ''}</td></tr>`;
-      reportHtml += `<tr><td>${user}</td><td>${reportTotalDisplay}</td><td>${reportRebateDisplay}</td><td class="duijiang-hit-col" style="color:#ff0000;">${reportHitDetail}</td><td style="${reportPLColor}">${reportPL !== 0 ? reportPL : ''}</td></tr>`;
+      orderHtml += `<tr><td>${user}</td><td>${s.orderTotal > 0 ? s.orderTotal : ''}</td><td>${s.orderRebate > 0 ? Math.round(s.orderRebate) : ''}</td><td style="color:#ff0000;">${orderHitDetail}</td><td style="${orderPLColor}">${orderPL !== 0 ? orderPL : ''}</td></tr>`;
+      reportHtml += `<tr><td>${user}</td><td>${s.reportTotal > 0 ? s.reportTotal : ''}</td><td>${s.reportRebate > 0 ? Math.round(s.reportRebate) : ''}</td><td style="color:#ff0000;">${reportHitDetail}</td><td style="${reportPLColor}">${reportPL !== 0 ? reportPL : ''}</td></tr>`;
     });
     const orderPL = Math.round(sumOrderPL);
     const reportPL = Math.round(sumReportPL);
@@ -1605,13 +1587,8 @@ function refreshDuiJiangStats() {
     const reportPLColor = reportPL > 0 ? 'color:#008000;' : (reportPL < 0 ? 'color:#ff0000;' : '');
     const sumOrderHitDetail = buildHitDetail(sumOrderHitByType);
     const sumReportHitDetail = buildHitDetail(sumReportHitByType);
-    const sumOrderTotalDisplay = sumOrderTotal > 0 ? sumOrderTotal : '';
-    const sumOrderRebateDisplay = sumOrderRebate > 0 ? Math.round(sumOrderRebate) : '';
-    const sumReportTotalDisplay = sumReportTotal > 0 ? sumReportTotal : '';
-    const sumReportRebateDisplay = sumReportRebate > 0 ? Math.round(sumReportRebate) : '';
-    // ===== 关键：合计行五个 td 都在同一个 tr 内 =====
-    orderHtml += `<tr class="summary-row"><td>所有用户</td><td>${sumOrderTotalDisplay}</td><td>${sumOrderRebateDisplay}</td><td class="duijiang-hit-col" style="color:#ff0000;">${sumOrderHitDetail}</td><td style="${orderPLColor}">${orderPL !== 0 ? orderPL : ''}</td></tr>`;
-    reportHtml += `<tr class="summary-row"><td>所有用户</td><td>${sumReportTotalDisplay}</td><td>${sumReportRebateDisplay}</td><td class="duijiang-hit-col" style="color:#ff0000;">${sumReportHitDetail}</td><td style="${reportPLColor}">${reportPL !== 0 ? reportPL : ''}</td></tr>`;
+    orderHtml += `<tr><td>所有用户</td><td>${sumOrderTotal > 0 ? sumOrderTotal : ''}</td><td>${sumOrderRebate > 0 ? Math.round(sumOrderRebate) : ''}</td><td style="color:#ff0000;">${sumOrderHitDetail}</td><td style="${orderPLColor}">${orderPL !== 0 ? orderPL : ''}</td></tr>`;
+    reportHtml += `<tr><td>所有用户</td><td>${sumReportTotal > 0 ? sumReportTotal : ''}</td><td>${sumReportRebate > 0 ? Math.round(sumReportRebate) : ''}</td><td style="color:#ff0000;">${sumReportHitDetail}</td><td style="${reportPLColor}">${reportPL !== 0 ? reportPL : ''}</td></tr>`;
     orderBody.innerHTML = orderHtml; reportBody.innerHTML = reportHtml;
     const netAmount = sumOrderTotal - sumReportTotal;
     const netRebate = Math.round(sumOrderRebate - sumReportRebate);
@@ -1621,9 +1598,7 @@ function refreshDuiJiangStats() {
     for (const [type, amt] of Object.entries(sumOrderHitByType)) { netHitByType[type] = (netHitByType[type] || 0) + amt; }
     for (const [type, amt] of Object.entries(sumReportHitByType)) { netHitByType[type] = (netHitByType[type] || 0) - amt; }
     const netHitDetail = buildHitDetail(netHitByType);
-    const netAmountDisplay = netAmount !== 0 ? netAmount : '';
-    const netRebateDisplay = netRebate !== 0 ? netRebate : '';
-    finalBody.innerHTML = `<tr><td>${netAmountDisplay}</td><td>${netRebateDisplay}</td><td class="duijiang-hit-col" style="color:#ff0000;">${netHitDetail}</td><td style="${netPLColor}">${netPL !== 0 ? netPL : ''}</td></tr>`;
+    finalBody.innerHTML = `<tr><td>${netAmount > 0 ? netAmount : ''}</td><td>${netRebate !== 0 ? netRebate : ''}</td><td style="color:#ff0000;">${netHitDetail}</td><td style="${netPLColor}">${netPL !== 0 ? netPL : ''}</td></tr>`;
   });
 }
 
@@ -3075,7 +3050,7 @@ document.getElementById('reportMultipleVal')?.addEventListener('input', generate
 document.getElementById('startZodiacSelect')?.addEventListener('change', changeStartZodiac);
 
 const filterDateEl = document.getElementById('filterDate');
-if (filterDateEl) { filterDateEl.addEventListener('change', () => { updateTableFromRecords(); if (document.getElementById('orderWin')) { applyPrizeFilter(); } applyReportCap(); updateRecentDrawTexts(); renderPingtexiaoTable(); updateCardA(); if (document.getElementById('duiJiangWin')) { showDuiJiangWin(); } }); filterDateEl.addEventListener('input', updateTableFromRecords); }
+if (filterDateEl) { filterDateEl.addEventListener('change', () => { updateTableFromRecords(); if (document.getElementById('orderWin')) { applyPrizeFilter(); } applyReportCap(); updateRecentDrawTexts(); renderPingtexiaoTable(); updateCardA(); const duiJiangWin = document.getElementById('duiJiangWin'); if (duiJiangWin) { showDuiJiangWin(); } }); filterDateEl.addEventListener('input', updateTableFromRecords); }
 
 let currentParseMethod = parseInt(localStorage.getItem('savedParseMethod') || '0');
 function parseExcessText(text, method) { const lines = text.trim().split('\n').filter(l => l.trim()); const items = []; for (const line of lines) { const match = line.match(/(\d{2})各(\d+)米/); if (match) { items.push({ num: match[1], amount: parseInt(match[2]) }); } } if (items.length === 0) return ''; items.sort((a, b) => b.amount - a.amount); const parseItems = (method) => { const data = items.map(item => ({ ...item })); const result = []; if (method === 0) { while (data.some(d => d.amount > 0)) { const maxAmount = Math.max(...data.map(d => d.amount)); if (maxAmount <= 0) break; const group = []; for (const d of data) { if (d.amount > 0 && (maxAmount - d.amount) <= maxAmount * 0.4) { group.push(d.num); } } const groupAmount = Math.min(...group.map(n => data.find(d => d.num === n).amount)); for (const n of group) { const d = data.find(d => d.num === n); d.amount -= groupAmount; } result.push(`${group.join('-')}各数${groupAmount}`); } } else if (method === 1) { while (data.some(d => d.amount > 0)) { let bestAmount = 0; let bestCount = 0; for (let i = 0; i < data.length; i++) { const candidate = data[i].amount; if (candidate <= 0) continue; let count = 0; for (const d of data) { if (d.amount >= candidate) count++; } if (count > bestCount || (count === bestCount && candidate < bestAmount)) { bestCount = count; bestAmount = candidate; } } if (bestCount === 0) break; const group = []; for (const d of data) { if (d.amount >= bestAmount) { group.push(d.num); d.amount -= bestAmount; } } result.push(`${group.join('-')}各数${bestAmount}`); } } else if (method === 2) { const levels = [50, 10, 5, 2, 1]; for (const lv of levels) { let again = true; while (again) { again = false; const group = []; for (const d of data) { if (d.amount >= lv) { group.push(d.num); d.amount -= lv; again = true; } } if (group.length > 0) { result.push(`${group.join('-')}各数${lv}`); } } } } else if (method === 3) { for (let lv = 100; lv >= 1; lv--) { let again = true; while (again) { again = false; const group = []; for (const d of data) { if (d.amount >= lv) { group.push(d.num); d.amount -= lv; again = true; } } if (group.length > 0) { result.push(`${group.join('-')}各数${lv}`); } } } } else if (method === 4) { const levels = []; for (let lv = 100; lv >= 5; lv -= 5) levels.push(lv); levels.push(3, 2, 1); for (const lv of levels) { let again = true; while (again) { again = false; const group = []; for (const d of data) { if (d.amount >= lv) { group.push(d.num); d.amount -= lv; again = true; } } if (group.length > 0) { result.push(`${group.join('-')}各数${lv}`); } } } } return result.join('\n'); }; return parseItems(method); }
