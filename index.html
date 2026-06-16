@@ -573,7 +573,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
         </div>
       </div>
     </div>
-        <!-- 右侧风险报告区域 -->
+      <!-- 右侧风险报告区域 -->
     <div class="risk-report-area">
         <div class="card" id="riskReportCard">
           <div class="card-title">
@@ -1387,13 +1387,56 @@ async function saveDrawNumbers() {
 
 // ===== 连肖识别输入处理 =====
 function convertComboText() {
-  const inputEl = document.getElementById('comboInput'); const resultEl = document.getElementById('comboResult');
+  const inputEl = document.getElementById('comboInput');
+  const resultEl = document.getElementById('comboResult');
   if (!inputEl || !resultEl) return;
-  const text = inputEl.value.trim();
-  if (!text) { resultEl.innerHTML = ''; updateComboTotalDisplay(); return; }
-  const lines = text.split('\n'); let html = ''; lines.forEach(line => { html += `<div>${line}</div>`; });
-  resultEl.innerHTML = html; updateComboTotalDisplay();
+  const rawText = inputEl.value.trim();
+  if (!rawText) { resultEl.innerHTML = ''; updateComboTotalDisplay(); return; }
+  
+  // 内容预处理（VBA替换_内容替换逻辑）
+  let 内容 = rawText;
+  // 错别字纠正等预处理已在第七段定义，这里直接调用
+  if (typeof 替换_内容替换 === 'function') {
+    内容 = 替换_内容替换(内容);
+  }
+  
+  // 执行所有连肖识别（函数在第七段定义）
+  if (typeof 执行连肖识别 === 'function') {
+    执行连肖识别(内容);
+  }
+  
+  // 渲染结果
+  const results = window._comboResults || [];
+  if (results.length === 0) {
+    resultEl.innerHTML = '';
+    updateComboTotalDisplay();
+    return;
+  }
+  
+  // 按金额分组，相同金额合并一行，每组加括号
+  const groupMap = new Map(); // key: 玩法类别|金额, value: { 类别, 金额, 组合数组 }
+  results.forEach(r => {
+    if (r.每组金额 <= 0 || r.总组数 <= 0) return;
+    const key = r.类别 + '|' + r.每组金额;
+    if (!groupMap.has(key)) {
+      groupMap.set(key, { 类别: r.类别, 金额: r.每组金额, 组合: [] });
+    }
+    groupMap.get(key).组合.push(r.号码字符串);
+  });
+  
+  const lines = [];
+  let totalAll = 0;
+  groupMap.forEach((item) => {
+    const combos = item.组合.join(')(');
+    const line = `${item.类别} (${combos}) 各组 ${item.金额}`;
+    lines.push(line);
+    totalAll += item.金额 * item.组合.length;
+  });
+  
+  resultEl.innerHTML = lines.join('<br>');
+  updateComboTotalDisplay();
 }
+
 function comboRemoveSeparators() { const ta = document.getElementById('comboInput'); if (!ta) return; const s = ta.selectionStart, e = ta.selectionEnd; if (s === e) { showToast('请先选择文本'); return; } const sel = ta.value.substring(s, e); const cleaned = sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g, ''); ta.value = ta.value.substring(0, s) + cleaned + ta.value.substring(e); convertComboText(); }
 async function pasteComboOrder() { try { const text = await navigator.clipboard.readText(); if (text) { const ta = document.getElementById('comboInput'); if (ta) { ta.value = text; convertComboText(); } } } catch(err) { showToast('无法访问剪贴板'); } }
 
@@ -1456,7 +1499,174 @@ async function screenshotRiskCard() {
     }, 'image/png');
   } catch(e) { showToast('截图失败'); }
 }
-    // ===== 兑奖窗口（含返水列、中奖详情红色、所有用户行镶入不加粗、截图按钮、赔率按钮、回车跳转） =====
+    // ===== 连肖识别核心辅助函数（新增） =====
+
+// 内容预处理（VBA 替换_内容替换 的JS版本）
+function 替换_内容替换(内容) {
+  if (!内容) return '';
+  const 错别字映射 = [
+    ['录','绿'],['碌','绿'],['禄','绿'],['拦','蓝'],['篮','蓝'],['免','兔'],['午','牛'],['侯','猴'],['候','猴'],
+    ['老鼠','鼠'],['老虎','虎'],['兔子','兔'],['猴子','猴'],['子','鼠'],['老蛇','蛇'],['尤','龙'],['虑','虎'],
+    ['坡','波'],['家属','家肖'],['綠','绿'],['监','蓝'],['俏','肖'],['肉',''],['藍','蓝'],['啵','波'],
+    ['莲','连'],['联','连'],['连消','连肖'],['车肖','连肖'],['串肖','连肖'],['连/肖','连肖'],
+    ['一连肖','平特肖'],['一连','平特'],['拾','十'],['佰','百'],['仟','千'],['壹','一'],['贰','二'],
+    ['叁','三'],['肆','四'],['陆','六'],['柒','七'],['捌','八'],['玖','九'],['伍','五'],['俩','二'],
+    ['≡','三'],['山','三'],['馬','马'],['龍','龙'],['雞','鸡'],['豬','猪'],['鳮','鸡'],['単','单'],
+    ['組','组'],['復制','复式'],['复制','复式'],['復式','复式'],['复习','复式'],['夏式','复式'],
+    ['泼','波'],['持','特'],['平待','平特'],['友','有'],['0','0'],['O','0'],['o','0'],['Ⅰ','1'],
+    ['l','1'],['I','1'],['|','1'],['〇','0'],['○','0'],['σ','0']
+  ];
+  for (const [旧, 新] of 错别字映射) { 内容 = 内容.split(旧).join(新); }
+  内容 = 内容.replace(/大数/g, '大').replace(/来/g, '下');
+  内容 = 内容.replace(/单号/g, '单').replace(/双号/g, '双').replace(/大号/g, '大').replace(/小号/g, '小');
+  内容 = 内容.replace(/家肖/g, '家禽').replace(/野肖/g, '野兽');
+  内容 = 内容.replace(/双数数字/g, '双').replace(/和数单/g, '合数单').replace(/和数/g, '合数');
+  内容 = 内容.replace(/小数/g, '小').replace(/双数/g, '双').replace(/单数/g, '单');
+  内容 = 内容.replace(/合数小/g, '合小').replace(/合数大/g, '合大');
+  内容 = 内容.replace(/肖连/g, '连肖').replace(/消/g, '肖');
+  内容 = 内容.replace(/[1一]中[1一]/g, '平码');
+  内容 = 内容.replace(/五中四/g, '复式4肖').replace(/二全中/g, '二中二').replace(/三全中/g, '三中三');
+  内容 = 内容.replace(/三三二二串/g, '复三复二').replace(/三三二二/g, '复三复二');
+  内容 = 内容.replace(/红波小|红波小数/g, '红小').replace(/红波大|红波大数/g, '红大');
+  内容 = 内容.replace(/绿波小|绿波小数/g, '绿小').replace(/绿波大|绿波大数/g, '绿大');
+  内容 = 内容.replace(/蓝波小|蓝波小数|兰小|兰波小|兰波小数/g, '蓝小');
+  内容 = 内容.replace(/蓝波大|蓝波大数|兰大|兰波大|兰波大数/g, '蓝大');
+  内容 = 内容.replace(/尾数小/g, '小尾').replace(/尾数大/g, '大尾').replace(/尾数/g, '尾');
+  内容 = 内容.replace(/個數/g, '个数').replace(/數/g, '数').replace(/號/g, '号').replace(/碼/g, '码');
+  内容 = 内容.replace(/壓/g, '压').replace(/篮/g, '蓝').replace(/名/g, '各');
+  内容 = 内容.replace(/([二三四五])[串拖托]/g, '$1连肖');
+  内容 = 内容.replace(/([2345二三四五]连)串/g, '$1肖');
+  内容 = 内容.replace(/([二三四五2345]连) +(肖)/g, '$1$2');
+  内容 = 内容.replace(/(平特)[：]+(肖)/g, '$1$2');
+  内容 = 内容.replace(/([\d二三四五六七八九]连肖)互串/g, '复式$1');
+  内容 = 内容.replace(/([二三四五2345])[有友]/g, '$1连肖');
+  内容 = 内容.replace(/([1一])[有友]/g, '平特$1肖');
+  for (const c of ['二','三','四','五']) { 内容 = 内容.replace(new RegExp(c + '肖', 'g'), c + '连肖'); }
+  内容 = 内容.replace(/([\d二三四五六七八九](?:连?肖|肖连))(复式|复试)/g, '复式$1');
+  内容 = 内容.replace(/(?:一起|和计|总合|一共|总共|总合|加总|汇总|总和|总计|共计|合计|共|总|计)\s*(\d+|[一二三四五六七八九十百千]+)(?:[元斤注米咪组]|个号)*/g, '');
+  内容 = 内容.replace(/澳门\d+期/g, '');
+  内容 = 内容.replace(/(\d+) *(尾)/g, '$1尾');
+  内容 = 内容.replace(/0(\d岁)/g, '$1');
+  内容 = 内容.replace(/一(\d|[鼠牛虎兔龙蛇马羊猴鸡狗猪])/g, '-$1');
+  内容 = 内容.replace(/([\d肖鼠牛虎兔龙蛇马羊猴鸡狗猪])[.]?二[:]?(\d)/g, '$1=$2');
+  内容 = 内容.replace(/(\d)十(?=\d)/g, '$1+');
+  return 内容;
+}
+
+// toNum：中文数字转阿拉伯
+function toNum(s) {
+  if (!s) return 0; s = String(s).trim();
+  if (/^-?\d+$/.test(s)) return parseInt(s);
+  const map = {'零':0,'一':1,'二':2,'两':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'百':100,'千':1000,'万':10000};
+  let sum = 0, tmp = 0;
+  for (let c of s) {
+    const v = map[c];
+    if (v === 10 || v === 100 || v === 1000 || v === 10000) {
+      if (tmp === 0) tmp = 1; tmp *= v; sum += tmp; tmp = 0;
+    } else if (v !== undefined) {
+      if (tmp > 0) { sum += tmp; tmp = 0; } tmp = v;
+    }
+  }
+  sum += tmp; return sum;
+}
+
+// 获取生肖字典（对应VBA GetCAType）
+let 生肖字典_cache = null;
+function 获取生肖字典() {
+  if (生肖字典_cache) return 生肖字典_cache;
+  const cfg = getAllConfigData();
+  生肖字典_cache = {};
+  for (const [zodiac, nums] of Object.entries(cfg.zodiac)) {
+    生肖字典_cache[zodiac] = nums.map(n => n.padStart(2, '0')).join(',');
+  }
+  for (let i = 0; i <= 9; i++) {
+    const nums = [];
+    for (let j = 0; j <= 4; j++) { const n = j * 10 + i; if (n >= 1 && n <= 49) nums.push(String(n).padStart(2, '0')); }
+    生肖字典_cache[i + '尾'] = nums.join(',');
+  }
+  for (let i = 0; i <= 4; i++) {
+    const nums = [];
+    for (let j = 0; j <= 9; j++) { const n = i * 10 + j + 1; if (n >= 1 && n <= 49) nums.push(String(n).padStart(2, '0')); }
+    生肖字典_cache[i + '头'] = nums.join(',');
+  }
+  return 生肖字典_cache;
+}
+
+// 生肖字符串和正则初始化
+const 生肖字符集 = '鼠牛虎兔龙蛇马羊猴鸡狗猪';
+let 单生肖识别, 多生肖识别, 单号码识别, 多号码识别, 单号码识别_加中文;
+function 初始化正则() {
+  const zs = 获取生肖字典();
+  const zodiacChars = Object.keys(zs).filter(k => /^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(k));
+  const zodiacPattern = '(?:' + zodiacChars.join('|') + '|[0-9]尾|[0-9]头)';
+  单生肖识别 = new RegExp(zodiacPattern, 'g');
+  多生肖识别 = new RegExp('[' + zodiacChars.join('') + ']+', 'g');
+  单号码识别 = new RegExp('\\d', 'g');
+  单号码识别_加中文 = new RegExp('[\\d一二三四五六七八九]', 'g');
+  多号码识别 = new RegExp('\\d+', 'g');
+}
+
+// 排序函数
+const 生肖排序标准 = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+function 排序_生肖排序(str) { const arr = String(str).split(''); arr.sort((a,b)=>生肖排序标准.indexOf(a)-生肖排序标准.indexOf(b)); return arr.join(''); }
+function 排序_号码字符串排序(str) { const nums = String(str).split(/[-,，]/).filter(n=>n.trim()); nums.sort((a,b)=>parseInt(a)-parseInt(b)); return nums.map(n=>String(n).padStart(2,'0')).join('-'); }
+function 排序_尾_号码字符串排序(str) { const nums = String(str).split(/[-,，]/).filter(n=>n.trim()); nums.sort((a,b)=>parseInt(a)-parseInt(b)); return nums.join('-'); }
+function 排序_号码字符串排序_连尾(str) { return 排序_尾_号码字符串排序(str); }
+
+// 复式组合生成
+function 复式_号码(原始字符数组, 复式几个号码) {
+  let arr = Array.isArray(原始字符数组) ? 原始字符数组 : String(原始字符数组).replace(/[，、\s]+/g, ',').replace(/,+/g, ',').split(',').filter(n=>n.trim());
+  const resultArr = [];
+  const helper = (start, chosen) => {
+    if (chosen.length === 复式几个号码) { resultArr.push(排序_号码字符串排序([...chosen].join('-'))); return; }
+    for (let i = start; i < arr.length; i++) { chosen.push(arr[i]); helper(i+1, chosen); chosen.pop(); }
+  };
+  helper(0, []); return { total: resultArr.length, result: resultArr.join(',') };
+}
+function 复式_尾_号码(原始字符数组, 复式几个号码) {
+  let arr = Array.isArray(原始字符数组) ? 原始字符数组 : String(原始字符数组).replace(/[，、\s]+/g, ',').split(',').filter(n=>n.trim());
+  const resultArr = [];
+  const helper = (start, chosen) => {
+    if (chosen.length === 复式几个号码) { resultArr.push(排序_尾_号码字符串排序([...chosen].join(','))); return; }
+    for (let i = start; i < arr.length; i++) { chosen.push(arr[i]); helper(i+1, chosen); chosen.pop(); }
+  };
+  helper(0, []); return { total: resultArr.length, result: resultArr.join(',') };
+}
+function 复式_生肖(生肖字符串, 复式几肖) {
+  const arr = String(生肖字符串).split('');
+  const resultArr = [];
+  const helper = (start, chosen) => {
+    if (chosen.length === 复式几肖) { resultArr.push(排序_生肖排序(chosen.join(''))); return; }
+    for (let i = start; i < arr.length; i++) { chosen.push(arr[i]); helper(i+1, chosen); chosen.pop(); }
+  };
+  helper(0, []); return { total: resultArr.length, result: resultArr.join(',') };
+}
+
+// 统一输出函数（连肖弹窗格式：各组）
+function 新识别_添加(类别, 每组金额, 总组数, 总金额, 号码字符串, 押注内容) {
+  if (!window._comboResults) window._comboResults = [];
+  window._comboResults.push({
+    类别, 每组金额: Number(每组金额)||0, 总组数: Number(总组数)||0,
+    总金额: Number(总金额)||0, 号码字符串, 押注内容
+  });
+}
+
+// 关键字获取
+function 获取关键字(类别) {
+  const map = { '三中三':'各数|各号|各|每个|每组|各组|每一组|各组各|每注|每组各|下注|买|个|＝|＝各|各买|各下|下|每', '二中二':'各数|各号|各|每个|每组|各组|每一组|各组各|每注|每组各|下注|买|个|＝|＝各|各买|各下|下|每', '连肖':'各数|各号|各|每个|每组|各组|每一组|各组各|每注|每组各|下注|买|个|＝|＝各|各买|各下|下|每', '连尾':'各数|各号|各|每个|每组|各组|每一组|各组各|每注|每组各|下注|买|个|＝|＝各|各买|各下|下|每', '平特肖':'各数|各号|各|每个|每组|各组|每一组|各组各|每注|每组各|下注|买|个|＝|＝各|各买|各下|下|每', '平特尾':'各数|各号|各|每个|每组|各组|每一组|各组各|每注|每组各|下注|买|个|＝|＝各|各买|各下|下|每', '平码':'各数|各号|各|每个|每组|各组|每一组|各组各|每注|每组各|下注|买|个|＝|＝各|各买|各下|下|每', '特串':'各数|各号|各|每个|每组|各组|每一组|各组各|每注|每组各|下注|买|个|＝|＝各|各买|各下|下|每' };
+  return '(?:' + (map[类别] || '各|每') + ')';
+}
+
+// 功能函数
+function 功能_获取所有单生肖(str) { const m = String(str).match(/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/g); return m ? 排序_生肖排序(m.join('')) : ''; }
+function 功能_数字到数字识别(d1, d2) { const start = parseInt(toNum(d1)), end = parseInt(toNum(d2)); const r = []; for (let i = start; i <= end; i++) r.push(String(i).padStart(2,'0')); return r.join('-'); }
+function 功能_生肖变数字(sx) { const dic = 获取生肖字典(); let res = ''; for (const ch of String(sx)) { if (dic[ch]) res += ',' + dic[ch]; } return 排序_号码字符串排序(res.substring(1)); }
+function 功能_逗号分隔_数字串两两组合(str) { const arr = String(str).split(/[,，]/).filter(n=>n.trim()); const r = []; for (let i=0;i<arr.length;i++) for (let j=i+1;j<arr.length;j++) r.push(排序_号码字符串排序(arr[i]+'-'+arr[j])); return r.join(','); }
+function 字符串_替换无法识别字符为逗号(str) { return String(str).replace(/[\?？]/g, ','); }
+function 数字字符串_逗号分隔_排序(str) { if (!str) return ''; const arr = String(str).split(/[,，]/); arr.sort((a,b)=>parseInt(a)-parseInt(b)); return arr.join(','); }
+function 获取_正则对象(pat) { return new RegExp(pat, 'g'); }
+
+// ===== 兑奖窗口（原第七段代码，完全不变） =====
 function showDuiJiangWin() {
   if (document.getElementById('duiJiangWin')) return;
   const fd = document.getElementById('filterDate')?.value || getTodayCST();
@@ -1698,6 +1908,7 @@ function getOddsForType(type, oddsData) {
     rebate: parseFloat(saved.rebate) || defaults[type]?.rebate || 4
   };
 }
+    // ===== 兑奖统计核心函数（原第八段） =====
 
 // ===== 兑奖：普通订单特码行（含生肖/属性/分类展开，只看第7位特码，不去重，hasValidDraw控制是否计算中奖） =====
 function processNormalLineDuijiang(stats, match, drawTeMa, cfg, vc, oddsData, hasValidDraw) {
@@ -1809,254 +2020,15 @@ function processReportLineDuijiang(stats, match, drawTeMa, cfg, vc, oddsData, ha
     stats.reportPL += (nums.length * amt) - (nums.length * amt * (rebate / 100)) - (hitAmount * odds);
   }
 }
-    // ===== 组合生成核心函数（含平特肖/平特尾标红、元素不足标红，多元素组合加括号） =====
+
+// ===== 组合生成核心函数（替换为新的自动识别总入口） =====
 window.comboGenerate = function(comboType) {
-  const inputEl = document.getElementById('comboInput');
-  const resultEl = document.getElementById('comboResult');
-  if (!inputEl || !resultEl) return;
-  const rawText = inputEl.value.trim();
-  if (!rawText) { showToast('请输入内容'); return; }
-
-  const cfg = getAllConfigData();
-  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
-
-  const lines = rawText.split('\n');
-  const allResults = [];
-  window._comboPureContents = [];
-  window._lastComboType = comboType;
-
-  lines.forEach(line => {
-    line = line.trim();
-    if (!line) return;
-    const match = line.match(/^(.+?)\s*(?:各组|各|个|组|=)\s*(\d+)$/);
-    if (!match) { allResults.push(line); return; }
-    const content = match[1].trim();
-    const amount = parseInt(match[2]) || 0;
-    if (!content || amount <= 0) { allResults.push(line); return; }
-
-    const tokens = content.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
-    if (tokens.length === 0) return;
-
-    const numbers = [], zodiacs = [], weishus = [];
-    tokens.forEach(t => {
-      if (/^\d{1,2}$/.test(t)) {
-        numbers.push(t.padStart(2, '0'));
-      }
-      else if (/^\d{3,}$/.test(t)) {
-        const digits = t.match(/\d{2}/g) || [];
-        digits.forEach(d => {
-          const n = parseInt(d);
-          if (n >= 1 && n <= 49) numbers.push(d.padStart(2, '0'));
-        });
-      }
-      else if (/^[\u4e00-\u9fa5\d]尾$/.test(t)) {
-        const digit = t.replace('尾', '');
-        weishus.push(digit);
-      }
-      else if (/^[\d]+尾$/.test(t) && t.length > 2) {
-        const digits = t.replace('尾', '').split('');
-        digits.forEach(d => weishus.push(d));
-      }
-      else if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) {
-        zodiacs.push(t);
-      }
-      else if (/^[\u4e00-\u9fa5]+$/.test(t) && t.length > 1) {
-        const chars = t.split('');
-        let allZodiac = true;
-        const tempZodiacs = [];
-        for (const ch of chars) {
-          if (cfg.zodiac[ch]) { tempZodiacs.push(ch); }
-          else { allZodiac = false; break; }
-        }
-        if (allZodiac && tempZodiacs.length > 0) { zodiacs.push(...tempZodiacs); }
-        else { numbers.push(t); }
-      }
-      else { numbers.push(t); }
-    });
-
-    // ===== 平特肖（单元素，不加括号） =====
-    if (comboType === 'pingtexiao') {
-      const uniqueZodiacs = [...new Set(zodiacs)];
-      const hasDup = zodiacs.length !== uniqueZodiacs.length;
-      const hasWarning = zodiacs.length === 0 || hasDup;
-      const warningText = zodiacs.length === 0 ? '未识别到有效生肖' : (hasDup ? '有重复' : '');
-
-      const yearZodiacs = [], otherZodiacs = [];
-      uniqueZodiacs.forEach(z => { if (z === curYearZodiac) yearZodiacs.push(z); else otherZodiacs.push(z); });
-
-      if (yearZodiacs.length > 0) {
-        const pureLine = `${yearZodiacs.join(' ')} 各组 ${amount}`;
-        const displayLine = hasWarning
-          ? `<span style="color:red;">平特肖带主肖 ${yearZodiacs.join(' ')} 各组 ${amount}（${warningText}）</span>`
-          : `平特肖带主肖 ${yearZodiacs.join(' ')} 各组 ${amount}`;
-        allResults.push(displayLine);
-        window._comboPureContents.push(pureLine);
-      }
-      if (otherZodiacs.length > 0) {
-        const pureLine = `${otherZodiacs.join(' ')} 各组 ${amount}`;
-        const displayLine = hasWarning
-          ? `<span style="color:red;">平特肖 ${otherZodiacs.join(' ')} 各组 ${amount}（${warningText}）</span>`
-          : `平特肖 ${otherZodiacs.join(' ')} 各组 ${amount}`;
-        allResults.push(displayLine);
-        window._comboPureContents.push(pureLine);
-      }
-      if (yearZodiacs.length === 0 && otherZodiacs.length === 0) {
-        allResults.push(`<span style="color:red;">平特肖 ${warningText}</span>`);
-      }
-
-      resultEl.innerHTML = allResults.join('<br>');
-      updateComboTotalDisplay();
-      return;
-    }
-
-    // ===== 平特尾（单元素，不加括号） =====
-    if (comboType === 'pingtewei') {
-      const allDigits = [];
-      tokens.forEach(t => {
-        if (/^\d{1}$/.test(t)) { allDigits.push(t); }
-        else if (/^\d{2}$/.test(t) && t.startsWith('0')) { allDigits.push(t.charAt(1)); }
-        else if (/^[\u4e00-\u9fa5\d]尾$/.test(t)) { allDigits.push(t.replace('尾','')); }
-      });
-      weishus.forEach(d => { if (!allDigits.includes(d)) allDigits.push(d); });
-
-      const uniqueDigits = [...new Set(allDigits)];
-      const hasDup = allDigits.length !== uniqueDigits.length;
-      const hasWarning = allDigits.length === 0 || hasDup;
-      const warningText = allDigits.length === 0 ? '未识别到有效尾数' : (hasDup ? '有重复' : '');
-
-      const zeroDigits = uniqueDigits.filter(d => d === '0');
-      const otherDigits = uniqueDigits.filter(d => d !== '0');
-
-      if (zeroDigits.length > 0) {
-        const pureLine = `0尾 各组 ${amount}`;
-        const displayLine = hasWarning
-          ? `<span style="color:red;">平特尾零尾 0尾 各组 ${amount}（${warningText}）</span>`
-          : `平特尾零尾 0尾 各组 ${amount}`;
-        allResults.push(displayLine);
-        window._comboPureContents.push(pureLine);
-      }
-      if (otherDigits.length > 0) {
-        const otherStr = otherDigits.map(d => d + '尾').join(' ');
-        const pureLine = `${otherStr} 各组 ${amount}`;
-        const displayLine = hasWarning
-          ? `<span style="color:red;">平特尾 ${otherStr} 各组 ${amount}（${warningText}）</span>`
-          : `平特尾 ${otherStr} 各组 ${amount}`;
-        allResults.push(displayLine);
-        window._comboPureContents.push(pureLine);
-      }
-      if (zeroDigits.length === 0 && otherDigits.length === 0) {
-        allResults.push(`<span style="color:red;">平特尾 ${warningText}</span>`);
-      }
-
-      resultEl.innerHTML = allResults.join('<br>');
-      updateComboTotalDisplay();
-      return;
-    }
-
-    let results = [];
-    const n = getComboSize(comboType);
-
-    if (comboType === 'pingma') {
-      numbers.forEach(num => { results.push({ combo: [num], amount: amount }); });
-    } else if (comboType === 'zhong2' || comboType === 'zhong3') {
-      results = comboProcessZhong(content, comboType, amount, cfg);
-    } else if (comboType.startsWith('lianxiao')) {
-      const combos = comboCombine(zodiacs, n);
-      results = combos.map(c => ({ combo: c, amount: amount }));
-    } else if (comboType.startsWith('lianwei')) {
-      const combos = comboCombine(weishus, n);
-      results = combos.map(c => ({ combo: c, amount: amount }));
-    } else if (comboType.startsWith('buzhong')) {
-      const combos = comboCombine(numbers, n);
-      results = combos.map(c => ({ combo: c, amount: amount }));
-    }
-
-    if (results.length === 0) {
-      let actualElements = [];
-      if (comboType.startsWith('lianxiao')) { actualElements = zodiacs; }
-      else if (comboType.startsWith('lianwei')) { actualElements = weishus; }
-      else if (comboType === 'pingma') { actualElements = numbers; }
-      else if (comboType === 'zhong2' || comboType === 'zhong3') { actualElements = tokens; }
-      else { actualElements = numbers; }
-
-      const uniqueElements = [...new Set(actualElements)];
-      const nRequired = getComboSize(comboType);
-      const typeLabel = getComboTypeLabel(comboType);
-
-      if (uniqueElements.length === 0) {
-        allResults.push(`<span style="color:red;">${typeLabel} 未识别到有效元素</span>`);
-      } else if (uniqueElements.length < nRequired) {
-        allResults.push(`<span style="color:red;">${typeLabel} 不足${nRequired}个（仅有${uniqueElements.length}个）</span>`);
-      } else {
-        allResults.push(`<span style="color:red;">${typeLabel} 无法生成组合</span>`);
-      }
-      resultEl.innerHTML = allResults.join('<br>');
-      updateComboTotalDisplay();
-      return;
-    }
-
-    let actualElements = [];
-    if (comboType.startsWith('lianxiao')) { actualElements = zodiacs; }
-    else if (comboType.startsWith('lianwei')) { actualElements = weishus; }
-    else if (comboType === 'zhong2' || comboType === 'zhong3') {
-      const allNums = new Set(); results.forEach(r => r.combo.forEach(n => allNums.add(n)));
-      actualElements = [...allNums];
-    } else { actualElements = numbers; }
-    const allTokens = [...new Set(actualElements)];
-    const nRequired = getComboSize(comboType);
-
-    let hasWarning = false, warningText = '';
-    if (allTokens.length < nRequired) { hasWarning = true; warningText = `不足${nRequired}个`; }
-    if (actualElements.length !== new Set(actualElements).size) { hasWarning = true; warningText = warningText ? `${warningText}、有重复` : '有重复'; }
-
-    const comboNumberMap = { lianxiao2: '二', lianxiao3: '三', lianxiao4: '四', lianxiao5: '五', lianwei2: '二', lianwei3: '三', lianwei4: '四', lianwei5: '五' };
-    const comboNumStr = comboNumberMap[comboType] || '';
-
-    if (comboType.startsWith('lianxiao')) {
-      const withYear = [], withoutYear = [];
-      results.forEach(r => { (r.combo.some(z => z === curYearZodiac) ? withYear : withoutYear).push(r); });
-      const withStr = withYear.map(r => '(' + r.combo.join('-') + ')').join(' ');
-      const withoutStr = withoutYear.map(r => '(' + r.combo.join('-') + ')').join(' ');
-      if (withStr) {
-        window._comboPureContents.push(`${withStr} 各组 ${amount}`);
-        allResults.push(hasWarning ? `<span style="color:red;">${comboNumStr}连肖带主肖 ${withStr} 各组 ${amount}（${warningText}）</span>` : `${comboNumStr}连肖带主肖 ${withStr} 各组 ${amount}`);
-      }
-      if (withoutStr) {
-        window._comboPureContents.push(`${withoutStr} 各组 ${amount}`);
-        allResults.push(hasWarning ? `<span style="color:red;">${comboNumStr}连肖 ${withoutStr} 各组 ${amount}（${warningText}）</span>` : `${comboNumStr}连肖 ${withoutStr} 各组 ${amount}`);
-      }
-    } else if (comboType.startsWith('lianwei')) {
-      const withZero = [], withoutZero = [];
-      results.forEach(r => { (r.combo.some(w => w === '0') ? withZero : withoutZero).push(r); });
-      const withStr = withZero.map(r => '(' + r.combo.map(w => w + '尾').join('-') + ')').join(' ');
-      const withoutStr = withoutZero.map(r => '(' + r.combo.map(w => w + '尾').join('-') + ')').join(' ');
-      if (withStr) {
-        window._comboPureContents.push(`${withStr} 各组 ${amount}`);
-        allResults.push(hasWarning ? `<span style="color:red;">${comboNumStr}连尾零尾 ${withStr} 各组 ${amount}（${warningText}）</span>` : `${comboNumStr}连尾零尾 ${withStr} 各组 ${amount}`);
-      }
-      if (withoutStr) {
-        window._comboPureContents.push(`${withoutStr} 各组 ${amount}`);
-        allResults.push(hasWarning ? `<span style="color:red;">${comboNumStr}连尾 ${withoutStr} 各组 ${amount}（${warningText}）</span>` : `${comboNumStr}连尾 ${withoutStr} 各组 ${amount}`);
-      }
-    } else if (comboType === 'pingma') {
-      const str = results.map(r => r.combo.join('-')).join(' ');
-      const pureLine = `${str} 各组 ${amount}`;
-      window._comboPureContents.push(pureLine);
-      allResults.push(hasWarning ? `<span style="color:red;">平码 ${str} 各组 ${amount}（${warningText}）</span>` : `平码 ${str} 各组 ${amount}`);
-    } else {
-      const typeLabel = getComboTypeLabel(comboType);
-      const str = results.map(r => '(' + r.combo.join('-') + ')').join(' ');
-      const pureLine = `${str} 各组 ${amount}`;
-      window._comboPureContents.push(pureLine);
-      allResults.push(hasWarning ? `<span style="color:red;">${typeLabel} ${str} 各组 ${amount}（${warningText}）</span>` : `${typeLabel} ${str} 各组 ${amount}`);
-    }
-  });
-
-  resultEl.innerHTML = allResults.join('<br>');
-  updateComboTotalDisplay();
+  // 新的自动识别模式：直接调用 convertComboText 重新识别
+  convertComboText();
 };
 
 function getComboSize(comboType) {
+  // 保留兼容，新逻辑不再依赖此函数
   const map = { lianxiao2:2, lianxiao3:3, lianxiao4:4, lianxiao5:5, zhong2:2, zhong3:3, pingma:1, lianwei2:2, lianwei3:3, lianwei4:4, lianwei5:5, buzhong5:5, buzhong6:6, buzhong7:7, buzhong8:8, buzhong9:9, buzhong10:10, buzhong11:11, buzhong12:12 };
   return map[comboType] || 2;
 }
@@ -2073,90 +2045,23 @@ function comboCombine(arr, k) {
 }
 
 function comboProcessZhong(content, comboType, amount, cfg) {
-  const results = [];
-  const dragMatch = content.match(/^(.+?)[拖托](.+)$/);
-  let danTokens = [], tuoTokens = [];
-
-  if (dragMatch) {
-    const danStr = dragMatch[1];
-    const tuoStr = dragMatch[2];
-    danTokens = danStr.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
-    tuoTokens = tuoStr.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
-  } else {
-    const tokens = content.split(/[\s,，.。、+\-*＊\/\\|;；:：!！?？@#$%^&~]+/).filter(t => t.trim());
-    const allNums = [];
-    tokens.forEach(t => {
-      if (/^\d{1,2}$/.test(t)) { allNums.push(t.padStart(2, '0')); }
-      else if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) { cfg.zodiac[t].forEach(n => allNums.push(n.padStart(2, '0'))); }
-      else if (/^[\u4e00-\u9fa5\d]尾$/.test(t)) {
-        const w = t.replace('尾', '');
-        for (let i = 0; i <= 4; i++) { const num = (i * 10 + parseInt(w)).toString().padStart(2, '0'); if (parseInt(num) >= 1 && parseInt(num) <= 49) allNums.push(num); }
-      }
-    });
-    const k = comboType === 'zhong3' ? 3 : 2;
-    const combos = comboCombine([...new Set(allNums)], k);
-    combos.forEach(c => results.push({ combo: c.sort((a,b)=>parseInt(a)-parseInt(b)), amount: amount }));
-    return results;
-  }
-
-  const expandTokens = (tokenArr) => {
-    const nums = [];
-    tokenArr.forEach(t => {
-      if (/^\d{1,2}$/.test(t)) { nums.push(t.padStart(2, '0')); }
-      else if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) { cfg.zodiac[t].forEach(n => nums.push(n.padStart(2, '0'))); }
-      else if (/^[\u4e00-\u9fa5\d]尾$/.test(t)) {
-        const w = t.replace('尾', '');
-        for (let i = 0; i <= 4; i++) { const num = (i * 10 + parseInt(w)).toString().padStart(2, '0'); if (parseInt(num) >= 1 && parseInt(num) <= 49) nums.push(num); }
-      }
-    });
-    return [...new Set(nums)];
-  };
-
-  const danNums = expandTokens(danTokens);
-  const tuoNums = expandTokens(tuoTokens);
-  const k = comboType === 'zhong3' ? 3 : 2;
-
-  if (k === 2) {
-    if (danNums.length >= 1) {
-      for (const d of danNums) {
-        for (const t of tuoNums) {
-          if (d !== t) results.push({ combo: [d, t].sort((a,b)=>parseInt(a)-parseInt(b)), amount: amount });
-        }
-      }
-    }
-  } else if (k === 3) {
-    if (danNums.length >= 1 && danNums.length <= 2) {
-      const need = 3 - danNums.length;
-      const tuoCombos = comboCombine(tuoNums, need);
-      for (const dc of (danNums.length === 1 ? danNums.map(d => [d]) : [danNums])) {
-        for (const tc of tuoCombos) {
-          const combo = [...dc, ...tc].sort((a,b)=>parseInt(a)-parseInt(b));
-          if (new Set(combo).size === 3) results.push({ combo, amount: amount });
-        }
-      }
-    }
-  }
-
-  return results;
+  // 保留兼容，新逻辑不再依赖此函数
+  return [];
 }
 
 function updateComboTotalDisplay() {
   const box = document.getElementById('comboTotalAmountBox');
   const span = document.getElementById('comboTotalAmount');
   if (!box || !span) return;
+  const results = window._comboResults || [];
   let total = 0;
   let groupCount = 0;
-  if (window._comboPureContents && window._comboPureContents.length > 0) {
-    window._comboPureContents.forEach(line => {
-      const match = line.match(/^(.+?)\s+各组\s+(\d+)$/);
-      if (!match) return;
-      const combosStr = match[1]; const amt = parseInt(match[2]) || 0;
-      const cleaned = combosStr.replace(/[()]/g, '');
-      const groups = cleaned.split(/\s+/).filter(c => c.trim());
-      total += groups.length * amt;
-      groupCount += groups.length;
-    });
-  }
+  results.forEach(r => {
+    if (r.每组金额 > 0 && r.总组数 > 0) {
+      total += r.总金额;
+      groupCount += r.总组数;
+    }
+  });
   span.textContent = total;
   box.style.display = total > 0 ? 'inline-flex' : 'none';
   const lineCountSpan = document.getElementById('comboLineCount');
@@ -2174,36 +2079,26 @@ function updateComboTotalDisplay() {
 function updateComboMaxLoss() {
   const existingSpan = document.getElementById('comboMaxLossDisplay');
   if (!existingSpan) return;
-  if (!window._comboPureContents || window._comboPureContents.length === 0) {
+  const results = window._comboResults || [];
+  if (results.length === 0) {
     existingSpan.textContent = ''; existingSpan.style.display = 'none'; return;
   }
   const oddsData = getOddsData();
-  const defaults = {
-    '特码':{odds:47,rebate:4},
-    'pingtexiao':{odds:2,rebate:4},'lianxiao2':{odds:4,rebate:4},'lianxiao3':{odds:10,rebate:4},'lianxiao4':{odds:30,rebate:4},
-    'lianxiao5':{odds:100,rebate:4},'pingtewei':{odds:1.8,rebate:4},'lianwei2':{odds:3,rebate:4},'lianwei3':{odds:6,rebate:4},
-    'lianwei4':{odds:14,rebate:4},'lianwei5':{odds:28,rebate:4},'buzhong5':{odds:2,rebate:4},'buzhong6':{odds:2.5,rebate:4},
-    'buzhong7':{odds:3,rebate:4},'buzhong8':{odds:3.5,rebate:4},'buzhong9':{odds:4,rebate:4},'buzhong10':{odds:5,rebate:4},
-    'buzhong11':{odds:6,rebate:4},'buzhong12':{odds:7,rebate:4},'zhong2':{odds:60,rebate:4},'zhong3':{odds:600,rebate:4},'pingma':{odds:7,rebate:4}
-  };
-  const type = window._lastComboType || 'pingtexiao';
-  let odds = 2, rebate = 4;
-  if (defaults[type]) { odds = parseFloat(defaults[type].odds); rebate = parseFloat(defaults[type].rebate); }
-  if (oddsData[type]) {
-    if (oddsData[type].odds) odds = parseFloat(oddsData[type].odds);
-    if (oddsData[type].rebate) rebate = parseFloat(oddsData[type].rebate);
-  }
   let totalAmount = 0;
   let maxSingleAmount = 0;
-  window._comboPureContents.forEach(line => {
-    const match = line.match(/^(.+?)\s+各组\s+(\d+)$/);
-    if (!match) return;
-    const combosStr = match[1]; const amt = parseInt(match[2]) || 0;
-    const cleaned = combosStr.replace(/[()]/g, '');
-    const groups = cleaned.split(/\s+/).filter(c => c.trim());
-    groups.forEach(g => { totalAmount += amt; if (amt > maxSingleAmount) maxSingleAmount = amt; });
+  results.forEach(r => {
+    if (r.每组金额 > 0 && r.总组数 > 0) {
+      totalAmount += r.总金额;
+      if (r.每组金额 > maxSingleAmount) maxSingleAmount = r.每组金额;
+    }
   });
   if (totalAmount === 0) { existingSpan.textContent = ''; existingSpan.style.display = 'none'; return; }
+  // 默认赔率取平特肖
+  const type = 'pingtexiao';
+  const defaults = { odds: 2, rebate: 4 };
+  const savedOdds = oddsData[type] || {};
+  const odds = parseFloat(savedOdds.odds) || defaults.odds;
+  const rebate = parseFloat(savedOdds.rebate) || defaults.rebate;
   const singleLoss = Math.round(totalAmount - totalAmount * (rebate / 100) - maxSingleAmount * odds);
   const allLoss = Math.round(totalAmount - totalAmount * (rebate / 100) - totalAmount * odds);
   let displayText = '';
@@ -2216,45 +2111,67 @@ function updateComboMaxLoss() {
   else { existingSpan.textContent = ''; existingSpan.style.display = 'none'; }
 }
 
-// ===== 保存连肖订单 =====
+// ===== 保存连肖订单（适配新各组格式） =====
 async function saveComboOrder() {
-  if (!window._comboPureContents || window._comboPureContents.length === 0) { showToast('请先生成组合'); return; }
+  const results = window._comboResults || [];
+  if (results.length === 0) { showToast('请先输入内容识别'); return; }
   const user = document.getElementById('comboUserSelect')?.value;
   if (!user) { showToast('请先选择用户'); return; }
   const date = document.getElementById('filterDate')?.value || getTodayCST();
-  const comboType = window._lastComboType || 'combo';
-  const pureText = window._comboPureContents.join('\n');
+  // 生成保存内容：玩法类别 (组合) 各组 金额
+  const groupMap = new Map();
+  results.forEach(r => {
+    if (r.每组金额 <= 0 || r.总组数 <= 0) return;
+    const key = r.类别 + '|' + r.每组金额;
+    if (!groupMap.has(key)) {
+      groupMap.set(key, { 类别: r.类别, 金额: r.每组金额, 组合: [] });
+    }
+    groupMap.get(key).组合.push(r.号码字符串);
+  });
   let totalAmount = 0;
+  const lines = [];
+  groupMap.forEach((item) => {
+    const combos = item.组合.join(')(');
+    const line = `${item.类别} (${combos}) 各组 ${item.金额}`;
+    lines.push(line);
+    totalAmount += item.金额 * item.组合.length;
+  });
+  const content = lines.join('\n');
+  if (!content) { showToast('无有效内容'); return; }
+  const existingOrders = (await getComboOrders()).filter(r => r.date === date && r.user === user);
+  if (existingOrders.some(o => o.content === content)) {
+    const confirmed = await confirm('该用户今天已保存过相同内容，确定再次保存吗？');
+    if (!confirmed) return;
+  }
+  await saveComboOrderRecordToIDB(content, user, date, totalAmount, 'combo');
+  addOperationLog('save_order', content, currentRegion, user, totalAmount);
+  
+  // 同步平特肖数据
   const cfg = getAllConfigData();
   const pingtexiaoData = getPingtexiaoData();
-
-  window._comboPureContents.forEach(line => {
-    const match = line.match(/^(.+?)\s+各组\s+(\d+)$/);
-    if (!match) return;
-    const combosStr = match[1]; const amt = parseInt(match[2]) || 0;
-    const cleaned = combosStr.replace(/[()]/g, '');
-    totalAmount += cleaned.split(/\s+/).filter(c => c.trim()).length * amt;
-    cleaned.split(/\s+/).forEach(c => {
-      if (/^[\u4e00-\u9fa5]$/.test(c) && cfg.zodiac[c]) {
-        if (!pingtexiaoData[c]) pingtexiaoData[c] = { amount: '', report: '' };
-        pingtexiaoData[c].amount = (parseFloat(pingtexiaoData[c].amount) || 0 + amt).toString();
-      }
-    });
+  results.forEach(r => {
+    if (r.类别 === '平特肖' || r.类别 === '平特肖带主肖') {
+      const zodiacs = r.号码字符串.split(/[-,，]/).filter(z => cfg.zodiac[z]);
+      zodiacs.forEach(z => {
+        if (!pingtexiaoData[z]) pingtexiaoData[z] = { amount: '', report: '' };
+        pingtexiaoData[z].amount = (parseFloat(pingtexiaoData[z].amount) || 0 + r.每组金额).toString();
+      });
+    }
   });
-
-  await saveComboOrderRecordToIDB(pureText, user, date, totalAmount, comboType);
-  addOperationLog('save_order', pureText, currentRegion, user, totalAmount);
   savePingtexiaoData(pingtexiaoData);
   renderPingtexiaoTable(); updatePingtexiaoTotal();
 
   document.getElementById('comboInput').value = '';
   document.getElementById('comboResult').innerHTML = '';
-  window._comboPureContents = [];
+  window._comboResults = [];
   updateComboTotalDisplay();
   const box = document.getElementById('comboTotalAmountBox'); if (box) box.style.display = 'none';
   const lineSpan = document.getElementById('comboLineCount'); if (lineSpan) lineSpan.style.display = 'none';
   const lossSpan = document.getElementById('comboMaxLossDisplay'); if (lossSpan) { lossSpan.textContent = ''; lossSpan.style.display = 'none'; }
   showToast('已保存连肖订单');
+  calculateStorageUsage();
+  showStorageDrawerTemporary(5000);
+  clearStatsCache();
 }
 
 // ===== 连肖统计函数（卡片内容超400px滚动，汇总行固定底部，显示去括号，总金额蓝色，盈亏排名高亮，中奖总金额） =====
