@@ -2242,7 +2242,7 @@ async function saveComboOrder() {
   showToast('已保存连肖订单');
 }
 
-// ===== 连肖统计函数（键名统一为中文，与兑奖窗口一致） =====
+// ===== 连肖统计函数（卡片内容超400px滚动，汇总行固定底部，显示去括号，总金额蓝色，盈亏排名高亮，中奖总金额） =====
 async function refreshLianxiaoStats() {
   const container = document.getElementById('lianxiaoStatsContainer');
   if (!container) return;
@@ -2297,7 +2297,6 @@ async function refreshLianxiaoStats() {
   const drawZodiacsSet = new Set(drawZodiacs);
   const drawNumbersSet = new Set(drawNumbers);
 
-  // stats 对象使用中文键名，结构仍为 { withYear: Map, withoutYear: Map }
   const stats = {};
   let grandTotal = 0;
   records.forEach(rec => {
@@ -2311,89 +2310,68 @@ async function refreshLianxiaoStats() {
       groups.forEach(group => {
         const rawGroup = group.replace(/^\(|\)$/g, '');
         const tokens = rawGroup.split('-');
-        // 确定玩法类型（中文）
-        let comboType = '';
-        let hasYearZodiac = false;
-        let hasZeroWei = false;
-        if (tokens.length === 1) {
-          if (cfg.zodiac[tokens[0]]) {
-            comboType = '平特肖';
-            if (tokens[0] === curYearZodiac) hasYearZodiac = true;
-          } else if (tokens[0].includes('尾')) {
-            comboType = '平特尾';
-            if (tokens[0].replace('尾','') === '0') hasZeroWei = true;
-          } else if (/^\d{2}$/.test(tokens[0])) {
-            comboType = '平码';
-          }
+        if (tokens.length === 1 && cfg.zodiac[tokens[0]]) {
+          const comboType = 'pingtexiao';
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const hasYear = tokens[0] === curYearZodiac;
+          (hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).set(tokens[0], ((hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).get(tokens[0]) || 0) + amount);
+          grandTotal += amount;
+        } else if (tokens.length === 1 && tokens[0].includes('尾')) {
+          const comboType = 'pingtewei';
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const hasZero = tokens[0].replace('尾','') === '0';
+          (hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).set(tokens[0], ((hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).get(tokens[0]) || 0) + amount);
+          grandTotal += amount;
         } else if (tokens.some(t => cfg.zodiac[t])) {
-          const lxMap = {2:'二连肖',3:'三连肖',4:'四连肖',5:'五连肖'};
-          comboType = lxMap[tokens.length] || '二连肖';
-          hasYearZodiac = tokens.some(t => t === curYearZodiac);
+          const comboType = `lianxiao${tokens.length}`;
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const hasYear = tokens.some(t => t === curYearZodiac);
+          const comboKey = tokens.join('-');
+          (hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).set(comboKey, ((hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).get(comboKey) || 0) + amount);
+          grandTotal += amount;
         } else if (tokens.some(t => t.includes('尾'))) {
-          const lwMap = {2:'二连尾',3:'三连尾',4:'四连尾',5:'五连尾'};
-          comboType = lwMap[tokens.length] || '二连尾';
-          hasZeroWei = tokens.some(t => t.replace('尾','') === '0');
-        } else if (tokens.every(t => /^\d{2}$/.test(t))) {
-          if (tokens.length === 2) comboType = '二中二';
-          else if (tokens.length === 3) comboType = '三中三';
-          else {
-            const bzMap = {5:'五不中',6:'六不中',7:'七不中',8:'八不中',9:'九不中',10:'十不中',11:'十一不中',12:'十二不中'};
-            comboType = bzMap[tokens.length] || '五不中';
-          }
-        }
-        if (!comboType) return;
-        // 根据标记区分带主肖/零尾
-        if (hasYearZodiac) {
-          if (comboType === '平特肖') comboType = '平特肖带主肖';
-          else if (comboType.startsWith('二连肖') || comboType.startsWith('三连肖') || comboType.startsWith('四连肖') || comboType.startsWith('五连肖')) comboType = comboType + '带主肖';
-        }
-        if (hasZeroWei) {
-          if (comboType === '平特尾') comboType = '平特尾零尾';
-          else if (comboType.startsWith('二连尾') || comboType.startsWith('三连尾') || comboType.startsWith('四连尾') || comboType.startsWith('五连尾')) comboType = comboType + '零尾';
-        }
-
-        if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
-        // 根据是否有变体标志存入对应的Map（保留原来的结构）
-        if (hasYearZodiac || hasZeroWei) {
-          stats[comboType].withYear.set(tokens.join('-'), (stats[comboType].withYear.get(tokens.join('-')) || 0) + amount);
+          const comboType = `lianwei${tokens.length}`;
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const hasZero = tokens.some(t => t.replace('尾','') === '0');
+          const comboKey = tokens.join('-');
+          (hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).set(comboKey, ((hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).get(comboKey) || 0) + amount);
+          grandTotal += amount;
         } else {
-          stats[comboType].withoutYear.set(tokens.join('-'), (stats[comboType].withoutYear.get(tokens.join('-')) || 0) + amount);
+          const comboType = tokens.length === 1 ? 'pingma' : (tokens.length === 2 ? 'zhong2' : (tokens.length === 3 ? 'zhong3' : 'buzhong' + tokens.length));
+          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          const comboKey = tokens.join('-');
+          stats[comboType].withYear.set(comboKey, (stats[comboType].withYear.get(comboKey) || 0) + amount);
+          grandTotal += amount;
         }
-        grandTotal += amount;
       });
     });
   });
 
   const oddsData = getOddsData();
-  // 中文键名 defaults
   const defaults = {
     '特码':{odds:47,rebate:4},
-    '平特肖':{odds:2,rebate:4},'平特肖带主肖':{odds:1.8,rebate:4},'二连肖':{odds:4,rebate:4},'二连肖带主肖':{odds:3.5,rebate:4},
-    '三连肖':{odds:10,rebate:4},'三连肖带主肖':{odds:9,rebate:4},'四连肖':{odds:30,rebate:4},'四连肖带主肖':{odds:25,rebate:4},
-    '五连肖':{odds:100,rebate:4},'五连肖带主肖':{odds:90,rebate:4},'平特尾':{odds:1.8,rebate:4},'平特尾零尾':{odds:2,rebate:4},
-    '二连尾':{odds:3,rebate:4},'二连尾零尾':{odds:3.5,rebate:4},'三连尾':{odds:6,rebate:4},'三连尾零尾':{odds:6.5,rebate:4},
-    '四连尾':{odds:14,rebate:4},'四连尾零尾':{odds:15,rebate:4},'五连尾':{odds:28,rebate:4},'五连尾零尾':{odds:30,rebate:4},
-    '五不中':{odds:2,rebate:4},'六不中':{odds:2.5,rebate:4},'七不中':{odds:3,rebate:4},'八不中':{odds:3.5,rebate:4},
-    '九不中':{odds:4,rebate:4},'十不中':{odds:5,rebate:4},'十一不中':{odds:6,rebate:4},'十二不中':{odds:7,rebate:4},
-    '二中二':{odds:60,rebate:4},'三中三':{odds:600,rebate:4},'平码':{odds:7,rebate:4}
+    'pingtexiao':{odds:2,rebate:4},'pingtexiao带主肖':{odds:1.8,rebate:4},'lianxiao2':{odds:4,rebate:4},'lianxiao2带主肖':{odds:3.5,rebate:4},
+    'lianxiao3':{odds:10,rebate:4},'lianxiao3带主肖':{odds:9,rebate:4},'lianxiao4':{odds:30,rebate:4},'lianxiao4带主肖':{odds:25,rebate:4},
+    'lianxiao5':{odds:100,rebate:4},'lianxiao5带主肖':{odds:90,rebate:4},'pingtewei':{odds:1.8,rebate:4},'pingtewei零尾':{odds:2,rebate:4},
+    'lianwei2':{odds:3,rebate:4},'lianwei2零尾':{odds:3.5,rebate:4},'lianwei3':{odds:6,rebate:4},'lianwei3零尾':{odds:6.5,rebate:4},
+    'lianwei4':{odds:14,rebate:4},'lianwei4零尾':{odds:15,rebate:4},'lianwei5':{odds:28,rebate:4},'lianwei5零尾':{odds:30,rebate:4},
+    'buzhong5':{odds:2,rebate:4},'buzhong6':{odds:2.5,rebate:4},'buzhong7':{odds:3,rebate:4},'buzhong8':{odds:3.5,rebate:4},
+    'buzhong9':{odds:4,rebate:4},'buzhong10':{odds:5,rebate:4},'buzhong11':{odds:6,rebate:4},'buzhong12':{odds:7,rebate:4},
+    'zhong2':{odds:60,rebate:4},'zhong3':{odds:600,rebate:4},'pingma':{odds:7,rebate:4}
   };
-  function getPlayOdds(type, isSpecial) {
-    // type 已经是中文键名，isSpecial 表示是否是带主肖或零尾的变体
+  function getPlayOdds(type, hasSpecial) {
     let key = type;
-    if (isSpecial) {
-      // 根据原 type 添加后缀
-      if (type === '平特肖') key = '平特肖带主肖';
-      else if (type.startsWith('二连肖') || type.startsWith('三连肖') || type.startsWith('四连肖') || type.startsWith('五连肖')) key = type + '带主肖';
-      else if (type === '平特尾') key = '平特尾零尾';
-      else if (type.startsWith('二连尾') || type.startsWith('三连尾') || type.startsWith('四连尾') || type.startsWith('五连尾')) key = type + '零尾';
-    }
+    if (hasSpecial && type === 'pingtexiao') key = 'pingtexiao带主肖';
+    else if (hasSpecial && type.startsWith('lianxiao')) key = type + '带主肖';
+    else if (hasSpecial && type === 'pingtewei') key = 'pingtewei零尾';
+    else if (hasSpecial && type.startsWith('lianwei')) key = type + '零尾';
     const saved = oddsData[key] || {};
     return { odds: parseFloat(saved.odds) || defaults[key]?.odds || 1, rebate: parseFloat(saved.rebate) || defaults[key]?.rebate || 4 };
   }
 
   let grandPL = 0;
   const cardsArray = [];
-  const order = ['平特肖','二连肖','三连肖','四连肖','五连肖','五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中','平码','平特尾','二连尾','三连尾','四连尾','五连尾','二中二','三中三'];
+  const order = ['pingtexiao','lianxiao2','lianxiao3','lianxiao4','lianxiao5','buzhong5','buzhong6','buzhong7','buzhong8','buzhong9','buzhong10','buzhong11','buzhong12','pingma','pingtewei','lianwei2','lianwei3','lianwei4','lianwei5','zhong2','zhong3'];
 
   order.forEach((type) => {
     if (!stats[type]) return;
@@ -2403,21 +2381,21 @@ async function refreshLianxiaoStats() {
 
     let tablesHtml = '';
 
-    function renderTable(map, isSpecial) {
+    function renderTable(map, hasSpecial) {
       if (map.size === 0) return '';
       let html2 = '';
-      const { odds, rebate } = getPlayOdds(type, isSpecial);
-      html2 += '<table style="width:100%;"><tr><th style="text-align:center;">' + (type.startsWith('二连肖')||type.startsWith('三连肖')||type.startsWith('四连肖')||type.startsWith('五连肖')||type==='平特肖'?'生肖':(type.includes('尾')?'尾数':'组合')) + '</th><th style="text-align:center;">金额</th><th style="text-align:center;">中奖</th><th style="text-align:center;">盈亏</th></tr>';
+      const { odds, rebate } = getPlayOdds(type, hasSpecial);
+      html2 += '<table style="width:100%;"><tr><th style="text-align:center;">' + (type.startsWith('lianxiao')||type==='pingtexiao'?'生肖':(type.includes('wei')?'尾数':'组合')) + '</th><th style="text-align:center;">金额</th><th style="text-align:center;">中奖</th><th style="text-align:center;">盈亏</th></tr>';
       map.forEach((v, k) => {
         const displayKey = k.replace(/^\(|\)$/g, '');
         const tokens = displayKey.split('-');
         let hit = false;
-        if (type === '平特肖' || type === '平特肖带主肖') { hit = drawZodiacsSet.has(k); }
-        else if (type === '平特尾' || type === '平特尾零尾') { hit = drawZodiacs.length > 0 && tokens.some(t => { const d = t.replace('尾',''); for (let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
-        else if (type === '平码' || type === '二中二' || type === '三中三') { const zhengma = drawNumbers.slice(0,6); hit = tokens.every(t => zhengma.includes(t)); }
-        else if (type.startsWith('五不中') || type.startsWith('六不中') || type.startsWith('七不中') || type.startsWith('八不中') || type.startsWith('九不中') || type.startsWith('十不中') || type.startsWith('十一不中') || type.startsWith('十二不中')) { hit = !tokens.some(t => drawNumbersSet.has(t)); }
-        else if (type.startsWith('二连肖') || type.startsWith('三连肖') || type.startsWith('四连肖') || type.startsWith('五连肖')) { hit = tokens.every(t => drawZodiacsSet.has(t)); }
-        else if (type.startsWith('二连尾') || type.startsWith('三连尾') || type.startsWith('四连尾') || type.startsWith('五连尾')) { hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
+        if (type === 'pingtexiao') { hit = drawZodiacsSet.has(k); }
+        else if (type === 'pingtewei') { hit = drawZodiacs.length > 0 && tokens.some(t => { const d = t.replace('尾',''); for (let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
+        else if (type === 'pingma' || type === 'zhong2' || type === 'zhong3') { const zhengma = drawNumbers.slice(0,6); hit = tokens.every(t => zhengma.includes(t)); }
+        else if (type.startsWith('buzhong')) { hit = !tokens.some(t => drawNumbersSet.has(t)); }
+        else if (type.startsWith('lianxiao')) { hit = tokens.every(t => drawZodiacsSet.has(t)); }
+        else if (type.startsWith('lianwei')) { hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
         let pl = 0;
         if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
           pl = hit ? (v - v * (rebate / 100) - v * odds) : (v - v * (rebate / 100));
@@ -2431,20 +2409,20 @@ async function refreshLianxiaoStats() {
       return html2;
     }
 
-    // 根据原结构区分 withYear（变体）和 withoutYear（普通）
-    if (data.withYear.size > 0) {
-      if (type === '平特肖') tablesHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖 ──</div>';
-      else if (type === '平特尾') tablesHtml += '<div style="font-size:11px;color:#333;">── 含0尾 ──</div>';
-      else if (type.startsWith('二连肖')||type.startsWith('三连肖')||type.startsWith('四连肖')||type.startsWith('五连肖')) tablesHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖 ──</div>';
-      else if (type.startsWith('二连尾')||type.startsWith('三连尾')||type.startsWith('四连尾')||type.startsWith('五连尾')) tablesHtml += '<div style="font-size:11px;color:#333;">── 含0尾 ──</div>';
-      tablesHtml += renderTable(data.withYear, true);
-    }
-    if (data.withoutYear.size > 0) {
-      if (type === '平特肖') tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 其他生肖 ──</div>';
-      else if (type === '平特尾') tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 其他尾数 ──</div>';
-      else if (type.startsWith('二连肖')||type.startsWith('三连肖')||type.startsWith('四连肖')||type.startsWith('五连肖')) tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 不含本年生肖 ──</div>';
-      else if (type.startsWith('二连尾')||type.startsWith('三连尾')||type.startsWith('四连尾')||type.startsWith('五连尾')) tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 不含0尾 ──</div>';
-      tablesHtml += renderTable(data.withoutYear, false);
+    if (type === 'pingtexiao') {
+      if (data.withYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖 ──</div>'; tablesHtml += renderTable(data.withYear, true); }
+      if (data.withoutYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 其他生肖 ──</div>'; tablesHtml += renderTable(data.withoutYear, false); }
+    } else if (type === 'pingtewei') {
+      if (data.withYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;">── 含0尾 ──</div>'; tablesHtml += renderTable(data.withYear, true); }
+      if (data.withoutYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 其他尾数 ──</div>'; tablesHtml += renderTable(data.withoutYear, false); }
+    } else if (type.startsWith('lianxiao')) {
+      if (data.withYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;">── 含本年生肖 ──</div>'; tablesHtml += renderTable(data.withYear, true); }
+      if (data.withoutYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 不含本年生肖 ──</div>'; tablesHtml += renderTable(data.withoutYear, false); }
+    } else if (type.startsWith('lianwei')) {
+      if (data.withYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;">── 含0尾 ──</div>'; tablesHtml += renderTable(data.withYear, true); }
+      if (data.withoutYear.size > 0) { tablesHtml += '<div style="font-size:11px;color:#333;margin-top:4px;">── 不含0尾 ──</div>'; tablesHtml += renderTable(data.withoutYear, false); }
+    } else {
+      if (data.withYear.size > 0) { tablesHtml += renderTable(data.withYear, false); }
     }
 
     grandPL += cardPL;
@@ -2459,7 +2437,7 @@ async function refreshLianxiaoStats() {
     }
 
     let cardHtml = `<div class="freq-card" id="${cardId}" style="break-inside:avoid; margin-bottom:10px; min-width:180px;${cardBgStyle}">`;
-    cardHtml += `<div class="freq-title" style="display:flex; align-items:center; justify-content:space-between;"><span>${type}</span><button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;" onclick="screenshotSingleComboCard('${cardId}')">截图</button></div>`;
+    cardHtml += `<div class="freq-title" style="display:flex; align-items:center; justify-content:space-between;"><span>${getComboTypeLabel(type)}</span><button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;" onclick="screenshotSingleComboCard('${cardId}')">截图</button></div>`;
 
     cardHtml += `<div style="max-height:400px;overflow-y:auto;">${tablesHtml}</div>`;
     cardHtml += `<div style="border-top:1px solid #ddd;margin-top:4px;padding-top:4px;font-size:11px;text-align:center;">小计：${totalGroups}组 金额：${totalAmount}`;
