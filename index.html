@@ -1564,284 +1564,275 @@ function toNum(s) {
   r += c + t;
   return r || 0;
 }
-    // ===== 新版识别主函数 =====
-function convertOrderTextV2(rawText) {
-  const cfg = getAllConfigData();
-  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
-  const resultLines = [];
-  const comboPureContents = [];
-  const invalidTokensLines = [];
-  let totalAmount = 0;
-  let validLineCount = 0;
-
-  // 预处理
-  let text = preprocessV2(rawText);
-  // 应用替换预设和分类缩写
-  text = applyCategoryAliases(applyReplacePresets(text));
-
-  // 重置标记系统
-  mkIdV2 = 0;
-  mkResultsV2.length = 0;
-
-  // 依次执行各玩法解析
-  text = parseBuZhongV2(text);
-  text = parseLianXiaoV2(text, cfg, curYearZodiac);
-  text = parseLianWeiV2(text);
-  text = parseEEV2(text, cfg);
-  text = parseSSSV2(text, cfg);
-  text = parsePTSV2(text);
-  text = parsePTWV2(text);
-  text = parsePingMaV2(text);
-  text = parseNumbersV2(text);
-  text = parseZodiacsV2(text, cfg);
-
-  // 构建结果文本
-  for (const mr of mkResultsV2) {
-    const r = mr.result;
-    const isComboType = ['二中二', '三中三', '连肖', '连尾', '不中', '平特肖', '平特尾', '平码'].some(t => r.cat.includes(t));
-    const kw = isComboType ? (r.kw || '各组') : (r.kw || '各数');
-
-    if (r.pureLines && r.pureLines.length > 0) {
-      // 有分离的 pureLines（连肖、连尾等区分主肖/零尾的情况）
-      for (const pl of r.pureLines) {
-        resultLines.push(pl);
-        comboPureContents.push(pl);
-        const groupsMatch = pl.match(/^(.+?)\s+各(?:组)?\s+(\d+)$/);
-        if (groupsMatch) {
-          const cleaned = groupsMatch[1].replace(/[()]/g, '');
-          const groups = cleaned.split(/\s+/).filter(c => c.trim());
-          totalAmount += groups.length * r.amt;
-          validLineCount++;
-        }
-      }
-    } else {
-      // 普通情况
-      const numStr = r.nums.join('-');
-      const line = `${numStr} ${kw} ${r.amt}`;
-      resultLines.push(line);
-      totalAmount += r.total || (r.cnt * r.amt);
-      validLineCount++;
-    }
-  }
-
-  // 更新显示
-  const resultEl = document.getElementById('orderResult');
-  const box = document.getElementById('orderTotalAmountBox');
-  const span = document.getElementById('orderTotalAmount');
-  const lineCountSpan = document.getElementById('orderLineCount');
-
-  if (resultEl) {
-    if (resultLines.length === 0) {
-      resultEl.innerHTML = '';
-    } else {
-      resultEl.innerHTML = resultLines.map(l => `<div>${l}</div>`).join('');
-    }
-  }
-
-  if (box && span) {
-    if (totalAmount > 0) {
-      span.textContent = totalAmount;
-      box.style.display = 'inline-flex';
-      if (lineCountSpan) {
-        lineCountSpan.innerHTML = '<span style="color:#000;">' + validLineCount + '</span>行';
-        lineCountSpan.style.display = 'inline';
-      }
-    } else {
-      box.style.display = 'none';
-      if (lineCountSpan) lineCountSpan.style.display = 'none';
-    }
-  }
-
-  updateMaxLossDisplay();
-  
-  return { comboPureContents, totalAmount, validLineCount };
+    // ===== 连肖统计弹窗（移除赔率按钮） =====
+function showLianxiaoStatsWin() {
+  if (document.getElementById('lianxiaoStatsWin')) return;
+  const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoStatsWin';
+  win.style.width = '900px'; win.style.height = '750px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
+  win.setAttribute('data-orig-width', '900px'); win.setAttribute('data-orig-height', '750px');
+  win.innerHTML = `
+    <div class="modal-header">连肖统计<div class="window-controls"><button onclick="maximizeWindow('lianxiaoStatsWin')">🗖</button><button onclick="document.getElementById('lianxiaoStatsWin').remove()">×</button></div></div>
+    <div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 60px);">
+      <div id="lianxiaoStatsContainer" style="column-count:4; column-gap:10px; flex:1; overflow-y:auto;"></div>
+      <div id="lianxiaoStatsTotal" style="text-align:center; font-weight:bold; font-size:14px; padding:8px; border-top:2px solid #333; margin-top:8px;"></div>
+    </div>`;
+  document.body.appendChild(win);
+  makeWindowDraggable('lianxiaoStatsWin'); highestZ += 1; win.style.zIndex = highestZ;
+  refreshLianxiaoStats();
 }
 
-// ===== 修改 convertOrderText 支持切换 =====
-const originalConvertOrderText = convertOrderText;
-convertOrderText = function() {
-  if (recognizeMode === 'v2') {
-    const inputEl = document.querySelector('.source-order-input');
-    const resultEl = document.getElementById('orderResult');
-    if (!inputEl || !resultEl) return;
-    const text = inputEl.value.trim();
-    if (!text) {
-      resultEl.innerHTML = '';
-      document.getElementById('orderTotalAmountBox').style.display = 'none';
-      document.getElementById('maxLossDisplay').textContent = '';
-      document.getElementById('maxLossDisplay').style.display = 'none';
+// ===== 录开奖输入处理（仅字体颜色，无背景） =====
+function onDrawInputPlain(idx) {
+  const input = document.getElementById('drawNum' + idx);
+  const zodiacSpan = document.getElementById('drawZodiac' + idx);
+  if (!input || !zodiacSpan) return;
+  let val = input.value.replace(/\D/g, '');
+  if (val.length > 2) val = val.slice(0, 2);
+  input.value = val;
+  if (val.length === 2) {
+    const num = val.padStart(2, '0');
+    const intVal = parseInt(num);
+    if (intVal >= 1 && intVal <= 49) {
+      const zodiac = currentZodiacMap[num] || '';
+      zodiacSpan.textContent = zodiac;
+      zodiacSpan.className = 'draw-zodiac-plain ' + getZodiacColorClass(zodiac);
+      input.className = 'draw-number-input-plain ' + getNumberColorClass(num);
       return;
     }
-    convertOrderTextV2(text);
+  }
+  zodiacSpan.textContent = '';
+  zodiacSpan.className = 'draw-zodiac-plain';
+  input.className = 'draw-number-input-plain';
+}
+
+function enableDrawEdit() {
+  window._lianxiaoEditEnabled = true;
+  for (let i = 1; i <= 7; i++) { const inp = document.getElementById('drawNum' + i); if (inp) inp.disabled = false; }
+  showToast('已进入编辑模式');
+}
+
+async function saveDrawNumbers() {
+  window._lianxiaoEditEnabled = false;
+  const numbers = [];
+  for (let i = 1; i <= 7; i++) {
+    const inp = document.getElementById('drawNum' + i);
+    if (inp) { let val = inp.value.trim(); if (/^\d$/.test(val)) val = '0' + val; if (/^\d{2}$/.test(val) && parseInt(val) >= 1 && parseInt(val) <= 49) { numbers.push(val); } else { numbers.push(''); } inp.disabled = true; }
+  }
+  const fd = document.getElementById('filterDate')?.value || getTodayCST();
+  let year = new Date().getFullYear(); const m = fd.match(/^(\d{4})/); if (m) year = parseInt(m[1]);
+  const issueNumber = getCurrentIssueNumber(year, fd);
+  if (!issueNumber) { showToast('无法获取期号'); return; }
+  const issueId = issueNumber.toString().padStart(2, '0');
+  const storageKey = `comboDrawRecord_${currentRegion}_${year}`;
+  let savedData = {}; try { savedData = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch(e) {}
+  savedData[issueId] = { number: numbers[6] || numbers.join(',') || '', numbers: numbers, pl: '' };
+  localStorage.setItem(storageKey, JSON.stringify(savedData));
+  refreshLianxiaoStats(); showToast('开奖号码已保存，统计已刷新');
+}
+
+// ===== 连肖识别输入处理（自动识别版，支持多玩法） =====
+function convertComboText() {
+  const inputEl = document.getElementById('comboInput');
+  const resultEl = document.getElementById('comboResult');
+  if (!inputEl || !resultEl) return;
+  const text = inputEl.value.trim();
+  if (!text) {
+    resultEl.innerHTML = '';
+    window._comboPureContents = [];
+    updateComboTotalDisplay();
     return;
   }
-  originalConvertOrderText();
-};
 
-// ===== 修改 saveOrder 支持新版保存 =====
-const originalSaveOrder = saveOrder;
-saveOrder = async function() {
-  if (recognizeMode === 'v2') {
-    const user = document.getElementById('orderUserSelect')?.value;
-    if (!user) { showToast('请选择用户'); return; }
-    const resultEl = document.getElementById('orderResult');
-    const rawText = resultEl ? resultEl.innerText : '';
-    if (!rawText) return;
-    const lines = rawText.split('\n').filter(l => l.trim());
-    if (!lines.length) { showToast('订单无效'); return; }
-    
-    const date = document.getElementById('filterDate')?.value || getTodayCST();
-    const cfg = getAllConfigData();
-    let comboContent = [];
-    let normalContent = [];
-    let totalAmount = 0;
-    
-    for (const line of lines) {
-      // 判断是组合玩法还是特码
-      const comboMatch = line.match(/^(.+?)\s+各(?:组)?\s+(\d+)$/);
-      const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-      
-      if (comboMatch && !normalMatch) {
-        // 组合玩法 → 连肖数据库
-        comboContent.push(line);
-        const cleaned = comboMatch[1].replace(/[()]/g, '');
-        const groups = cleaned.split(/\s+/).filter(c => c.trim());
-        totalAmount += groups.length * parseInt(comboMatch[2]);
-      } else if (normalMatch) {
-        // 特码类 → 普通订单表
-        normalContent.push(line);
-        const { numbers, zodiacs } = countItemsInLine(line, cfg, getAllValidCategories(cfg));
-        let cnt = numbers.length;
-        zodiacs.forEach(z => { cnt += (cfg.zodiac[z] || []).length; });
-        totalAmount += cnt * parseInt(normalMatch[2]);
-      }
-    }
-    
-    // 保存组合玩法到连肖数据库
-    if (comboContent.length > 0) {
-      const comboText = comboContent.join('\n');
-      await saveComboOrderRecordToIDB(comboText, user, date, totalAmount, 'combo');
-      addOperationLog('save_order', comboText, currentRegion, user, totalAmount);
-      renderPingtexiaoTable(); updatePingtexiaoTotal();
-      if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
-    }
-    
-    // 保存特码到普通订单表
-    if (normalContent.length > 0) {
-      const normalText = normalContent.join('\n');
-      const existingOrders = (await getOrderRecords()).filter(r => r.date === date && r.user === user);
-      if (existingOrders.some(o => o.content === normalText)) {
-        const confirmed = await confirm('该用户今天已保存过相同的订单内容，确定再次保存吗？');
-        if (!confirmed) return;
-      }
-      await saveOrderRecordToIDB(normalText, user, date, totalAmount);
-      processCurrentOrder(normalText, user, true, date);
-      addOperationLog('save_order', normalText, currentRegion, user, totalAmount);
-    }
-    
-    const si = document.querySelector('.source-order-input');
-    if (si) si.value = '';
-    if (resultEl) resultEl.innerHTML = '';
-    updateOrderTotalDisplay();
-    const md = document.getElementById('maxLossDisplay');
-    if (md) { md.textContent = ''; md.style.display = 'none'; }
-    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
-    calculateStorageUsage();
-    showStorageDrawerTemporary(5000);
-    renderSmartDecision();
-    updateSingleBetDisplay();
-    clearStatsCache();
-    showToast('已保存订单');
-    return;
-  }
-  originalSaveOrder();
-};
+  const lines = text.split('\n');
+  const allResults = [];
+  window._comboPureContents = [];
+  const cfg = getAllConfigData();
+  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
 
-// ===== 修改 saveReportOrder 支持新版保存 =====
-const originalSaveReportOrder = saveReportOrder;
-saveReportOrder = async function() {
-  if (recognizeMode === 'v2') {
-    const user = document.getElementById('orderUserSelect')?.value;
-    if (!user) { showToast('请选择用户'); return; }
-    const resultEl = document.getElementById('orderResult');
-    const rawText = resultEl ? resultEl.innerText : '';
-    if (!rawText) return;
-    const lines = rawText.split('\n').filter(l => l.trim());
-    if (!lines.length) { showToast('订单无效'); return; }
-    
-    const date = document.getElementById('filterDate')?.value || getTodayCST();
-    const cfg = getAllConfigData();
-    let normalContent = [];
-    let totalAmount = 0;
-    
-    for (const line of lines) {
-      const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-      if (normalMatch) {
-        normalContent.push(line);
-        const { numbers, zodiacs } = countItemsInLine(line, cfg, getAllValidCategories(cfg));
-        let cnt = numbers.length;
-        zodiacs.forEach(z => { cnt += (cfg.zodiac[z] || []).length; });
-        totalAmount += cnt * parseInt(normalMatch[2]);
-      }
-    }
-    
-    if (normalContent.length === 0) { showToast('没有可上报的特码内容'); return; }
-    const normalText = normalContent.join('\n');
-    const existingReports = (await getReportOrderRecords()).filter(r => r.date === date && r.user === user);
-    if (existingReports.some(o => o.content === normalText)) {
-      const confirmed = await confirm('该用户今天已上报过相同的内容，确定再次上报吗？');
-      if (!confirmed) return;
-    }
-    await saveReportOrderRecordToIDB(normalText, user, date, totalAmount);
-    processCurrentOrder(normalText, user, false, date);
-    addOperationLog('save_report', normalText, currentRegion, user, totalAmount);
-    
-    const si = document.querySelector('.source-order-input');
-    if (si) si.value = '';
-    if (resultEl) resultEl.innerHTML = '';
-    updateOrderTotalDisplay();
-    const md = document.getElementById('maxLossDisplay');
-    if (md) { md.textContent = ''; md.style.display = 'none'; }
-    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
-    calculateStorageUsage();
-    showStorageDrawerTemporary(5000);
-    renderSmartDecision();
-    clearStatsCache();
-    showToast('已上报成功');
-    return;
-  }
-  originalSaveReportOrder();
-};
+  // 所有支持的玩法名（含简写，长的优先匹配）
+  const playNames = [
+    '十二不中','12不中','十一不中','11不中','十不中','10不中',
+    '九不中','9不中','八不中','8不中','七不中','7不中','六不中','6不中','五不中','5不中',
+    '五连肖','5连肖','四连肖','4连肖','三连肖','3连肖','二连肖','2连肖',
+    '五连尾','5连尾','四连尾','4连尾','三连尾','3连尾','二连尾','2连尾',
+    '平特肖','平特尾','平码','三中三','3中3','二中二','2中2'
+  ];
 
-// ===== 修改 computeCurrentOrderTotal 兼容新版 =====
-const originalComputeCurrentOrderTotal = computeCurrentOrderTotal;
-computeCurrentOrderTotal = function() {
-  if (recognizeMode === 'v2') {
-    const re = document.getElementById('orderResult');
-    if (!re) return 0;
-    const txt = re.innerText.trim();
-    if (!txt) return 0;
-    const lines = txt.split('\n');
-    const cfg = getAllConfigData();
-    let total = 0;
-    lines.forEach(line => {
-      const comboMatch = line.match(/^(.+?)\s+各(?:组)?\s+(\d+)$/);
-      const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-      if (comboMatch && !normalMatch) {
-        const cleaned = comboMatch[1].replace(/[()]/g, '');
-        const groups = cleaned.split(/\s+/).filter(c => c.trim());
-        total += groups.length * parseInt(comboMatch[2]);
-      } else if (normalMatch) {
-        const { numbers, zodiacs } = countItemsInLine(line, cfg, getAllValidCategories(cfg));
-        let cnt = numbers.length;
-        zodiacs.forEach(z => { cnt += (cfg.zodiac[z] || []).length; });
-        total += cnt * parseInt(normalMatch[2]);
+  // 指定词（越长越优先），补充单独的"各"
+  const HARD_AMP_LIST = ['每个号','各号码','各数','每数','每号','个号','各号','各组','各码','号','个','=','各'];
+  const cusAmp = getCustomAmountPrefixes();
+  const allAmpList = [...new Set([...HARD_AMP_LIST, ...cusAmp])];
+  allAmpList.sort((a, b) => b.length - a.length);
+
+  // 金额后缀
+  const baseSuf = '元块咪米斤#،。\\s';
+  const cusAmtSuf = getCustomAmountSuffixes();
+  const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');
+  const AMTS = `[${allAmtChars}]*`;
+
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line) return;
+
+    // 一行可能包含多个玩法，循环解析
+    let remaining = line;
+    const lineResults = [];
+    const linePureContents = [];
+    while (remaining.length > 0) {
+      const parsed = parseComboLine(remaining, playNames, allAmpList, cfg, curYearZodiac, AMTS);
+      if (parsed.html) {
+        lineResults.push(parsed.html);
       }
-    });
-    return total;
+      if (parsed.pureLines) {
+        parsed.pureLines.forEach(p => linePureContents.push(p));
+      }
+      // 移动到下一组：从原始字符串中截掉已解析的部分
+      if (parsed.endIndex !== undefined && parsed.endIndex > 0) {
+        remaining = remaining.substring(parsed.endIndex).trim();
+        // 跳过分隔符
+        remaining = remaining.replace(/^[\s,，.。、+\-*＊\/\\|;；:：!！?？]+/, '').trim();
+        // 避免无限循环
+        if (parsed.endIndex === 0) break;
+      } else {
+        break;
+      }
+    }
+    if (lineResults.length === 0) {
+      // 没有解析出任何玩法，整行标红
+      allResults.push(`<span style="color:red;">${line}（未识别有效玩法）</span>`);
+    } else {
+      allResults.push(lineResults.join('<br>'));
+      linePureContents.forEach(p => window._comboPureContents.push(p));
+    }
+  });
+
+  resultEl.innerHTML = allResults.join('<br>');
+  updateComboTotalDisplay();
+  updateComboMaxLoss();
+}
+
+// ===== 连肖行解析核心函数（已完善复式/复试关键字处理） =====
+function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS) {
+  let isFushi = false;
+  let remaining = rawLine;
+  let matchedPlay = null;
+  let contentStart = 0;
+
+  // 尝试直接匹配玩法名（无关键字前缀的情况）
+  for (const pname of playNames) {
+    if (remaining.startsWith(pname)) {
+      matchedPlay = pname;
+      contentStart = pname.length;
+      break;
+    }
   }
-  return originalComputeCurrentOrderTotal();
-};
+
+  // 如果没匹配到，检查是否以"复试/复式"开头
+  if (!matchedPlay && (remaining.startsWith('复试') || remaining.startsWith('复式'))) {
+    isFushi = true;
+    let temp = remaining.substring(2).trim();
+    for (const pname of playNames) {
+      if (temp.startsWith(pname)) {
+        matchedPlay = pname;
+        let startIdx = 2; while (startIdx < remaining.length && remaining[startIdx] === ' ') startIdx++;
+        contentStart = startIdx + pname.length;
+        break;
+      }
+    }
+    if (!matchedPlay) {
+      return { html: `<span style="color:red;">${rawLine}（未识别玩法名）</span>`, pureLines: [], endIndex: rawLine.length };
+    }
+  }
+
+  if (!matchedPlay) {
+    return { html: `<span style="color:red;">${rawLine}（未识别玩法名）</span>`, pureLines: [], endIndex: rawLine.length };
+  }
+
+  remaining = rawLine.substring(contentStart).trim();
+  if (!isFushi && (remaining.startsWith('复试') || remaining.startsWith('复式'))) {
+    isFushi = true;
+    remaining = remaining.substring(2).trim();
+    contentStart = rawLine.indexOf(remaining);
+  }
+
+  const playType = normalizePlayType(matchedPlay);
+
+  // 找指定词
+  let ampWord = '';
+  let ampIndex = -1;
+  for (const amp of allAmpList) {
+    const idx = remaining.indexOf(amp);
+    if (idx !== -1 && (ampIndex === -1 || idx < ampIndex)) {
+      ampIndex = idx;
+      ampWord = amp;
+    }
+  }
+  if (ampIndex === -1) {
+    return { html: `<span style="color:red;">${matchedPlay} ${remaining}（缺少指定词）</span>`, pureLines: [], endIndex: rawLine.length };
+  }
+
+  const contentStr = remaining.substring(0, ampIndex).trim();
+  const afterAmp = remaining.substring(ampIndex + ampWord.length).trim();
+
+  // 提取末尾金额
+  const amountRegex = new RegExp(`^(\\d+)\\s*${AMTS}$`);
+  const amountMatch = afterAmp.match(amountRegex);
+  if (!amountMatch) {
+    const simpleMatch = afterAmp.match(/^(\d+)/);
+    if (simpleMatch) {
+      const amt = parseInt(simpleMatch[1]) || 0;
+      const endIdx = rawLine.indexOf(afterAmp) + simpleMatch[0].length;
+      const result = generateComboResults(playType, contentStr, amt, cfg, curYearZodiac, isFushi);
+      result.endIndex = endIdx;
+      return result;
+    }
+    return { html: `<span style="color:red;">${matchedPlay} ${remaining}（缺少金额）</span>`, pureLines: [], endIndex: rawLine.length };
+  }
+  const amount = parseInt(amountMatch[1]) || 0;
+  if (amount <= 0) {
+    return { html: `<span style="color:red;">${matchedPlay} ${remaining}（金额无效）</span>`, pureLines: [], endIndex: rawLine.length };
+  }
+
+  const ampStartInRaw = rawLine.indexOf(afterAmp);
+  const endIdx = ampStartInRaw + amountMatch[0].length;
+  const result = generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, isFushi);
+  result.endIndex = endIdx;
+  return result;
+}
+
+// 标准化玩法名
+function normalizePlayType(name) {
+  const map = {
+    '2连肖':'二连肖','3连肖':'三连肖','4连肖':'四连肖','5连肖':'五连肖',
+    '2连尾':'二连尾','3连尾':'三连尾','4连尾':'四连尾','5连尾':'五连尾',
+    '5不中':'五不中','6不中':'六不中','7不中':'七不中','8不中':'八不中',
+    '9不中':'九不中','10不中':'十不中','11不中':'十一不中','12不中':'十二不中',
+    '2中2':'二中二','3中3':'三中三'
+  };
+  return map[name] || name;
+}
+
+// 获取玩法所需每组元素数量
+function getPlayGroupSize(playType) {
+  const map = {
+    '二连肖':2,'三连肖':3,'四连肖':4,'五连肖':5,
+    '二连尾':2,'三连尾':3,'四连尾':4,'五连尾':5,
+    '五不中':5,'六不中':6,'七不中':7,'八不中':8,'九不中':9,'十不中':10,'十一不中':11,'十二不中':12,
+    '二中二':2,'三中三':3,'平码':1,
+    '平特肖':1,'平特尾':1
+  };
+  return map[playType] || 1;
+}
+
+// 判断玩法是否需要组内连写
+function isPlayNeedsConsecutive(playType) {
+  return ['二连肖','三连肖','四连肖','五连肖','二连尾','三连尾','四连尾','五连尾'].includes(playType);
+}
+
+// 判断玩法是否号码之间必须有分隔符
+function isPlayNeedsSeparator(playType) {
+  return ['五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中','二中二','三中三'].includes(playType);
+}
     // ===== 连肖统计弹窗（移除赔率按钮） =====
 function showLianxiaoStatsWin() {
   if (document.getElementById('lianxiaoStatsWin')) return;
@@ -4642,7 +4633,189 @@ function updateLiveClock() {
     String(now.getSeconds()).padStart(2, '0');
   el.textContent = str;
 }
+// ===== 新版识别切换包装（必须在原始函数定义之后） =====
+const originalConvertOrderTextV2 = convertOrderText; // 原始的convertOrderText
+convertOrderText = function() {
+  if (recognizeMode === 'v2') {
+    const inputEl = document.querySelector('.source-order-input');
+    const resultEl = document.getElementById('orderResult');
+    if (!inputEl || !resultEl) return;
+    const text = inputEl.value.trim();
+    if (!text) {
+      resultEl.innerHTML = '';
+      const box = document.getElementById('orderTotalAmountBox');
+      if (box) box.style.display = 'none';
+      const md = document.getElementById('maxLossDisplay');
+      if (md) { md.textContent = ''; md.style.display = 'none'; }
+      return;
+    }
+    convertOrderTextV2(text);
+    return;
+  }
+  originalConvertOrderTextV2();
+};
 
+const originalSaveOrderV2 = saveOrder;
+saveOrder = async function() {
+  if (recognizeMode === 'v2') {
+    const user = document.getElementById('orderUserSelect')?.value;
+    if (!user) { showToast('请选择用户'); return; }
+    const resultEl = document.getElementById('orderResult');
+    const rawText = resultEl ? resultEl.innerText : '';
+    if (!rawText) return;
+    const lines = rawText.split('\n').filter(l => l.trim());
+    if (!lines.length) { showToast('订单无效'); return; }
+    
+    const date = document.getElementById('filterDate')?.value || getTodayCST();
+    const cfg = getAllConfigData();
+    let comboContent = [];
+    let normalContent = [];
+    let totalAmount = 0;
+    
+    for (const line of lines) {
+      // 判断是组合玩法还是特码
+      const comboMatch = line.match(/^(.+?)\s+各(?:组)?\s+(\d+)$/);
+      const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
+      
+      if (comboMatch && !normalMatch) {
+        // 组合玩法 → 连肖数据库
+        comboContent.push(line);
+        const cleaned = comboMatch[1].replace(/[()]/g, '');
+        const groups = cleaned.split(/\s+/).filter(c => c.trim());
+        totalAmount += groups.length * parseInt(comboMatch[2]);
+      } else if (normalMatch) {
+        // 特码类 → 普通订单表
+        normalContent.push(line);
+        const { numbers, zodiacs } = countItemsInLine(line, cfg, getAllValidCategories(cfg));
+        let cnt = numbers.length;
+        zodiacs.forEach(z => { cnt += (cfg.zodiac[z] || []).length; });
+        totalAmount += cnt * parseInt(normalMatch[2]);
+      }
+    }
+    
+    // 保存组合玩法到连肖数据库
+    if (comboContent.length > 0) {
+      const comboText = comboContent.join('\n');
+      await saveComboOrderRecordToIDB(comboText, user, date, totalAmount, 'combo');
+      addOperationLog('save_order', comboText, currentRegion, user, totalAmount);
+      renderPingtexiaoTable(); updatePingtexiaoTotal();
+      if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
+    }
+    
+    // 保存特码到普通订单表
+    if (normalContent.length > 0) {
+      const normalText = normalContent.join('\n');
+      const existingOrders = (await getOrderRecords()).filter(r => r.date === date && r.user === user);
+      if (existingOrders.some(o => o.content === normalText)) {
+        const confirmed = await confirm('该用户今天已保存过相同的订单内容，确定再次保存吗？');
+        if (!confirmed) return;
+      }
+      await saveOrderRecordToIDB(normalText, user, date, totalAmount);
+      processCurrentOrder(normalText, user, true, date);
+      addOperationLog('save_order', normalText, currentRegion, user, totalAmount);
+    }
+    
+    const si = document.querySelector('.source-order-input');
+    if (si) si.value = '';
+    if (resultEl) resultEl.innerHTML = '';
+    updateOrderTotalDisplay();
+    const md = document.getElementById('maxLossDisplay');
+    if (md) { md.textContent = ''; md.style.display = 'none'; }
+    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+    calculateStorageUsage();
+    showStorageDrawerTemporary(5000);
+    renderSmartDecision();
+    updateSingleBetDisplay();
+    clearStatsCache();
+    showToast('已保存订单');
+    return;
+  }
+  originalSaveOrderV2();
+};
+
+const originalSaveReportOrderV2 = saveReportOrder;
+saveReportOrder = async function() {
+  if (recognizeMode === 'v2') {
+    const user = document.getElementById('orderUserSelect')?.value;
+    if (!user) { showToast('请选择用户'); return; }
+    const resultEl = document.getElementById('orderResult');
+    const rawText = resultEl ? resultEl.innerText : '';
+    if (!rawText) return;
+    const lines = rawText.split('\n').filter(l => l.trim());
+    if (!lines.length) { showToast('订单无效'); return; }
+    
+    const date = document.getElementById('filterDate')?.value || getTodayCST();
+    const cfg = getAllConfigData();
+    let normalContent = [];
+    let totalAmount = 0;
+    
+    for (const line of lines) {
+      const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
+      if (normalMatch) {
+        normalContent.push(line);
+        const { numbers, zodiacs } = countItemsInLine(line, cfg, getAllValidCategories(cfg));
+        let cnt = numbers.length;
+        zodiacs.forEach(z => { cnt += (cfg.zodiac[z] || []).length; });
+        totalAmount += cnt * parseInt(normalMatch[2]);
+      }
+    }
+    
+    if (normalContent.length === 0) { showToast('没有可上报的特码内容'); return; }
+    const normalText = normalContent.join('\n');
+    const existingReports = (await getReportOrderRecords()).filter(r => r.date === date && r.user === user);
+    if (existingReports.some(o => o.content === normalText)) {
+      const confirmed = await confirm('该用户今天已上报过相同的内容，确定再次上报吗？');
+      if (!confirmed) return;
+    }
+    await saveReportOrderRecordToIDB(normalText, user, date, totalAmount);
+    processCurrentOrder(normalText, user, false, date);
+    addOperationLog('save_report', normalText, currentRegion, user, totalAmount);
+    
+    const si = document.querySelector('.source-order-input');
+    if (si) si.value = '';
+    if (resultEl) resultEl.innerHTML = '';
+    updateOrderTotalDisplay();
+    const md = document.getElementById('maxLossDisplay');
+    if (md) { md.textContent = ''; md.style.display = 'none'; }
+    document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+    calculateStorageUsage();
+    showStorageDrawerTemporary(5000);
+    renderSmartDecision();
+    clearStatsCache();
+    showToast('已上报成功');
+    return;
+  }
+  originalSaveReportOrderV2();
+};
+
+const originalComputeCurrentOrderTotalV2 = computeCurrentOrderTotal;
+computeCurrentOrderTotal = function() {
+  if (recognizeMode === 'v2') {
+    const re = document.getElementById('orderResult');
+    if (!re) return 0;
+    const txt = re.innerText.trim();
+    if (!txt) return 0;
+    const lines = txt.split('\n');
+    const cfg = getAllConfigData();
+    let total = 0;
+    lines.forEach(line => {
+      const comboMatch = line.match(/^(.+?)\s+各(?:组)?\s+(\d+)$/);
+      const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
+      if (comboMatch && !normalMatch) {
+        const cleaned = comboMatch[1].replace(/[()]/g, '');
+        const groups = cleaned.split(/\s+/).filter(c => c.trim());
+        total += groups.length * parseInt(comboMatch[2]);
+      } else if (normalMatch) {
+        const { numbers, zodiacs } = countItemsInLine(line, cfg, getAllValidCategories(cfg));
+        let cnt = numbers.length;
+        zodiacs.forEach(z => { cnt += (cfg.zodiac[z] || []).length; });
+        total += cnt * parseInt(normalMatch[2]);
+      }
+    });
+    return total;
+  }
+  return originalComputeCurrentOrderTotalV2();
+};
 window.onload = async () => {
   setCurrentRegion(currentRegion);
   const dbInitOk = await initIndexedDB();
