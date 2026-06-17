@@ -1330,7 +1330,7 @@ function saveOddsData() {
   document.querySelectorAll('.odds-input').forEach(inp => { inp.disabled = true; inp.style.border = 'none'; inp.style.background = 'transparent'; });
   showToast('赔率已保存'); if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
 }
-    // ===== 连肖统计弹窗（移除赔率按钮） =====
+   // ===== 连肖统计弹窗（移除赔率按钮） =====
 function showLianxiaoStatsWin() {
   if (document.getElementById('lianxiaoStatsWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoStatsWin';
@@ -1477,52 +1477,60 @@ function convertComboText() {
   updateComboMaxLoss();
 }
 
-// ===== 连肖行解析核心函数（修正复式检测） =====
+// ===== 连肖行解析核心函数（已完善复式/复试关键字处理） =====
 function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS) {
-  // 先检测是否有复式/复试关键字，并标记
   let isFushi = false;
-  let cleanLine = rawLine;
-  if (/复[式试]/.test(rawLine)) {
-    isFushi = true;
-    // 去掉关键字，得到干净的行用于匹配玩法名
-    cleanLine = rawLine.replace(/复[式试]/g, '').trim();
-  }
-
-  // 1. 匹配玩法名（行首）
+  let remaining = rawLine;
   let matchedPlay = null;
   let contentStart = 0;
+
+  // 尝试直接匹配玩法名（无关键字前缀的情况，如“二连肖复试...”）
   for (const pname of playNames) {
-    if (cleanLine.startsWith(pname)) {
+    if (remaining.startsWith(pname)) {
       matchedPlay = pname;
       contentStart = pname.length;
       break;
     }
   }
+
+  // 如果没匹配到，检查是否以“复试/复式”开头，跳过关键字再匹配
+  if (!matchedPlay && (remaining.startsWith('复试') || remaining.startsWith('复式'))) {
+    isFushi = true;
+    let temp = remaining.substring(2).trim();
+    for (const pname of playNames) {
+      if (temp.startsWith(pname)) {
+        matchedPlay = pname;
+        contentStart = 2 + temp.indexOf(pname) + pname.length; // 原行中关键字长度 + 可能空格 + 玩法名长度
+        // 重新计算，直接取 remaining 中玩法名结束的位置
+        let startIdx = 2; while (startIdx < remaining.length && remaining[startIdx] === ' ') startIdx++;
+        contentStart = startIdx + pname.length;
+        break;
+      }
+    }
+    if (!matchedPlay) {
+      // 若仍未匹配，则无法识别
+      return { html: `<span style="color:red;">${rawLine}（未识别玩法名）</span>`, pureLines: [], endIndex: rawLine.length };
+    }
+  }
+
+  // 如果仍未匹配到，整行无效
   if (!matchedPlay) {
     return { html: `<span style="color:red;">${rawLine}（未识别玩法名）</span>`, pureLines: [], endIndex: rawLine.length };
   }
 
-  const playType = normalizePlayType(matchedPlay);
-
-  // 从原始行中截取内容：找到干净行中玩法名结束的位置，对应原始行中的位置
-  // 由于去掉了复式关键字，原始行的实际内容偏移需要加上关键字的长度
-  let originalOffset = 0;
-  if (isFushi) {
-    // 找到原始行中复式关键字的位置，并计算偏移
-    const fushiMatch = rawLine.match(/复[式试]/);
-    if (fushiMatch) {
-      originalOffset = fushiMatch.index + 2; // 关键字长度2
-      // 如果关键字在玩法名前，那么玩法名在原始行中的起始位置是 originalOffset
-      // 但 cleanLine 已经去掉了关键字，所以玩法名在 cleanLine 中从0开始，但在 rawLine 中从 originalOffset 开始
-      // contentStart 是玩法名长度，所以原始行中内容开始于 originalOffset + contentStart
-      contentStart = originalOffset + contentStart;
-    }
+  // 此时 remaining 从 contentStart 开始是内容部分，但可能玩法名后面紧跟着“复试/复式”关键字
+  remaining = rawLine.substring(contentStart).trim();
+  if (!isFushi && (remaining.startsWith('复试') || remaining.startsWith('复式'))) {
+    isFushi = true;
+    // 跳过关键字
+    remaining = remaining.substring(2).trim();
+    contentStart = rawLine.indexOf(remaining); // 更新 contentStart 到内容实际开始处
   }
 
-  // 2. 剩余部分（从原始行中截取）
-  let remaining = rawLine.substring(contentStart).trim();
+  const playType = normalizePlayType(matchedPlay);
 
-  // 3. 找指定词
+  // 现在 remaining 是内容 + 指定词 + 金额部分
+  // 找指定词
   let ampWord = '';
   let ampIndex = -1;
   for (const amp of allAmpList) {
@@ -1533,34 +1541,35 @@ function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS
     }
   }
   if (ampIndex === -1) {
-    return { html: `<span style="color:red;">${matchedPlay} ${remaining}（缺少指定词）</span>`, pureLines: [], endIndex: contentStart + remaining.length };
+    return { html: `<span style="color:red;">${matchedPlay} ${remaining}（缺少指定词）</span>`, pureLines: [], endIndex: rawLine.length };
   }
 
   const contentStr = remaining.substring(0, ampIndex).trim();
   const afterAmp = remaining.substring(ampIndex + ampWord.length).trim();
 
-  // 4. 提取末尾金额（支持后缀）
+  // 提取末尾金额（支持后缀）
   const amountRegex = new RegExp(`^(\\d+)\\s*${AMTS}$`);
   const amountMatch = afterAmp.match(amountRegex);
   if (!amountMatch) {
-    // 可能金额之后还有下一个玩法？尝试只提取数字
+    // 尝试只提取数字（兼容无后缀但紧挨下一个玩法的情况）
     const simpleMatch = afterAmp.match(/^(\d+)/);
     if (simpleMatch) {
       const amt = parseInt(simpleMatch[1]) || 0;
-      const endIdx = contentStart + ampIndex + ampWord.length + simpleMatch[0].length;
+      const endIdx = rawLine.indexOf(afterAmp) + simpleMatch[0].length;
       const result = generateComboResults(playType, contentStr, amt, cfg, curYearZodiac, isFushi);
       result.endIndex = endIdx;
       return result;
     }
-    return { html: `<span style="color:red;">${matchedPlay} ${remaining}（缺少金额）</span>`, pureLines: [], endIndex: contentStart + remaining.length };
+    return { html: `<span style="color:red;">${matchedPlay} ${remaining}（缺少金额）</span>`, pureLines: [], endIndex: rawLine.length };
   }
   const amount = parseInt(amountMatch[1]) || 0;
   if (amount <= 0) {
-    return { html: `<span style="color:red;">${matchedPlay} ${remaining}（金额无效）</span>`, pureLines: [], endIndex: contentStart + remaining.length };
+    return { html: `<span style="color:red;">${matchedPlay} ${remaining}（金额无效）</span>`, pureLines: [], endIndex: rawLine.length };
   }
 
-  // 计算截取结束位置
-  const endIdx = contentStart + ampIndex + ampWord.length + amountMatch[0].length;
+  // 计算结束位置：从 rawLine 中定位 afterAmp 的开始位置，加上数字部分长度
+  const ampStartInRaw = rawLine.indexOf(afterAmp);
+  const endIdx = ampStartInRaw + amountMatch[0].length;
   const result = generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, isFushi);
   result.endIndex = endIdx;
   return result;
