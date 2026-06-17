@@ -2213,6 +2213,7 @@ function parseContentGroups(contentStr, groupSize, playType, cfg) {
   for (const part of groupParts) {
     if (needsConsecutive) {
       // 连肖/连尾：组内必须连写，不能有分隔符
+      // 检查part内是否有分隔符残留（已被split去掉，所以这里part应该是纯连写）
       const chars = part.replace(/[-\s,，.。、+\-*＊\/\\|]+/g, '').split('');
       if (chars.length < groupSize) {
         return { valid: false, error: `组"${part}"元素不足${groupSize}个，请将每组${playType}连写`, groups: [] };
@@ -2223,6 +2224,7 @@ function parseContentGroups(contentStr, groupSize, playType, cfg) {
       groups.push(chars);
     } else if (needsSeparator) {
       // 不中/二中二/三中三：组内号码必须有分隔符
+      // 但part已经被split拆分了，所以这里part应该是单个元素或连写的号码
       const subTokens = part.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
       if (subTokens.length === 1 && subTokens[0].length > 2 && /^\d+$/.test(subTokens[0])) {
         return { valid: false, error: `号码"${subTokens[0]}"连写，${playType}的号码之间必须有分隔符`, groups: [] };
