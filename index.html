@@ -1342,7 +1342,7 @@ function saveOddsData() {
   document.querySelectorAll('.odds-input').forEach(inp => { inp.disabled = true; inp.style.border = 'none'; inp.style.background = 'transparent'; });
   showToast('赔率已保存'); if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
 }
-    // ===== 连肖统计弹窗（移除赔率按钮） =====
+   // ===== 连肖统计弹窗（移除赔率按钮） =====
 function showLianxiaoStatsWin() {
   if (document.getElementById('lianxiaoStatsWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoStatsWin';
@@ -1427,7 +1427,6 @@ function convertComboText() {
   const cfg = getAllConfigData();
   const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
 
-  // 所有支持的玩法名（含简写，长的优先匹配）
   const playNames = [
     '十二不中','12不中','十一不中','11不中','十不中','10不中',
     '九不中','9不中','八不中','8不中','七不中','7不中','六不中','6不中','五不中','5不中',
@@ -1436,7 +1435,6 @@ function convertComboText() {
     '平特肖','平特尾','平码','三中三','3中3','二中二','2中2'
   ];
 
-  // 指定词（越长越优先），补充单独的“各”
   const HARD_AMP_LIST = ['每个号','各号码','各数','每数','每号','个号','各号','各组','各码','号','个','=','各'];
   const cusAmp = getCustomAmountPrefixes();
   const allAmpList = [...new Set([...HARD_AMP_LIST, ...cusAmp])];
@@ -1446,37 +1444,33 @@ function convertComboText() {
   const baseSuf = '元块咪米斤#،。\\s';
   const cusAmtSuf = getCustomAmountSuffixes();
   const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');
-  const AMTS = `[${allAmtChars}]*`;
+  // 用于匹配行末数字及可选后缀
+  const amountSuffixPattern = new RegExp('(\\d+)\\s*[' + allAmtChars.replace(/\\/g, '\\\\').replace(/]/g, '\\]') + ']*$');
 
   lines.forEach(line => {
     line = line.trim();
     if (!line) return;
 
-    // 一行可能包含多个玩法，循环解析
     let remaining = line;
     const lineResults = [];
     const linePureContents = [];
     while (remaining.length > 0) {
-      const parsed = parseComboLine(remaining, playNames, allAmpList, cfg, curYearZodiac, AMTS);
+      const parsed = parseComboLine(remaining, playNames, allAmpList, cfg, curYearZodiac, amountSuffixPattern);
       if (parsed.html) {
         lineResults.push(parsed.html);
       }
       if (parsed.pureLines) {
         parsed.pureLines.forEach(p => linePureContents.push(p));
       }
-      // 移动到下一组：从原始字符串中截掉已解析的部分
       if (parsed.endIndex !== undefined && parsed.endIndex > 0) {
         remaining = remaining.substring(parsed.endIndex).trim();
-        // 跳过分隔符
         remaining = remaining.replace(/^[\s,，.。、+\-*＊\/\\|;；:：!！?？]+/, '').trim();
-        // 避免无限循环
         if (parsed.endIndex === 0) break;
       } else {
         break;
       }
     }
     if (lineResults.length === 0) {
-      // 没有解析出任何玩法，整行标红
       allResults.push(`<span style="color:red;">${line}（未识别有效玩法）</span>`);
     } else {
       allResults.push(lineResults.join('<br>'));
@@ -1489,14 +1483,14 @@ function convertComboText() {
   updateComboMaxLoss();
 }
 
-// ===== 连肖行解析核心函数（支持单组省略指定词） =====
-function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS) {
+// ===== 连肖行解析核心函数（支持单组省略指定词、复式、多玩法） =====
+function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, amountSuffixPattern) {
   let isFushi = false;
   let remaining = rawLine;
   let matchedPlay = null;
   let contentStart = 0;
 
-  // 尝试直接匹配玩法名（无关键字前缀的情况，如“二连肖复试...”）
+  // 1. 匹配玩法名
   for (const pname of playNames) {
     if (remaining.startsWith(pname)) {
       matchedPlay = pname;
@@ -1505,14 +1499,13 @@ function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS
     }
   }
 
-  // 如果没匹配到，检查是否以“复试/复式”开头，跳过关键字再匹配
+  // 如果没匹配到，检查是否以“复试/复式”开头
   if (!matchedPlay && (remaining.startsWith('复试') || remaining.startsWith('复式'))) {
     isFushi = true;
     let temp = remaining.substring(2).trim();
     for (const pname of playNames) {
       if (temp.startsWith(pname)) {
         matchedPlay = pname;
-        // 计算原始行中内容开始的位置
         let startIdx = 2; while (startIdx < remaining.length && remaining[startIdx] === ' ') startIdx++;
         contentStart = startIdx + pname.length;
         break;
@@ -1527,7 +1520,7 @@ function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS
     return { html: `<span style="color:red;">${rawLine}（未识别玩法名）</span>`, pureLines: [], endIndex: rawLine.length };
   }
 
-  // 此时 remaining 从 contentStart 开始是内容部分，但可能玩法名后面紧跟着“复试/复式”关键字
+  // 2. 提取玩法名后的内容
   remaining = rawLine.substring(contentStart).trim();
   if (!isFushi && (remaining.startsWith('复试') || remaining.startsWith('复式'))) {
     isFushi = true;
@@ -1537,7 +1530,7 @@ function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS
 
   const playType = normalizePlayType(matchedPlay);
 
-  // 找指定词
+  // 3. 查找指定词
   let ampWord = '';
   let ampIndex = -1;
   for (const amp of allAmpList) {
@@ -1548,20 +1541,19 @@ function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS
     }
   }
 
-  // 如果找不到指定词，尝试单组省略模式
+  // 4. 如果找不到指定词，尝试单组省略模式
   if (ampIndex === -1) {
-    // 尝试匹配：内容 + 金额（末尾数字+可选后缀）
-    const singleMatch = remaining.match(new RegExp(`^(.+?)\\s*(\\d+)\\s*${AMTS}$`));
-    if (singleMatch) {
-      const contentTry = singleMatch[1].trim();
-      const amountTry = parseInt(singleMatch[2]) || 0;
-      if (contentTry && amountTry > 0) {
+    // 尝试从末尾提取金额（数字+可选后缀）
+    const amountMatch = remaining.match(amountSuffixPattern);
+    if (amountMatch) {
+      const amt = parseInt(amountMatch[1]) || 0;
+      const contentTry = remaining.substring(0, remaining.length - amountMatch[0].length).trim();
+      if (contentTry && amt > 0) {
         const groupSize = getPlayGroupSize(playType);
         const groups = parseContentGroups(contentTry, groupSize, playType, cfg);
-        // 必须只有一组有效元素
         if (groups.valid && groups.groups.length === 1) {
-          const result = generateComboResults(playType, contentTry, amountTry, cfg, curYearZodiac, isFushi);
-          result.endIndex = rawLine.length; // 单组模式，整行解析完毕
+          const result = generateComboResults(playType, contentTry, amt, cfg, curYearZodiac, isFushi);
+          result.endIndex = rawLine.length;
           return result;
         }
       }
@@ -1572,19 +1564,9 @@ function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS
   const contentStr = remaining.substring(0, ampIndex).trim();
   const afterAmp = remaining.substring(ampIndex + ampWord.length).trim();
 
-  // 提取末尾金额（支持后缀）
-  const amountRegex = new RegExp(`^(\\d+)\\s*${AMTS}$`);
-  const amountMatch = afterAmp.match(amountRegex);
+  // 5. 提取金额
+  const amountMatch = afterAmp.match(/^(\d+)/);
   if (!amountMatch) {
-    // 尝试只提取数字（兼容无后缀但紧挨下一个玩法的情况）
-    const simpleMatch = afterAmp.match(/^(\d+)/);
-    if (simpleMatch) {
-      const amt = parseInt(simpleMatch[1]) || 0;
-      const endIdx = rawLine.indexOf(afterAmp) + simpleMatch[0].length;
-      const result = generateComboResults(playType, contentStr, amt, cfg, curYearZodiac, isFushi);
-      result.endIndex = endIdx;
-      return result;
-    }
     return { html: `<span style="color:red;">${matchedPlay} ${remaining}（缺少金额）</span>`, pureLines: [], endIndex: rawLine.length };
   }
   const amount = parseInt(amountMatch[1]) || 0;
@@ -1592,7 +1574,7 @@ function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS
     return { html: `<span style="color:red;">${matchedPlay} ${remaining}（金额无效）</span>`, pureLines: [], endIndex: rawLine.length };
   }
 
-  // 计算截取结束位置
+  // 计算结束位置
   const ampStartInRaw = rawLine.indexOf(afterAmp);
   const endIdx = ampStartInRaw + amountMatch[0].length;
   const result = generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, isFushi);
@@ -1624,12 +1606,12 @@ function getPlayGroupSize(playType) {
   return map[playType] || 1;
 }
 
-// 判断玩法是否需要组内连写（连肖/连尾需要，其他不需要）
+// 判断玩法是否需要组内连写
 function isPlayNeedsConsecutive(playType) {
   return ['二连肖','三连肖','四连肖','五连肖','二连尾','三连尾','四连尾','五连尾'].includes(playType);
 }
 
-// 判断玩法是否号码之间必须有分隔符（不中/二中二/三中三）
+// 判断玩法是否号码之间必须有分隔符
 function isPlayNeedsSeparator(playType) {
   return ['五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中','二中二','三中三'].includes(playType);
 }
