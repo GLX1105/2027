@@ -1448,15 +1448,13 @@ function convertComboText() {
 function parseMultiPlayLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) {
   const results = [];
   let remaining = rawLine.trim();
-  
-  // 金额后缀正则构建
+
   const baseSuf = '元块咪米斤#،。\\s';
   const cusAmtSuf = getCustomAmountSuffixes();
   const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');
   const AMTS = `[${allAmtChars}]*`;
 
   while (remaining) {
-    // 1. 检测是否以复式/复试开头
     let isFushi = false;
     const fushiStart = remaining.match(/^(复[式试])/);
     if (fushiStart) {
@@ -1464,7 +1462,6 @@ function parseMultiPlayLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) 
       remaining = remaining.substring(fushiStart[0].length).trim();
     }
 
-    // 2. 匹配玩法名
     let matchedPlay = null;
     let contentStart = 0;
     for (const pname of playNames) {
@@ -1475,7 +1472,6 @@ function parseMultiPlayLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) 
       }
     }
     if (!matchedPlay) {
-      // 不能识别的部分，作为错误处理
       if (remaining) {
         results.push({ html: `<span style="color:red;">${remaining}（未识别玩法名）</span>`, pureLines: [] });
       }
@@ -1484,7 +1480,6 @@ function parseMultiPlayLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) 
     const playType = normalizePlayType(matchedPlay);
     let afterPlayName = remaining.substring(contentStart).trim();
 
-    // 3. 检查玩法名后是否紧跟复式/复试
     if (!isFushi) {
       const fushiAfter = afterPlayName.match(/^(复[式试])/);
       if (fushiAfter) {
@@ -1493,8 +1488,6 @@ function parseMultiPlayLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) 
       }
     }
 
-    // 4. 找当前玩法段内的指定词和金额（只搜索到下一个玩法名前或行尾）
-    // 先找出下一个可能玩法名的位置，限制搜索范围
     let searchEnd = afterPlayName.length;
     for (const pname of playNames) {
       const idx = afterPlayName.indexOf(pname);
@@ -1504,7 +1497,6 @@ function parseMultiPlayLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) 
     }
     const scope = afterPlayName.substring(0, searchEnd);
 
-    // 5. 在 scope 中找指定词
     let ampWord = '';
     let ampIndex = -1;
     for (const amp of allAmpList) {
@@ -1522,7 +1514,6 @@ function parseMultiPlayLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) 
     const contentStr = scope.substring(0, ampIndex).trim();
     const afterAmp = scope.substring(ampIndex + ampWord.length).trim();
 
-    // 6. 提取金额（支持后缀）
     const amountRegex = new RegExp(`(\\d+)\\s*${AMTS}$`);
     const amountMatch = afterAmp.match(amountRegex);
     if (!amountMatch) {
@@ -1535,64 +1526,14 @@ function parseMultiPlayLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) 
       break;
     }
 
-    // 7. 生成结果
     const result = generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, isFushi);
     results.push(result);
 
-    // 8. 截取剩余部分（跳过已消费的部分）
-    const consumedLength = contentStart + (afterPlayName.length - (scope.length - searchEnd)) + (scope.length); // 简化：直接取原始 remaining 中消耗的长度
-    // 更精确计算：我们已处理了 matchedPlay + afterPlayName 的前 searchEnd + (金额部分长度)
-    // 实际消费到 afterPlayName 中 scope 之后，还有可能剩余的内容
-    const restOfScope = afterAmp.substring(amountMatch[0].length).trim(); // 金额后的空白或分隔符
+    const restOfScope = afterAmp.substring(amountMatch[0].length).trim();
     remaining = restOfScope + afterPlayName.substring(searchEnd);
     remaining = remaining.trim();
   }
   return results;
-}
-
-// ===== 原单行解析函数（保留，可能不再使用但避免影响其他引用） =====
-function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) {
-  let matchedPlay = null;
-  let contentStart = 0;
-  for (const pname of playNames) {
-    if (rawLine.startsWith(pname)) {
-      matchedPlay = pname;
-      contentStart = pname.length;
-      break;
-    }
-  }
-  if (!matchedPlay) {
-    return { html: `<span style="color:red;">${rawLine}（未识别玩法名）</span>`, pureLines: [] };
-  }
-  const playType = normalizePlayType(matchedPlay);
-  let remaining = rawLine.substring(contentStart).trim();
-
-  let ampWord = '';
-  let ampIndex = -1;
-  for (const amp of allAmpList) {
-    const idx = remaining.indexOf(amp);
-    if (idx !== -1 && (ampIndex === -1 || idx < ampIndex)) {
-      ampIndex = idx;
-      ampWord = amp;
-    }
-  }
-  if (ampIndex === -1) {
-    return { html: `<span style="color:red;">${rawLine}（缺少指定词）</span>`, pureLines: [] };
-  }
-
-  const contentStr = remaining.substring(0, ampIndex).trim();
-  const afterAmp = remaining.substring(ampIndex + ampWord.length).trim();
-
-  const amountMatch = afterAmp.match(/(\d+)\s*$/);
-  if (!amountMatch) {
-    return { html: `<span style="color:red;">${rawLine}（缺少金额）</span>`, pureLines: [] };
-  }
-  const amount = parseInt(amountMatch[1]) || 0;
-  if (amount <= 0) {
-    return { html: `<span style="color:red;">${rawLine}（金额无效）</span>`, pureLines: [] };
-  }
-
-  return generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, false);
 }
 
 function normalizePlayType(name) {
@@ -1629,7 +1570,6 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
   const results = { html: '', pureLines: [] };
   let cleanContent = contentStr.trim();
 
-  // 若未传入 isFushi，则自行检测（兼容旧调用）
   if (!isFushi) {
     isFushi = /复[式试]/.test(cleanContent);
   }
@@ -1637,7 +1577,6 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
     cleanContent = cleanContent.replace(/复[式试]/g, '').trim();
   }
 
-  // 检测胆拖（仅二中二）
   let isDanTuo = false;
   let danPart = '', tuoPart = '';
   if (playType === '二中二') {
@@ -1656,17 +1595,14 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
     const tokens = tokenizeContentMixed(cleanContent);
     const zodiacs = [];
     tokens.forEach(t => {
-      if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) {
-        zodiacs.push(t);
-      }
+      if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) zodiacs.push(t);
     });
     if (zodiacs.length === 0) {
       return { html: `<span style="color:red;">${playType} ${contentStr}（未识别到有效生肖）</span>`, pureLines: [] };
     }
     const yearZodiacs = [], otherZodiacs = [];
     zodiacs.forEach(z => {
-      if (z === curYearZodiac) yearZodiacs.push(z);
-      else otherZodiacs.push(z);
+      if (z === curYearZodiac) yearZodiacs.push(z); else otherZodiacs.push(z);
     });
     if (otherZodiacs.length > 0) {
       results.html += `平特肖 ${otherZodiacs.join('-')} 各组 ${amount}`;
@@ -1696,8 +1632,7 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
     }
     const zeroWei = [], otherWei = [];
     weishus.forEach(w => {
-      if (w === '0') zeroWei.push(w);
-      else otherWei.push(w);
+      if (w === '0') zeroWei.push(w); else otherWei.push(w);
     });
     if (otherWei.length > 0) {
       results.html += `平特尾 ${otherWei.map(w=>w+'尾').join('-')} 各组 ${amount}`;
@@ -1740,7 +1675,7 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
       if (nums.length < 2) {
         return { html: `<span style="color:red;">${playType}复式 ${contentStr}（号码不足2个）</span>`, pureLines: [] };
       }
-      if (/[\u4e00-\u9fa5]/.test(cleanContent.replace(/复[式试]/g, '').replace(/[\d\s,，.。、+\-*＊\/\\|]+/g, ''))) {
+      if (/[\u4e00-\u9fa5]/.test(cleanContent.replace(/[\d\s,，.。、+\-*＊\/\\|]+/g, ''))) {
         return { html: `<span style="color:red;">${playType}复式 ${contentStr}（二中二复式仅支持号码）</span>`, pureLines: [] };
       }
       const combos = comboCombine([...new Set(nums)], 2);
@@ -1757,16 +1692,11 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
       }
       const pairs = [];
       danNums.forEach(d => {
-        tuoNums.forEach(t => {
-          if (d !== t) pairs.push([d, t].sort((a,b)=>parseInt(a)-parseInt(b)));
-        });
+        tuoNums.forEach(t => { if (d !== t) pairs.push([d, t].sort((a,b)=>parseInt(a)-parseInt(b))); });
       });
       const seen = new Set();
       const uniquePairs = [];
-      pairs.forEach(p => {
-        const k = p.join('-');
-        if (!seen.has(k)) { seen.add(k); uniquePairs.push(p); }
-      });
+      pairs.forEach(p => { const k = p.join('-'); if (!seen.has(k)) { seen.add(k); uniquePairs.push(p); } });
       if (uniquePairs.length === 0) {
         return { html: `<span style="color:red;">二中二 ${contentStr}（无有效配对）</span>`, pureLines: [] };
       }
@@ -1779,15 +1709,9 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
     if (!groups.valid) {
       return { html: `<span style="color:red;">${playType} ${contentStr}（${groups.error}）</span>`, pureLines: [] };
     }
-    const expandedGroups = groups.groups.map(g => {
-      return expandTokensToNumbers(g.join(' '), cfg);
-    });
+    const expandedGroups = groups.groups.map(g => expandTokensToNumbers(g.join(' '), cfg));
     const allCombos = [];
-    expandedGroups.forEach(nums => {
-      if (nums.length === 2) {
-        allCombos.push(nums.sort((a,b)=>parseInt(a)-parseInt(b)));
-      }
-    });
+    expandedGroups.forEach(nums => { if (nums.length === 2) allCombos.push(nums.sort((a,b)=>parseInt(a)-parseInt(b))); });
     if (allCombos.length === 0) {
       return { html: `<span style="color:red;">${playType} ${contentStr}（无法生成有效组合）</span>`, pureLines: [] };
     }
@@ -1804,7 +1728,7 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
       if (nums.length < 3) {
         return { html: `<span style="color:red;">${playType}复式 ${contentStr}（号码不足3个）</span>`, pureLines: [] };
       }
-      if (/[\u4e00-\u9fa5]/.test(cleanContent.replace(/复[式试]/g, '').replace(/[\d\s,，.。、+\-*＊\/\\|]+/g, ''))) {
+      if (/[\u4e00-\u9fa5]/.test(cleanContent.replace(/[\d\s,，.。、+\-*＊\/\\|]+/g, ''))) {
         return { html: `<span style="color:red;">${playType}复式 ${contentStr}（三中三复式仅支持号码）</span>`, pureLines: [] };
       }
       const combos = comboCombine([...new Set(nums)], 3);
@@ -1817,15 +1741,9 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
     if (!groups.valid) {
       return { html: `<span style="color:red;">${playType} ${contentStr}（${groups.error}）</span>`, pureLines: [] };
     }
-    const expandedGroups = groups.groups.map(g => {
-      return expandTokensToNumbers(g.join(' '), cfg);
-    });
+    const expandedGroups = groups.groups.map(g => expandTokensToNumbers(g.join(' '), cfg));
     const allCombos = [];
-    expandedGroups.forEach(nums => {
-      if (nums.length === 3) {
-        allCombos.push(nums.sort((a,b)=>parseInt(a)-parseInt(b)));
-      }
-    });
+    expandedGroups.forEach(nums => { if (nums.length === 3) allCombos.push(nums.sort((a,b)=>parseInt(a)-parseInt(b))); });
     if (allCombos.length === 0) {
       return { html: `<span style="color:red;">${playType} ${contentStr}（无法生成有效组合）</span>`, pureLines: [] };
     }
@@ -1844,9 +1762,7 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
       }
       const combos = comboCombine([...new Set(zodiacs)], groupSize);
       const withYear = [], withoutYear = [];
-      combos.forEach(c => {
-        (c.some(z => z === curYearZodiac) ? withYear : withoutYear).push(c);
-      });
+      combos.forEach(c => { (c.some(z => z === curYearZodiac) ? withYear : withoutYear).push(c); });
       if (withoutYear.length > 0) {
         const str = withoutYear.map(c => '(' + c.join('-') + ')').join(' ');
         results.html += `${playType} ${str} 各组 ${amount}`;
@@ -1900,9 +1816,7 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
       }
       const combos = comboCombine([...new Set(weishus)], groupSize);
       const withZero = [], withoutZero = [];
-      combos.forEach(c => {
-        (c.includes('0') ? withZero : withoutZero).push(c);
-      });
+      combos.forEach(c => { (c.includes('0') ? withZero : withoutZero).push(c); });
       if (withoutZero.length > 0) {
         const str = withoutZero.map(c => '(' + c.map(w=>w+'尾').join('-') + ')').join(' ');
         results.html += `${playType} ${str} 各组 ${amount}`;
@@ -1925,10 +1839,7 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
     }
     const withZero = [], withoutZero = [];
     groups.groups.forEach(g => {
-      const weishus = g.map(t => {
-        const m = t.match(/^(\d)尾$/);
-        return m ? m[1] : null;
-      }).filter(w => w !== null);
+      const weishus = g.map(t => { const m = t.match(/^(\d)尾$/); return m ? m[1] : null; }).filter(w => w !== null);
       if (weishus.length === groupSize) {
         (weishus.includes('0') ? withZero : withoutZero).push(weishus);
       }
@@ -1973,6 +1884,122 @@ function generateComboResults(playType, contentStr, amount, cfg, curYearZodiac, 
   }
 
   return { html: `<span style="color:red;">${playType} ${contentStr}（未知玩法）</span>`, pureLines: [] };
+}
+
+// ===== 辅助函数：从内容中提取号码 =====
+function extractNumbersFromContent(contentStr, cfg) {
+  const nums = [];
+  const tokens = contentStr.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
+  tokens.forEach(t => {
+    if (/^\d{1,2}$/.test(t)) {
+      const n = parseInt(t);
+      if (n >= 1 && n <= 49) nums.push(t.padStart(2, '0'));
+    } else if (/^\d{3,}$/.test(t)) {
+      const digits = t.match(/\d{2}/g) || [];
+      digits.forEach(d => { const n = parseInt(d); if (n >= 1 && n <= 49) nums.push(d.padStart(2, '0')); });
+    } else if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) {
+      (cfg.zodiac[t] || []).forEach(n => nums.push(n.padStart(2, '0')));
+    } else if (/^(\d)尾$/.test(t)) {
+      const w = RegExp.$1;
+      for (let i = 0; i <= 4; i++) {
+        const n = (i * 10 + parseInt(w)).toString().padStart(2, '0');
+        if (parseInt(n) >= 1 && parseInt(n) <= 49) nums.push(n);
+      }
+    }
+  });
+  return [...new Set(nums)].sort((a, b) => parseInt(a) - parseInt(b));
+}
+
+// ===== 辅助函数：从内容中提取生肖 =====
+function extractZodiacsFromContent(contentStr, cfg) {
+  const zodiacs = [];
+  const chars = contentStr.replace(/[\s,，.。、+\-*＊\/\\|]+/g, '').split('');
+  chars.forEach(ch => { if (cfg.zodiac[ch]) zodiacs.push(ch); });
+  return [...new Set(zodiacs)];
+}
+
+// ===== 辅助函数：从内容中提取尾数 =====
+function extractWeishusFromContent(contentStr) {
+  const weishus = [];
+  const tokens = contentStr.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
+  tokens.forEach(t => { const m = t.match(/^(\d)尾$/); if (m) weishus.push(m[1]); });
+  return [...new Set(weishus)];
+}
+
+// ===== 辅助函数：混合分词（兼容连写和分隔） =====
+function tokenizeContentMixed(contentStr) {
+  if (!contentStr) return [];
+  const parts = contentStr.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
+  const tokens = [];
+  parts.forEach(part => {
+    const zodiacChars = [];
+    const remaining = [];
+    for (const ch of part) {
+      if (/[\u4e00-\u9fa5]/.test(ch)) { zodiacChars.push(ch); } else { remaining.push(ch); }
+    }
+    if (zodiacChars.length > 1) { zodiacChars.forEach(z => tokens.push(z)); }
+    else if (zodiacChars.length === 1) { tokens.push(zodiacChars[0]); }
+    if (remaining.length > 0) { tokens.push(remaining.join('')); }
+  });
+  return tokens.filter(t => t.trim());
+}
+
+// ===== 辅助函数：解析内容分组（根据玩法类型） =====
+function parseContentGroups(contentStr, groupSize, playType, cfg) {
+  const needsConsecutive = isPlayNeedsConsecutive(playType);
+  const needsSeparator = isPlayNeedsSeparator(playType);
+  const groupParts = contentStr.split(/[，,、\s]+/).filter(t => t.trim());
+  if (groupParts.length === 0) {
+    return { valid: false, error: '内容为空', groups: [] };
+  }
+  const groups = [];
+  for (const part of groupParts) {
+    if (needsConsecutive) {
+      const chars = part.replace(/[-\s,，.。、+\-*＊\/\\|]+/g, '').split('');
+      if (chars.length < groupSize) {
+        return { valid: false, error: `组"${part}"元素不足${groupSize}个，请将每组${playType}连写`, groups: [] };
+      }
+      if (chars.length > groupSize) {
+        return { valid: false, error: `组"${part}"元素超过${groupSize}个，请检查分组`, groups: [] };
+      }
+      groups.push(chars);
+    } else if (needsSeparator) {
+      const subTokens = part.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
+      if (subTokens.length === 1 && subTokens[0].length > 2 && /^\d+$/.test(subTokens[0])) {
+        return { valid: false, error: `号码"${subTokens[0]}"连写，${playType}的号码之间必须有分隔符`, groups: [] };
+      }
+      groups.push(subTokens);
+    } else {
+      groups.push([part]);
+    }
+  }
+  if (!needsConsecutive && !needsSeparator) {
+    const allTokens = [];
+    groups.forEach(g => allTokens.push(...g));
+    return { valid: true, error: '', groups: [allTokens] };
+  }
+  return { valid: true, error: '', groups };
+}
+
+// ===== 辅助函数：展开token为号码 =====
+function expandTokensToNumbers(tokenStr, cfg) {
+  const tokens = tokenStr.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
+  const nums = [];
+  tokens.forEach(t => {
+    if (/^\d{1,2}$/.test(t)) {
+      const n = parseInt(t);
+      if (n >= 1 && n <= 49) nums.push(t.padStart(2, '0'));
+    } else if (/^[\u4e00-\u9fa5]$/.test(t) && cfg.zodiac[t]) {
+      (cfg.zodiac[t] || []).forEach(n => nums.push(n.padStart(2, '0')));
+    } else if (/^(\d)尾$/.test(t)) {
+      const w = RegExp.$1;
+      for (let i = 0; i <= 4; i++) {
+        const n = (i * 10 + parseInt(w)).toString().padStart(2, '0');
+        if (parseInt(n) >= 1 && parseInt(n) <= 49) nums.push(n);
+      }
+    }
+  });
+  return [...new Set(nums)].sort((a, b) => parseInt(a) - parseInt(b));
 }
       // ========== 连肖类（二~五连肖） ==========
   if (['二连肖','三连肖','四连肖','五连肖'].includes(playType)) {
@@ -2213,7 +2240,6 @@ function parseContentGroups(contentStr, groupSize, playType, cfg) {
   for (const part of groupParts) {
     if (needsConsecutive) {
       // 连肖/连尾：组内必须连写，不能有分隔符
-      // 检查part内是否有分隔符残留（已被split去掉，所以这里part应该是纯连写）
       const chars = part.replace(/[-\s,，.。、+\-*＊\/\\|]+/g, '').split('');
       if (chars.length < groupSize) {
         return { valid: false, error: `组"${part}"元素不足${groupSize}个，请将每组${playType}连写`, groups: [] };
@@ -2224,7 +2250,6 @@ function parseContentGroups(contentStr, groupSize, playType, cfg) {
       groups.push(chars);
     } else if (needsSeparator) {
       // 不中/二中二/三中三：组内号码必须有分隔符
-      // 但part已经被split拆分了，所以这里part应该是单个元素或连写的号码
       const subTokens = part.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
       if (subTokens.length === 1 && subTokens[0].length > 2 && /^\d+$/.test(subTokens[0])) {
         return { valid: false, error: `号码"${subTokens[0]}"连写，${playType}的号码之间必须有分隔符`, groups: [] };
