@@ -3511,7 +3511,7 @@ async function semanticReplace() { const ta=document.querySelector('.source-orde
 
 function tokenizeAndJoin(content) { const cfg = getAllConfigData(); const vc = getAllValidCategories(cfg); const tokens = content.split(/[^\u4e00-\u9fa5\d]+/).filter(t => t.trim()).map(t => t.trim()); const res = []; tokens.forEach(t => { const tm = t.match(/^(\d{2,})尾$/); const hm = t.match(/^(\d{2,})头$/); if (tm) { const ds = tm[1].split('').map(d => d + '尾'); res.push(...ds); } else if (hm) { const ds = hm[1].split('').map(d => d + '头'); res.push(...ds); } else if (/^\d{1,2}$/.test(t)) { const n = parseInt(t); if (n >= 1 && n <= 49) res.push(t.length === 1 ? '0' + t : t); } else if (vc.has(t)) { res.push(t); } else if (/^[\u4e00-\u9fa5]+$/.test(t)) { const cs = t.match(/[\u4e00-\u9fa5]/g) || []; if (cs.some(c => vc.has(c))) { cs.forEach(c => { if (vc.has(c)) res.push(c); }); } } }); return res.join('-'); }
 
-// ===== 主页识别核心函数（标红行追加提示、去掉了invalidSpan） =====
+// ===== 主页识别核心函数（标红提示已附加，同时存储原始解析数据） =====
 function convertOrderText() {
   const inputEl = document.querySelector('.source-order-input');
   const resultEl = document.getElementById('orderResult');
@@ -3615,7 +3615,7 @@ function convertOrderText() {
     }
   });
 
-  // 收集每行的无效token
+  // 收集无效token
   const lineInvalidTokens = [];
   resultLines.forEach((line, idx) => {
     if (skipInvalidCheck.has(idx)) { lineInvalidTokens.push([]); return; }
@@ -3636,8 +3636,10 @@ function convertOrderText() {
     lineInvalidTokens.push(invalidInLine);
   });
 
-  // 生成HTML，标红行追加提示
+  // 存储解析结果，供保存时过滤使用
   window._lastConvertResult = { resultLines, lineInvalidTokens, skipInvalidCheck, originalContents };
+
+  // 生成带提示的HTML
   let html = '';
   resultLines.forEach((line, idx) => {
     const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
@@ -3666,71 +3668,79 @@ function convertOrderText() {
   updateMaxLossDisplay();
 }
 
-// ===== 辅助函数：从识别结果行中提取过滤后的有效内容 =====
-function getFilteredContentFromLine(line, lineInvalidTokens, skipInvalidCheck, cfg, vc) {
-  const m = line.match(/^(.+?)\s+各数\s+(\d+)$/);
-  if (!m) return null;
-  const content = m[1]; const amt = parseInt(m[2]) || 0;
-  if (amt <= 0) return null;
-  const { numbers, zodiacs } = countItemsInLine(line, cfg, vc);
-  const totalItems = numbers.length + zodiacs.length;
-  if (totalItems === 0) return null;
-  const invalidTokens = lineInvalidTokens || [];
-  if (invalidTokens.length === 0) {
-    return line;
-  }
-  const contentParts = content.split('-').filter(p => p.trim());
-  const validParts = contentParts.filter(p => {
-    const clean = p.replace(/[\s,，.。、+\-*＊\/\\|!@#$%^&*()=+_{}\[\]:;"'<>,.?\/~！@#￥%…&*（）—+【】{}|："；"''《》，。？、]/g, '');
+// ===== 过滤一行，剔除无效词并返回有效订单行 =====
+function getFilteredContentFromLine(resultLine, invalidTokens, isSkipped, cfg, vc) {
+  if (isSkipped) return resultLine;
+  const match = resultLine.match(/^(.+?)\s+各数\s+(\d+)$/);
+  if (!match) return null;
+  const content = match[1];
+  const amt = parseInt(match[2]);
+  if (isNaN(amt) || amt <= 0) return null;
+  if (!invalidTokens || invalidTokens.length === 0) return resultLine;
+  const parts = content.split('-').filter(p => p.trim());
+  const validParts = parts.filter(part => {
+    const clean = part.replace(/[\s,，.。、+\-*＊\/\\|]+/g, '');
     if (clean === '') return false;
     if (/^\d{1,2}$/.test(clean)) {
       const n = parseInt(clean);
       return n >= 1 && n <= 49;
     }
     if (cfg.zodiac[clean]) return true;
-    if (vc.has(clean)) return true;
     if (cfg.shengxiaoAttr[clean]) return true;
+    if (vc.has(clean)) return true;
     return false;
   });
   if (validParts.length === 0) return null;
-  return `${validParts.join('-')} 各数 ${amt}`;
+  return validParts.join('-') + ' 各数 ' + amt;
 }
 
 function getAllValidCategories(cfg) { const s=new Set(); Object.keys(cfg.zodiac).forEach(k=>s.add(k)); Object.keys(cfg.shengxiaoAttr).forEach(k=>s.add(k)); Object.keys(cfg.wuxing).forEach(k=>s.add(k)); Object.keys(cfg.bose).forEach(k=>s.add(k)); Object.keys(cfg.banbo).forEach(k=>s.add(k)); Object.keys(cfg.danshuang).forEach(k=>s.add(k)); Object.keys(cfg.weishu).forEach(k=>s.add(k)); Object.keys(cfg.daxiaodanshuang).forEach(k=>s.add(k)); Object.keys(cfg.daxiao).forEach(k=>s.add(k)); Object.keys(cfg.heshu).forEach(k=>s.add(k)); Object.keys(cfg.toushu).forEach(k=>s.add(k)); Object.keys(cfg.menshu).forEach(k=>s.add(k)); Object.keys(cfg.duanwei).forEach(k=>s.add(k)); Object.keys(cfg.hedahexiao).forEach(k=>s.add(k)); Object.keys(cfg.weidaweixiao).forEach(k=>s.add(k)); Object.keys(cfg.hewei).forEach(k=>s.add(k)); Object.keys(cfg.heshudanshuang).forEach(k=>s.add(k)); Object.keys(cfg.toushuDanshuang).forEach(k=>s.add(k)); s.add('蓝大'); s.add('蓝小'); s.add('红大'); s.add('红小'); s.add('绿大'); s.add('绿小'); s.add('蓝波大'); s.add('蓝波小'); s.add('红波大'); s.add('红波小'); s.add('绿波大'); s.add('绿波小'); return s; }
 
-// ===== 保存下单（含过滤无效内容） =====
+// ===== 保存下单（已过滤无效内容且去掉提示） =====
 async function saveOrder(){
   const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;}
-  const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:'';
-  const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText;
+  const resultEl=document.getElementById('orderResult');
+  const rawText=resultEl?resultEl.innerText:'';
+  const inputText=document.querySelector('.source-order-input')?.value.trim();
+  const textToUse=rawText||inputText;
   if(!textToUse)return;
-  const lines = textToUse.split('\n');
+
   const cfg=getAllConfigData(); const vc=getAllValidCategories(cfg);
   let validLines = []; let skippedCount = 0;
   const convertData = window._lastConvertResult;
-  lines.forEach((line, idx) => {
-    const lineTrimmed = line.trim();
-    if (!lineTrimmed) return;
-    if (convertData && convertData.resultLines[idx] !== undefined) {
-      const filtered = getFilteredContentFromLine(
-        convertData.resultLines[idx],
-        convertData.lineInvalidTokens[idx] || [],
-        convertData.skipInvalidCheck,
-        cfg, vc
-      );
+
+  if (convertData && Array.isArray(convertData.resultLines)) {
+    convertData.resultLines.forEach((resultLine, idx) => {
+      const isSkipped = convertData.skipInvalidCheck && convertData.skipInvalidCheck.has(idx);
+      const invalidTokens = (convertData.lineInvalidTokens && convertData.lineInvalidTokens[idx]) || [];
+      const filtered = getFilteredContentFromLine(resultLine, invalidTokens, isSkipped, cfg, vc);
       if (filtered) {
         validLines.push(filtered);
       } else {
         skippedCount++;
       }
-    } else {
-      const m = lineTrimmed.match(/各数\s+(\d+)/);
-      if (m && parseInt(m[1]) > 0) validLines.push(lineTrimmed);
-    }
-  });
+    });
+  } else {
+    const lines = textToUse.split('\n');
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      const m = trimmed.match(/各数\s+(\d+)/);
+      if (m && parseInt(m[1]) > 0) validLines.push(trimmed);
+    });
+  }
+
   if(!validLines.length){showToast('没有有效订单可保存');return;}
-  const content=validLines.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST();
-  const total=computeCurrentOrderTotal();
+  const content=validLines.join('\n');
+  const date=document.getElementById('filterDate')?.value||getTodayCST();
+
+  let total = 0;
+  validLines.forEach(line => {
+    const { numbers, zodiacs, amount } = countItemsInLine(line, cfg, vc);
+    let cnt = numbers.length;
+    zodiacs.forEach(z => { cnt += (cfg.zodiac[z] || []).length; });
+    total += cnt * amount;
+  });
+
   const existingOrders = (await getOrderRecords()).filter(r => r.date === date && r.user === user);
   if (existingOrders.some(o => o.content === content)) { const confirmed = await confirm('该用户今天已保存过相同的订单内容，确定再次保存吗？'); if (!confirmed) return; }
   await saveOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,true,date);
@@ -3745,39 +3755,51 @@ async function saveOrder(){
   showToast(msg);
 }
 
-// ===== 保存上报（含过滤无效内容） =====
+// ===== 保存上报（已过滤无效内容且去掉提示） =====
 async function saveReportOrder(){
   const user=document.getElementById('orderUserSelect')?.value; if(!user){showToast('请选择用户');return;}
-  const resultEl=document.getElementById('orderResult'); const rawText=resultEl?resultEl.innerText:'';
-  const inputText=document.querySelector('.source-order-input')?.value.trim(); const textToUse=rawText||inputText;
+  const resultEl=document.getElementById('orderResult');
+  const rawText=resultEl?resultEl.innerText:'';
+  const inputText=document.querySelector('.source-order-input')?.value.trim();
+  const textToUse=rawText||inputText;
   if(!textToUse)return;
-  const lines = textToUse.split('\n');
+
   const cfg=getAllConfigData(); const vc=getAllValidCategories(cfg);
   let validLines = []; let skippedCount = 0;
   const convertData = window._lastConvertResult;
-  lines.forEach((line, idx) => {
-    const lineTrimmed = line.trim();
-    if (!lineTrimmed) return;
-    if (convertData && convertData.resultLines[idx] !== undefined) {
-      const filtered = getFilteredContentFromLine(
-        convertData.resultLines[idx],
-        convertData.lineInvalidTokens[idx] || [],
-        convertData.skipInvalidCheck,
-        cfg, vc
-      );
+
+  if (convertData && Array.isArray(convertData.resultLines)) {
+    convertData.resultLines.forEach((resultLine, idx) => {
+      const isSkipped = convertData.skipInvalidCheck && convertData.skipInvalidCheck.has(idx);
+      const invalidTokens = (convertData.lineInvalidTokens && convertData.lineInvalidTokens[idx]) || [];
+      const filtered = getFilteredContentFromLine(resultLine, invalidTokens, isSkipped, cfg, vc);
       if (filtered) {
         validLines.push(filtered);
       } else {
         skippedCount++;
       }
-    } else {
-      const m = lineTrimmed.match(/各数\s+(\d+)/);
-      if (m && parseInt(m[1]) > 0) validLines.push(lineTrimmed);
-    }
-  });
+    });
+  } else {
+    const lines = textToUse.split('\n');
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      const m = trimmed.match(/各数\s+(\d+)/);
+      if (m && parseInt(m[1]) > 0) validLines.push(trimmed);
+    });
+  }
+
   if(!validLines.length){showToast('没有有效上报内容可保存');return;}
-  const content=validLines.join('\n'); const date=document.getElementById('filterDate')?.value||getTodayCST();
-  const total=computeCurrentOrderTotal();
+  const content=validLines.join('\n');
+  const date=document.getElementById('filterDate')?.value||getTodayCST();
+
+  let total = 0;
+  validLines.forEach(line => {
+    const { numbers, zodiacs, amount } = countItemsInLine(line, cfg, vc);
+    let cnt = numbers.length;
+    zodiacs.forEach(z => { cnt += (cfg.zodiac[z] || []).length; });
+    total += cnt * amount;
+  });
+
   const existingReports = (await getReportOrderRecords()).filter(r => r.date === date && r.user === user);
   if (existingReports.some(o => o.content === content)) { const confirmed = await confirm('该用户今天已上报过相同的内容，确定再次上报吗？'); if (!confirmed) return; }
   await saveReportOrderRecordToIDB(content,user,date,total); processCurrentOrder(content,user,false,date);
