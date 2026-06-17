@@ -1517,7 +1517,7 @@ function parsePingMaV2(text) {
 }
 
 function parseNumbersV2(text) {
-  const re = new RegExp(`((?:\\d{1,2}[\\s,，、.]+)+\\d{1,2})[\\s]*(?:各|各组|各数|=|各注|各号)\\s*(\\d+|[一二三四五六七八九十百千两]+)`, 'g');
+  const re = new RegExp(`((?:\\d{1,2}[\\s,，、.]+)*\\d{1,2})[\\s]*(?:各|各组|各数|=|各注|各号)\\s*(\\d+|[一二三四五六七八九十百千两]+)`, 'g');
   return matchAndMarkV2(text, re, m => {
     const amt = toNum(m[2]);
     if (!amt || amt <= 0) return null;
