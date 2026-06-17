@@ -1342,7 +1342,7 @@ function saveOddsData() {
   document.querySelectorAll('.odds-input').forEach(inp => { inp.disabled = true; inp.style.border = 'none'; inp.style.background = 'transparent'; });
   showToast('赔率已保存'); if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
 }
-   // ===== 连肖统计弹窗（移除赔率按钮） =====
+    // ===== 连肖统计弹窗（移除赔率按钮） =====
 function showLianxiaoStatsWin() {
   if (document.getElementById('lianxiaoStatsWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoStatsWin';
@@ -1440,13 +1440,6 @@ function convertComboText() {
   const allAmpList = [...new Set([...HARD_AMP_LIST, ...cusAmp])];
   allAmpList.sort((a, b) => b.length - a.length);
 
-  // 金额后缀
-  const baseSuf = '元块咪米斤#،。\\s';
-  const cusAmtSuf = getCustomAmountSuffixes();
-  const allAmtChars = [...new Set([...baseSuf.split(''), ...cusAmtSuf])].join('');
-  // 用于匹配行末数字及可选后缀
-  const amountSuffixPattern = new RegExp('(\\d+)\\s*[' + allAmtChars.replace(/\\/g, '\\\\').replace(/]/g, '\\]') + ']*$');
-
   lines.forEach(line => {
     line = line.trim();
     if (!line) return;
@@ -1455,7 +1448,7 @@ function convertComboText() {
     const lineResults = [];
     const linePureContents = [];
     while (remaining.length > 0) {
-      const parsed = parseComboLine(remaining, playNames, allAmpList, cfg, curYearZodiac, amountSuffixPattern);
+      const parsed = parseComboLine(remaining, playNames, allAmpList, cfg, curYearZodiac);
       if (parsed.html) {
         lineResults.push(parsed.html);
       }
@@ -1484,7 +1477,7 @@ function convertComboText() {
 }
 
 // ===== 连肖行解析核心函数（支持单组省略指定词、复式、多玩法） =====
-function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, amountSuffixPattern) {
+function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac) {
   let isFushi = false;
   let remaining = rawLine;
   let matchedPlay = null;
@@ -1543,11 +1536,11 @@ function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, amou
 
   // 4. 如果找不到指定词，尝试单组省略模式
   if (ampIndex === -1) {
-    // 尝试从末尾提取金额（数字+可选后缀）
-    const amountMatch = remaining.match(amountSuffixPattern);
-    if (amountMatch) {
-      const amt = parseInt(amountMatch[1]) || 0;
-      const contentTry = remaining.substring(0, remaining.length - amountMatch[0].length).trim();
+    // 从末尾提取金额（末尾连续数字，可带后缀）
+    const m = remaining.match(/(\d+)\s*[元块咪米斤]*\s*$/);
+    if (m) {
+      const amt = parseInt(m[1]) || 0;
+      const contentTry = remaining.substring(0, remaining.length - m[0].length).trim();
       if (contentTry && amt > 0) {
         const groupSize = getPlayGroupSize(playType);
         const groups = parseContentGroups(contentTry, groupSize, playType, cfg);
@@ -2317,11 +2310,9 @@ function extractWeishusFromContent(contentStr) {
 // ===== 辅助函数：混合分词（兼容连写和分隔） =====
 function tokenizeContentMixed(contentStr) {
   if (!contentStr) return [];
-  // 先按分隔符拆分
   const parts = contentStr.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
   const tokens = [];
   parts.forEach(part => {
-    // 尝试拆分连写的生肖
     const zodiacChars = [];
     const remaining = [];
     for (const ch of part) {
@@ -2348,7 +2339,6 @@ function parseContentGroups(contentStr, groupSize, playType, cfg) {
   const needsConsecutive = isPlayNeedsConsecutive(playType);
   const needsSeparator = isPlayNeedsSeparator(playType);
 
-  // 按组分隔符拆分（空格、逗号、顿号等）
   const groupParts = contentStr.split(/[，,、\s]+/).filter(t => t.trim());
   
   if (groupParts.length === 0) {
@@ -2359,7 +2349,6 @@ function parseContentGroups(contentStr, groupSize, playType, cfg) {
   
   for (const part of groupParts) {
     if (needsConsecutive) {
-      // 连肖/连尾：组内必须连写，不能有分隔符
       const chars = part.replace(/[-\s,，.。、+\-*＊\/\\|]+/g, '').split('');
       if (chars.length < groupSize) {
         return { valid: false, error: `组"${part}"元素不足${groupSize}个，请将每组${playType}连写`, groups: [] };
@@ -2369,7 +2358,6 @@ function parseContentGroups(contentStr, groupSize, playType, cfg) {
       }
       groups.push(chars);
     } else if (needsSeparator) {
-      // 不中/二中二/三中三：组内号码必须有分隔符
       const subTokens = part.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim());
       if (subTokens.length === 1 && subTokens[0].length > 2 && /^\d+$/.test(subTokens[0])) {
         return { valid: false, error: `号码"${subTokens[0]}"连写，${playType}的号码之间必须有分隔符`, groups: [] };
@@ -2380,12 +2368,10 @@ function parseContentGroups(contentStr, groupSize, playType, cfg) {
         groups.push(subTokens);
       }
     } else {
-      // 平特肖/平特尾/平码：无要求
       groups.push([part]);
     }
   }
 
-  // 对不需要组内连写的玩法，合并所有元素
   if (!needsConsecutive && !needsSeparator) {
     const allTokens = [];
     groups.forEach(g => allTokens.push(...g));
@@ -2415,36 +2401,84 @@ function expandTokensToNumbers(tokenStr, cfg) {
   });
   return [...new Set(nums)].sort((a, b) => parseInt(a) - parseInt(b));
 }
-    // ===== 连肖识别输入处理（旧版 comboRemoveSeparators 等保持不变） =====
-function comboRemoveSeparators() { const ta = document.getElementById('comboInput'); if (!ta) return; const s = ta.selectionStart, e = ta.selectionEnd; if (s === e) { showToast('请先选择文本'); return; } const sel = ta.value.substring(s, e); const cleaned = sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g, ''); ta.value = ta.value.substring(0, s) + cleaned + ta.value.substring(e); convertComboText(); }
-async function pasteComboOrder() { try { const text = await navigator.clipboard.readText(); if (text) { const ta = document.getElementById('comboInput'); if (ta) { ta.value = text; convertComboText(); } } } catch(err) { showToast('无法访问剪贴板'); } }
+    // ===== 连肖识别旧版辅助函数（保留用于手动按钮） =====
+function comboRemoveSeparators() {
+  const ta = document.getElementById('comboInput');
+  if (!ta) return;
+  const s = ta.selectionStart, e = ta.selectionEnd;
+  if (s === e) { showToast('请先选择文本'); return; }
+  const sel = ta.value.substring(s, e);
+  const cleaned = sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g, '');
+  ta.value = ta.value.substring(0, s) + cleaned + ta.value.substring(e);
+  convertComboText();
+}
+
+async function pasteComboOrder() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      const ta = document.getElementById('comboInput');
+      if (ta) { ta.value = text; convertComboText(); }
+    }
+  } catch(err) { showToast('无法访问剪贴板'); }
+}
 
 // ===== 截图全部 =====
 async function screenshotLianxiaoStatsAll() {
-  const container = document.getElementById('lianxiaoStatsContainer'); if (!container) { showToast('无内容'); return; }
+  const container = document.getElementById('lianxiaoStatsContainer');
+  if (!container) { showToast('无内容'); return; }
   try {
-    const origOverflow = container.style.overflow; const origMaxHeight = container.style.maxHeight;
-    container.style.overflow = 'visible'; container.style.maxHeight = 'none';
-    const scrollDivs = container.querySelectorAll('div[style*="max-height:400px"]'); const savedStyles = [];
-    scrollDivs.forEach(div => { savedStyles.push({ div, overflow: div.style.overflow, maxHeight: div.style.maxHeight }); div.style.overflow = 'visible'; div.style.maxHeight = 'none'; });
+    const origOverflow = container.style.overflow;
+    const origMaxHeight = container.style.maxHeight;
+    container.style.overflow = 'visible';
+    container.style.maxHeight = 'none';
+    const scrollDivs = container.querySelectorAll('div[style*="max-height:400px"]');
+    const savedStyles = [];
+    scrollDivs.forEach(div => {
+      savedStyles.push({ div, overflow: div.style.overflow, maxHeight: div.style.maxHeight });
+      div.style.overflow = 'visible'; div.style.maxHeight = 'none';
+    });
     container.offsetHeight;
     const canvas = await html2canvas(container, { backgroundColor: '#ffffff', scale: 2, logging: false });
-    container.style.overflow = origOverflow; container.style.maxHeight = origMaxHeight;
-    savedStyles.forEach(item => { item.div.style.overflow = item.overflow; item.div.style.maxHeight = item.maxHeight; });
-    canvas.toBlob(async blob => { if (!blob) { showToast('生成图片失败'); return; } try { const item = new ClipboardItem({ 'image/png': blob }); await navigator.clipboard.write([item]); showToast('截图已复制'); } catch(e) { showToast('复制失败'); } }, 'image/png');
+    container.style.overflow = origOverflow;
+    container.style.maxHeight = origMaxHeight;
+    savedStyles.forEach(item => {
+      item.div.style.overflow = item.overflow;
+      item.div.style.maxHeight = item.maxHeight;
+    });
+    canvas.toBlob(async blob => {
+      if (!blob) { showToast('生成图片失败'); return; }
+      try {
+        const item = new ClipboardItem({ 'image/png': blob });
+        await navigator.clipboard.write([item]);
+        showToast('截图已复制');
+      } catch(e) { showToast('复制失败'); }
+    }, 'image/png');
   } catch(e) { showToast('截图失败'); }
 }
 
 // ===== 截图单个卡片 =====
 async function screenshotSingleComboCard(cardId) {
-  const card = document.getElementById(cardId); if (!card) { showToast('卡片不存在'); return; }
+  const card = document.getElementById(cardId);
+  if (!card) { showToast('卡片不存在'); return; }
   try {
-    const clone = card.cloneNode(true); clone.style.position = 'absolute'; clone.style.left = '-9999px'; clone.style.top = '0'; clone.style.width = card.offsetWidth + 'px'; clone.style.display = 'block'; clone.style.visibility = 'visible'; document.body.appendChild(clone);
-    const scrollDiv = clone.querySelector('div[style*="max-height:400px"]'); if (scrollDiv) { scrollDiv.style.overflow = 'visible'; scrollDiv.style.maxHeight = 'none'; }
+    const clone = card.cloneNode(true);
+    clone.style.position = 'absolute'; clone.style.left = '-9999px'; clone.style.top = '0';
+    clone.style.width = card.offsetWidth + 'px'; clone.style.display = 'block'; clone.style.visibility = 'visible';
+    document.body.appendChild(clone);
+    const scrollDiv = clone.querySelector('div[style*="max-height:400px"]');
+    if (scrollDiv) { scrollDiv.style.overflow = 'visible'; scrollDiv.style.maxHeight = 'none'; }
     clone.offsetHeight;
     const canvas = await html2canvas(clone, { backgroundColor: '#ffffff', scale: 2, logging: false });
     document.body.removeChild(clone);
-    canvas.toBlob(async blob => { if (!blob) { showToast('生成图片失败'); return; } try { const item = new ClipboardItem({ 'image/png': blob }); await navigator.clipboard.write([item]); showToast('截图已复制'); } catch(e) { showToast('复制失败'); } }, 'image/png');
+    canvas.toBlob(async blob => {
+      if (!blob) { showToast('生成图片失败'); return; }
+      try {
+        const item = new ClipboardItem({ 'image/png': blob });
+        await navigator.clipboard.write([item]);
+        showToast('截图已复制');
+      } catch(e) { showToast('复制失败'); }
+    }, 'image/png');
   } catch(e) { showToast('截图失败'); }
 }
 
@@ -2454,27 +2488,25 @@ async function screenshotRiskCard() {
   if (!card) { showToast('卡片不存在'); return; }
   try {
     const clone = card.cloneNode(true);
-    clone.style.position = 'absolute';
-    clone.style.left = '-9999px';
-    clone.style.top = '0';
-    clone.style.width = card.offsetWidth + 'px';
-    clone.style.display = 'block';
-    clone.style.visibility = 'visible';
+    clone.style.position = 'absolute'; clone.style.left = '-9999px'; clone.style.top = '0';
+    clone.style.width = card.offsetWidth + 'px'; clone.style.display = 'block'; clone.style.visibility = 'visible';
     document.body.appendChild(clone);
-    // 展开所有滚动区域
     const scrollDivs = clone.querySelectorAll('.table-container, [style*="overflow"]');
     const savedStyles = [];
     scrollDivs.forEach(div => {
       savedStyles.push({ div, overflow: div.style.overflow, maxHeight: div.style.maxHeight });
-      div.style.overflow = 'visible';
-      div.style.maxHeight = 'none';
+      div.style.overflow = 'visible'; div.style.maxHeight = 'none';
     });
     clone.offsetHeight;
     const canvas = await html2canvas(clone, { backgroundColor: '#ffffff', scale: 2, logging: false });
     document.body.removeChild(clone);
     canvas.toBlob(async blob => {
       if (!blob) { showToast('生成图片失败'); return; }
-      try { const item = new ClipboardItem({ 'image/png': blob }); await navigator.clipboard.write([item]); showToast('卡片截图已复制'); } catch(e) { showToast('复制失败'); }
+      try {
+        const item = new ClipboardItem({ 'image/png': blob });
+        await navigator.clipboard.write([item]);
+        showToast('卡片截图已复制');
+      } catch(e) { showToast('复制失败'); }
     }, 'image/png');
   } catch(e) { showToast('截图失败'); }
 }
@@ -2554,7 +2586,9 @@ async function saveDuiJiangDraw() {
   // 保存开奖号码（原有逻辑）
   await saveDrawNumbers();
   // 获取净盈亏并存入开奖记录
-  const netPL = parseFloat(document.getElementById('duiJiangFinalBody')?.querySelector('td:last-child')?.textContent?.trim()) || 0;
+  const finalBody = document.getElementById('duiJiangFinalBody');
+  const netPLCell = finalBody?.querySelector('tr:last-child td:last-child');
+  const netPL = parseFloat(netPLCell?.textContent?.trim()) || 0;
   const fd = document.getElementById('filterDate')?.value || getTodayCST();
   let year = new Date().getFullYear(); const m = fd.match(/^(\d{4})/); if (m) year = parseInt(m[1]);
   const issueNumber = getCurrentIssueNumber(year, fd);
@@ -2705,6 +2739,8 @@ function refreshDuiJiangStats() {
     }
     const netHitDetail = hasValidDraw ? buildHitDetail(netHitByType) : '';
     finalBody.innerHTML = `<tr><td>${netAmount > 0 ? netAmount : ''}</td><td>${netRebate !== 0 ? netRebate : ''}</td><td style="color:#ff0000;">${netHitDetail}</td><td style="${netPLColor}">${hasValidDraw && netPL !== 0 ? netPL : ''}</td></tr>`;
+    // 存储净盈亏以便保存兑奖时使用
+    window._lastNetPL = netPL;
   });
 }
 
@@ -3758,7 +3794,6 @@ function replaceSeparators() { const ta=document.querySelector('.source-order-in
 
 // ===== 前缀管理（含回车确认） =====
 function showPrefixManager() { if(document.getElementById('prefixWin'))return; const prefixes=getCustomPrefixes(); const w=document.createElement('div'); w.className='floating-window'; w.id='prefixWin'; w.style.width='500px'; w.style.height='400px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>前缀管理</h3><div class="window-controls"><button onclick="maximizeWindow('prefixWin')">🗖</button><button onclick="document.getElementById('prefixWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;display:flex;gap:6px;"><input type="text" id="newPrefix" placeholder="新增行首忽略词" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><button onclick="addPrefix()" style="padding:6px 12px;background:#3498db;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="prefixList"></div></div><div class="modal-footer"><button onclick="document.getElementById('prefixWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderPrefixList(); makeWindowDraggable('prefixWin'); highestZ+=1; w.style.zIndex=highestZ;
-  // 回车确认
   document.getElementById('newPrefix').addEventListener('keypress', (e) => { if (e.key === 'Enter') { addPrefix(); } });
 }
 function renderPrefixList(){ const p=getCustomPrefixes(); const c=document.getElementById('prefixList'); if(!c)return; c.innerHTML=p.length===0?'<div style="text-align:center;color:#666;padding:10px;">暂无自定义前缀</div>':p.map((x,i)=>`<div class="replace-preset-item"><span>${x}</span><button onclick="deletePrefix(${i})" style="margin-left:auto;padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;">删除</button></div>`).join(''); }
@@ -3783,7 +3818,6 @@ async function deleteAmountSuffix(i){ if(!(await confirm('确定删除？')))ret
 
 // ===== 分类缩写管理（含回车确认） =====
 function showCategoryAliases() { if(document.getElementById('categoryAliasWin'))return; const a=getCategoryAliases(); const w=document.createElement('div'); w.className='floating-window'; w.id='categoryAliasWin'; w.style.width='500px'; w.style.height='450px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; w.innerHTML=`<div class="modal-header"><h3>分类缩写</h3><div class="window-controls"><button onclick="maximizeWindow('categoryAliasWin')">🗖</button><button onclick="document.getElementById('categoryAliasWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:12px;"><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" id="aliasOld" placeholder="缩写（如 红蓝波）" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><span style="align-self:center;">→</span><input type="text" id="aliasNew" placeholder="正规分类（如 红波-蓝波）" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"></div><button onclick="addCategoryAlias()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="aliasList"></div></div><div class="modal-footer"><button onclick="document.getElementById('categoryAliasWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; document.body.appendChild(w); renderAliasList(); makeWindowDraggable('categoryAliasWin'); highestZ+=1; w.style.zIndex=highestZ;
-  // 两个输入框回车都触发添加
   document.getElementById('aliasOld').addEventListener('keypress', (e) => { if (e.key === 'Enter') { document.getElementById('aliasNew').focus(); } });
   document.getElementById('aliasNew').addEventListener('keypress', (e) => { if (e.key === 'Enter') { addCategoryAlias(); } });
 }
@@ -3798,7 +3832,6 @@ function showReplacePreset() {
   w.style.width='500px'; w.style.height='450px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)';
   w.innerHTML=`<div class="modal-header"><h3>替换预设</h3><div style="display:flex;align-items:center;gap:8px;margin-left:auto;"><button onclick="resetPresetsToDefault()" title="恢复默认预设" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">🔄</button><div class="window-controls"><button onclick="maximizeWindow('replacePresetWin')">🗖</button><button onclick="document.getElementById('replacePresetWin').remove()">×</button></div></div></div><div class="modal-body"><div style="margin-bottom:12px;"><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="text" id="presetOld" placeholder="原文字" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"><span style="align-self:center;">→</span><input type="text" id="presetNew" placeholder="替换为" style="flex:1;padding:6px;border:1px solid #ccc;border-radius:4px;"></div><button onclick="addReplacePreset()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">添加</button></div><div id="presetList"></div></div><div class="modal-footer"><button onclick="document.getElementById('replacePresetWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`;
   document.body.appendChild(w); renderPresetList(); makeWindowDraggable('replacePresetWin'); highestZ+=1; w.style.zIndex=highestZ;
-  // 回车确认
   document.getElementById('presetOld').addEventListener('keypress', (e) => { if (e.key === 'Enter') { document.getElementById('presetNew').focus(); } });
   document.getElementById('presetNew').addEventListener('keypress', (e) => { if (e.key === 'Enter') { addReplacePreset(); } });
 }
