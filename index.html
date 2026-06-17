@@ -1477,13 +1477,22 @@ function convertComboText() {
   updateComboMaxLoss();
 }
 
-// ===== 连肖行解析核心函数（返回 endIndex 用于多玩法切割） =====
+// ===== 连肖行解析核心函数（修正复式检测） =====
 function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS) {
-  // 1. 匹配玩法名（行首，支持前导空格已被去除）
+  // 先检测是否有复式/复试关键字，并标记
+  let isFushi = false;
+  let cleanLine = rawLine;
+  if (/复[式试]/.test(rawLine)) {
+    isFushi = true;
+    // 去掉关键字，得到干净的行用于匹配玩法名
+    cleanLine = rawLine.replace(/复[式试]/g, '').trim();
+  }
+
+  // 1. 匹配玩法名（行首）
   let matchedPlay = null;
   let contentStart = 0;
   for (const pname of playNames) {
-    if (rawLine.startsWith(pname)) {
+    if (cleanLine.startsWith(pname)) {
       matchedPlay = pname;
       contentStart = pname.length;
       break;
@@ -1495,37 +1504,23 @@ function parseComboLine(rawLine, playNames, allAmpList, cfg, curYearZodiac, AMTS
 
   const playType = normalizePlayType(matchedPlay);
 
-  // 检测复式/复试（支持玩法名前或后）
-  let isFushi = false;
-  if (/^复[式试]/.test(rawLine.substring(contentStart).trim())) {
-    isFushi = true;
-    contentStart = rawLine.indexOf(rawLine.substring(contentStart).trim()) + rawLine.substring(contentStart).trim().length;
-  }
-  if (rawLine.includes('复式') || rawLine.includes('复试')) {
-    const rem = rawLine.substring(contentStart).trim();
-    if (/复[式试]$/.test(matchedPlay) === false && (rem.startsWith('复式') || rem.startsWith('复试'))) {
-      isFushi = true;
-      contentStart = rawLine.indexOf(rem) + 2;
-    }
-  }
-  // 如果玩法名本身包含复式（用户可能写成“复试二连肖”），已在 matchedPlay 中处理，但这里再检查一下：如果玩法名以“复试”或“复式”开头，则去掉该前缀。
-  if (matchedPlay.startsWith('复式') || matchedPlay.startsWith('复试')) {
-    const cleanPlay = matchedPlay.replace(/^复[式试]/, '');
-    if (playNames.includes(cleanPlay)) {
-      matchedPlay = cleanPlay;
-      playType = normalizePlayType(matchedPlay);
-      isFushi = true;
+  // 从原始行中截取内容：找到干净行中玩法名结束的位置，对应原始行中的位置
+  // 由于去掉了复式关键字，原始行的实际内容偏移需要加上关键字的长度
+  let originalOffset = 0;
+  if (isFushi) {
+    // 找到原始行中复式关键字的位置，并计算偏移
+    const fushiMatch = rawLine.match(/复[式试]/);
+    if (fushiMatch) {
+      originalOffset = fushiMatch.index + 2; // 关键字长度2
+      // 如果关键字在玩法名前，那么玩法名在原始行中的起始位置是 originalOffset
+      // 但 cleanLine 已经去掉了关键字，所以玩法名在 cleanLine 中从0开始，但在 rawLine 中从 originalOffset 开始
+      // contentStart 是玩法名长度，所以原始行中内容开始于 originalOffset + contentStart
+      contentStart = originalOffset + contentStart;
     }
   }
 
-  // 2. 剩余部分
+  // 2. 剩余部分（从原始行中截取）
   let remaining = rawLine.substring(contentStart).trim();
-
-  // 再次检查复式关键字（如果玩法名后还有复式）
-  if (!isFushi && (remaining.startsWith('复式') || remaining.startsWith('复试'))) {
-    isFushi = true;
-    remaining = remaining.substring(2).trim();
-  }
 
   // 3. 找指定词
   let ampWord = '';
