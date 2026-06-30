@@ -2008,7 +2008,25 @@ async function screenshotDuiJiangAll() {
   } catch(e) { showToast('截图失败'); }
 }
 
-// ===== 兑奖统计核心函数（修复：正确匹配新版格式，显示订单数量） =====
+// ===== 玩法名称标准化：阿拉伯数字→中文 =====
+function normalizePlayType(playType) {
+  const map = {
+    '2连肖':'二连肖','3连肖':'三连肖','4连肖':'四连肖','5连肖':'五连肖',
+    '2连尾':'二连尾','3连尾':'三连尾','4连尾':'四连尾','5连尾':'五连尾',
+    '5不中':'五不中','6不中':'六不中','7不中':'七不中','8不中':'八不中',
+    '9不中':'九不中','10不中':'十不中','11不中':'十一不中','12不中':'十二不中',
+    '2中2':'二中二','3中3':'三中三',
+    '二连肖':'二连肖','三连肖':'三连肖','四连肖':'四连肖','五连肖':'五连肖',
+    '二连尾':'二连尾','三连尾':'三连尾','四连尾':'四连尾','五连尾':'五连尾',
+    '五不中':'五不中','六不中':'六不中','七不中':'七不中','八不中':'八不中',
+    '九不中':'九不中','十不中':'十不中','十一不中':'十一不中','十二不中':'十二不中',
+    '二中二':'二中二','三中三':'三中三',
+    '平特肖':'平特肖','平特尾':'平特尾','平码':'平码','特码':'特码'
+  };
+  return map[playType] || playType;
+}
+
+// ===== 兑奖统计核心函数（修复：所有玩法参与兑奖、上报也参与、显示订单数量） =====
 function refreshDuiJiangStats() {
   const orderBody = document.getElementById('duiJiangOrderBody');
   const reportBody = document.getElementById('duiJiangReportBody');
@@ -2040,7 +2058,6 @@ function refreshDuiJiangStats() {
     const drawNumbersZhengma = drawNumbers.slice(0, 6);
     const drawTeMa = drawNumbers[6] || '';
 
-    // 订单计数
     let totalOrderCount = orders.length + combos.length;
 
     const userStats = {};
@@ -2050,12 +2067,12 @@ function refreshDuiJiangStats() {
       if (!userStats[user]) userStats[user] = { orderTotal: 0, orderRebate: 0, orderHitByType: {}, orderPL: 0, reportTotal: 0, reportRebate: 0, reportHitByType: {}, reportPL: 0 };
       const lines = rec.content.split('\n');
       lines.forEach(line => {
-        // 尝试新版格式：玩法名:内容 各数/各组 金额
         const newMatch = line.match(/^(.+?):(.+?)\s+各(?:数|组|)\s*(\d+)$/);
         if (newMatch) {
-          const playType = newMatch[1];
+          let playType = newMatch[1];
           const content = newMatch[2];
           const amt = parseInt(newMatch[3]) || 0;
+          playType = normalizePlayType(playType);
           if (playType === '特码') {
             processNormalLineDuijiangNew(userStats[user], content, amt, drawTeMa, hasValidDraw);
           } else {
@@ -2063,14 +2080,13 @@ function refreshDuiJiangStats() {
           }
           return;
         }
-        // 兼容旧版格式：内容 各组 金额
         const comboMatch = line.match(/^(.+?)\s+各组\s+(\d+)$/);
         if (comboMatch) { processComboLineDuijiangOld(userStats[user], comboMatch, drawZodiacsSet, drawNumbersSet, drawNumbersZhengma, drawTeMa, hasValidDraw); return; }
-        // 兼容旧版格式：内容 各数 金额
         const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
         if (normalMatch) { processNormalLineDuijiangOld(userStats[user], normalMatch, drawTeMa, hasValidDraw); }
       });
     });
+    // 上报记录：所有玩法都参与兑奖
     reports.forEach(rec => {
       const user = rec.user || '未知';
       if (!userStats[user]) userStats[user] = { orderTotal: 0, orderRebate: 0, orderHitByType: {}, orderPL: 0, reportTotal: 0, reportRebate: 0, reportHitByType: {}, reportPL: 0 };
@@ -2078,20 +2094,24 @@ function refreshDuiJiangStats() {
       lines.forEach(line => {
         const newMatch = line.match(/^(.+?):(.+?)\s+各(?:数|组|)\s*(\d+)$/);
         if (newMatch) {
-          const playType = newMatch[1];
+          let playType = newMatch[1];
           const content = newMatch[2];
           const amt = parseInt(newMatch[3]) || 0;
+          playType = normalizePlayType(playType);
           if (playType === '特码') {
             processReportLineDuijiangNew(userStats[user], content, amt, drawTeMa, hasValidDraw);
+          } else {
+            processComboLineDuijiangNewReport(userStats[user], playType, content, amt, drawZodiacsSet, drawNumbersSet, drawNumbersZhengma, hasValidDraw);
           }
           return;
         }
+        const comboMatch = line.match(/^(.+?)\s+各组\s+(\d+)$/);
+        if (comboMatch) { processComboLineDuijiangOldReport(userStats[user], comboMatch, drawZodiacsSet, drawNumbersSet, drawNumbersZhengma, drawTeMa, hasValidDraw); return; }
         const normalMatch = line.match(/^(.+?)\s+各数\s+(\d+)$/);
         if (normalMatch) { processReportLineDuijiangOld(userStats[user], normalMatch, drawTeMa, hasValidDraw); }
       });
     });
 
-    // 更新订单计数显示
     const orderCountEl = document.getElementById('duiJiangOrderCount');
     if (orderCountEl) { orderCountEl.textContent = '(共' + totalOrderCount + '单)'; }
 
@@ -2168,7 +2188,6 @@ function processNormalLineDuijiangNew(stats, content, amt, drawTeMa, hasValidDra
     }
   });
   const { odds, rebate } = getOddsForType('特码', getOddsData());
-  // 修改：使用不去重的nums数量计算下单金额
   const totalCount = nums.length;
   stats.orderTotal += totalCount * amt;
   stats.orderRebate += totalCount * amt * (rebate / 100);
@@ -2181,6 +2200,7 @@ function processNormalLineDuijiangNew(stats, content, amt, drawTeMa, hasValidDra
 }
 
 function processComboLineDuijiangNew(stats, playType, content, amt, drawZodiacsSet, drawNumbersSet, drawNumbersZhengma, hasValidDraw) {
+  playType = normalizePlayType(playType);
   const cleaned = content.replace(/[()]/g, '');
   const combos = cleaned.split(/\s+/).filter(c => c.trim());
   const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
@@ -2189,13 +2209,13 @@ function processComboLineDuijiangNew(stats, playType, content, amt, drawZodiacsS
     let comboType = playType;
     let hasYearZodiac = false;
     let hasZeroWei = false;
-    if (playType === '平特肖') {
+    if (comboType === '平特肖') {
       hasYearZodiac = tokens.some(t => t === curYearZodiac);
-    } else if (playType === '平特尾') {
+    } else if (comboType === '平特尾') {
       hasZeroWei = tokens.some(t => t.replace('尾','') === '0');
-    } else if (['二连肖','三连肖','四连肖','五连肖'].includes(playType)) {
+    } else if (['二连肖','三连肖','四连肖','五连肖'].includes(comboType)) {
       hasYearZodiac = tokens.some(t => t === curYearZodiac);
-    } else if (['二连尾','三连尾','四连尾','五连尾'].includes(playType)) {
+    } else if (['二连尾','三连尾','四连尾','五连尾'].includes(comboType)) {
       hasZeroWei = tokens.some(t => t.replace('尾','') === '0');
     }
     if (hasYearZodiac) {
@@ -2220,6 +2240,52 @@ function processComboLineDuijiangNew(stats, playType, content, amt, drawZodiacsS
       else if (comboType === '二中二' || comboType === '三中三') { hit = tokens.every(t => drawNumbersZhengma.includes(t.padStart(2,'0'))); }
       if (hit) { stats.orderHitByType[comboType] = (stats.orderHitByType[comboType] || 0) + amt; }
       stats.orderPL += amt - amt * (rebate / 100) - (hit ? amt * odds : 0);
+    }
+  });
+}
+
+// ===== 上报兑奖处理函数（下单用order字段，上报用report字段） =====
+function processComboLineDuijiangNewReport(stats, playType, content, amt, drawZodiacsSet, drawNumbersSet, drawNumbersZhengma, hasValidDraw) {
+  playType = normalizePlayType(playType);
+  const cleaned = content.replace(/[()]/g, '');
+  const combos = cleaned.split(/\s+/).filter(c => c.trim());
+  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
+  combos.forEach(combo => {
+    const tokens = combo.split('-');
+    let comboType = playType;
+    let hasYearZodiac = false;
+    let hasZeroWei = false;
+    if (comboType === '平特肖') {
+      hasYearZodiac = tokens.some(t => t === curYearZodiac);
+    } else if (comboType === '平特尾') {
+      hasZeroWei = tokens.some(t => t.replace('尾','') === '0');
+    } else if (['二连肖','三连肖','四连肖','五连肖'].includes(comboType)) {
+      hasYearZodiac = tokens.some(t => t === curYearZodiac);
+    } else if (['二连尾','三连尾','四连尾','五连尾'].includes(comboType)) {
+      hasZeroWei = tokens.some(t => t.replace('尾','') === '0');
+    }
+    if (hasYearZodiac) {
+      if (comboType === '平特肖') comboType = '平特肖带主肖';
+      else if (['二连肖','三连肖','四连肖','五连肖'].includes(comboType)) comboType = comboType + '带主肖';
+    }
+    if (hasZeroWei) {
+      if (comboType === '平特尾') comboType = '平特尾零尾';
+      else if (['二连尾','三连尾','四连尾','五连尾'].includes(comboType)) comboType = comboType + '零尾';
+    }
+    const { odds, rebate } = getOddsForType(comboType, getOddsData());
+    stats.reportTotal += amt;
+    stats.reportRebate += amt * (rebate / 100);
+    if (hasValidDraw) {
+      let hit = false;
+      if (comboType === '平特肖' || comboType === '平特肖带主肖') { hit = drawZodiacsSet.has(tokens[0]); }
+      else if (comboType === '平特尾' || comboType === '平特尾零尾') { const d = tokens[0].replace('尾',''); const tailNums = []; for (let i=0;i<=4;i++) { const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(parseInt(n)>=1&&parseInt(n)<=49) tailNums.push(n); } hit = tailNums.some(n => drawNumbersSet.has(n)); }
+      else if (comboType === '平码') { hit = drawNumbersZhengma.includes(tokens[0].padStart(2,'0')); }
+      else if (['二连肖','二连肖带主肖','三连肖','三连肖带主肖','四连肖','四连肖带主肖','五连肖','五连肖带主肖'].includes(comboType)) { hit = tokens.every(t => drawZodiacsSet.has(t)); }
+      else if (['二连尾','二连尾零尾','三连尾','三连尾零尾','四连尾','四连尾零尾','五连尾','五连尾零尾'].includes(comboType)) { hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
+      else if (['五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中'].includes(comboType)) { hit = !tokens.some(t => drawNumbersSet.has(t.padStart(2,'0'))); }
+      else if (comboType === '二中二' || comboType === '三中三') { hit = tokens.every(t => drawNumbersZhengma.includes(t.padStart(2,'0'))); }
+      if (hit) { stats.reportHitByType[comboType] = (stats.reportHitByType[comboType] || 0) + amt; }
+      stats.reportPL += amt - amt * (rebate / 100) - (hit ? amt * odds : 0);
     }
   });
 }
@@ -2307,6 +2373,7 @@ function processComboLineDuijiangOld(stats, match, drawZodiacsSet, drawNumbersSe
       else { const bzMap = {5:'五不中',6:'六不中',7:'七不中',8:'八不中',9:'九不中',10:'十不中',11:'十一不中',12:'十二不中'}; comboType = bzMap[tokens.length] || '五不中'; }
     }
     if (!comboType) return;
+    comboType = normalizePlayType(comboType);
     if (hasYearZodiac) {
       if (comboType === '平特肖') comboType = '平特肖带主肖';
       else if (['二连肖','三连肖','四连肖','五连肖'].includes(comboType)) comboType = comboType + '带主肖';
@@ -2329,6 +2396,61 @@ function processComboLineDuijiangOld(stats, match, drawZodiacsSet, drawNumbersSe
       else if (comboType === '二中二' || comboType === '三中三') { hit = tokens.every(t => drawNumbersZhengma.includes(t.padStart(2,'0'))); }
       if (hit) { stats.orderHitByType[comboType] = (stats.orderHitByType[comboType] || 0) + amt; }
       stats.orderPL += amt - amt * (rebate / 100) - (hit ? amt * odds : 0);
+    }
+  });
+}
+
+// ===== 上报兑奖旧版处理函数 =====
+function processComboLineDuijiangOldReport(stats, match, drawZodiacsSet, drawNumbersSet, drawNumbersZhengma, drawTeMa, hasValidDraw) {
+  const combosStr = match[1]; const amt = parseInt(match[2]) || 0;
+  const cleaned = combosStr.replace(/[()]/g, ''); const combos = cleaned.split(/\s+/).filter(c => c.trim());
+  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
+  combos.forEach(combo => {
+    const tokens = combo.split('-');
+    let comboType = '';
+    let hasYearZodiac = false;
+    let hasZeroWei = false;
+    if (tokens.length === 1) {
+      if (ZODIAC_NUMS[tokens[0]]) { comboType = '平特肖'; if (tokens[0] === curYearZodiac) hasYearZodiac = true; }
+      else if (tokens[0].includes('尾')) { comboType = '平特尾'; if (tokens[0].replace('尾','') === '0') hasZeroWei = true; }
+      else if (/^\d{2}$/.test(tokens[0])) { comboType = '平码'; }
+    } else if (tokens.every(t => ZODIAC_NUMS[t])) {
+      const lxMap = {2:'二连肖',3:'三连肖',4:'四连肖',5:'五连肖'};
+      comboType = lxMap[tokens.length] || '二连肖';
+      hasYearZodiac = tokens.some(t => t === curYearZodiac);
+    } else if (tokens.every(t => t.includes('尾'))) {
+      const lwMap = {2:'二连尾',3:'三连尾',4:'四连尾',5:'五连尾'};
+      comboType = lwMap[tokens.length] || '二连尾';
+      hasZeroWei = tokens.some(t => t.replace('尾','') === '0');
+    } else if (tokens.every(t => /^\d{2}$/.test(t))) {
+      if (tokens.length === 2) { comboType = '二中二'; }
+      else if (tokens.length === 3) { comboType = '三中三'; }
+      else { const bzMap = {5:'五不中',6:'六不中',7:'七不中',8:'八不中',9:'九不中',10:'十不中',11:'十一不中',12:'十二不中'}; comboType = bzMap[tokens.length] || '五不中'; }
+    }
+    if (!comboType) return;
+    comboType = normalizePlayType(comboType);
+    if (hasYearZodiac) {
+      if (comboType === '平特肖') comboType = '平特肖带主肖';
+      else if (['二连肖','三连肖','四连肖','五连肖'].includes(comboType)) comboType = comboType + '带主肖';
+    }
+    if (hasZeroWei) {
+      if (comboType === '平特尾') comboType = '平特尾零尾';
+      else if (['二连尾','三连尾','四连尾','五连尾'].includes(comboType)) comboType = comboType + '零尾';
+    }
+    const { odds, rebate } = getOddsForType(comboType, getOddsData());
+    stats.reportTotal += amt;
+    stats.reportRebate += amt * (rebate / 100);
+    if (hasValidDraw) {
+      let hit = false;
+      if (comboType === '平特肖' || comboType === '平特肖带主肖') { hit = drawZodiacsSet.has(tokens[0]); }
+      else if (comboType === '平特尾' || comboType === '平特尾零尾') { const d = tokens[0].replace('尾',''); const tailNums = []; for (let i=0;i<=4;i++) { const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(parseInt(n)>=1&&parseInt(n)<=49) tailNums.push(n); } hit = tailNums.some(n => drawNumbersSet.has(n)); }
+      else if (comboType === '平码') { hit = drawNumbersZhengma.includes(tokens[0].padStart(2,'0')); }
+      else if (['二连肖','二连肖带主肖','三连肖','三连肖带主肖','四连肖','四连肖带主肖','五连肖','五连肖带主肖'].includes(comboType)) { hit = tokens.every(t => drawZodiacsSet.has(t)); }
+      else if (['二连尾','二连尾零尾','三连尾','三连尾零尾','四连尾','四连尾零尾','五连尾','五连尾零尾'].includes(comboType)) { hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
+      else if (['五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中'].includes(comboType)) { hit = !tokens.some(t => drawNumbersSet.has(t.padStart(2,'0'))); }
+      else if (comboType === '二中二' || comboType === '三中三') { hit = tokens.every(t => drawNumbersZhengma.includes(t.padStart(2,'0'))); }
+      if (hit) { stats.reportHitByType[comboType] = (stats.reportHitByType[comboType] || 0) + amt; }
+      stats.reportPL += amt - amt * (rebate / 100) - (hit ? amt * odds : 0);
     }
   });
 }
