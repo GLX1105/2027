@@ -447,8 +447,8 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
   <div class="navbar-actions" id="navbarActions">
     <button class="btn btn-recognize" onclick="showRecognizeModal()">识别</button>
     <button class="btn btn-reset" id="resetBtn" onclick="resetTable()">清空</button>
-    <button class="btn btn-save-order" onclick="showOrderRecord()">订单</button>
-    <button class="btn btn-primary" onclick="showReportOrderRecord()">上报</button>
+    <button class="btn btn-save-order" onclick="showOrderRecord()">订单记录</button>
+    <button class="btn btn-primary" onclick="showReportOrderRecord()">上报数据</button>
     <button class="btn btn-primary" onclick="showLianxiaoStatsWin()">其他订单</button>
     <button class="btn btn-primary" onclick="showUserManager()">用户</button>
     <button class="btn btn-primary" onclick="showDatabase()">数据库</button>
@@ -2171,7 +2171,7 @@ function buildHitDetail(hitByType) {
   }
   return parts.length > 0 ? parts.join('，') : '';
 }
-    // ===== 新版兑奖处理函数 =====
+// ===== 新版兑奖处理函数 =====
 function processNormalLineDuijiangNew(stats, content, amt, drawTeMa, hasValidDraw) {
   const items = content.split('-').map(i => i.trim()).filter(i => i);
   const nums = [];
@@ -2227,8 +2227,11 @@ function processComboLineDuijiangNew(stats, playType, content, amt, drawZodiacsS
       else if (['二连尾','三连尾','四连尾','五连尾'].includes(comboType)) comboType = comboType + '零尾';
     }
     const { odds, rebate } = getOddsForType(comboType, getOddsData());
-    stats.orderTotal += amt;
-    stats.orderRebate += amt * (rebate / 100);
+    // 平特肖/平特尾/平码按项数计算，其他按组计算
+    const isPerItem = ['平特肖','平特肖带主肖','平特尾','平特尾零尾','平码'].includes(comboType);
+    const effectiveCount = isPerItem ? tokens.length : 1;
+    stats.orderTotal += effectiveCount * amt;
+    stats.orderRebate += effectiveCount * amt * (rebate / 100);
     if (hasValidDraw) {
       let hit = false;
       if (comboType === '平特肖' || comboType === '平特肖带主肖') { hit = drawZodiacsSet.has(tokens[0]); }
@@ -2238,8 +2241,22 @@ function processComboLineDuijiangNew(stats, playType, content, amt, drawZodiacsS
       else if (['二连尾','二连尾零尾','三连尾','三连尾零尾','四连尾','四连尾零尾','五连尾','五连尾零尾'].includes(comboType)) { hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
       else if (['五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中'].includes(comboType)) { hit = !tokens.some(t => drawNumbersSet.has(t.padStart(2,'0'))); }
       else if (comboType === '二中二' || comboType === '三中三') { hit = tokens.every(t => drawNumbersZhengma.includes(t.padStart(2,'0'))); }
-      if (hit) { stats.orderHitByType[comboType] = (stats.orderHitByType[comboType] || 0) + amt; }
-      stats.orderPL += amt - amt * (rebate / 100) - (hit ? amt * odds : 0);
+      if (hit) {
+        if (isPerItem) {
+          // 平特肖/平特尾/平码：命中的项才计入中奖
+          let hitCount = 0;
+          if (comboType === '平特肖' || comboType === '平特肖带主肖') { hitCount = tokens.filter(t => drawZodiacsSet.has(t)).length; }
+          else if (comboType === '平特尾' || comboType === '平特尾零尾') { hitCount = tokens.filter(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }).length; }
+          else if (comboType === '平码') { hitCount = tokens.filter(t => drawNumbersZhengma.includes(t.padStart(2,'0'))).length; }
+          if (hitCount > 0) { stats.orderHitByType[comboType] = (stats.orderHitByType[comboType] || 0) + hitCount * amt; }
+          stats.orderPL += effectiveCount * amt - effectiveCount * amt * (rebate / 100) - (hitCount * amt * odds);
+        } else {
+          stats.orderHitByType[comboType] = (stats.orderHitByType[comboType] || 0) + amt;
+          stats.orderPL += amt - amt * (rebate / 100) - (amt * odds);
+        }
+      } else {
+        stats.orderPL += effectiveCount * amt - effectiveCount * amt * (rebate / 100);
+      }
     }
   });
 }
@@ -2273,8 +2290,10 @@ function processComboLineDuijiangNewReport(stats, playType, content, amt, drawZo
       else if (['二连尾','三连尾','四连尾','五连尾'].includes(comboType)) comboType = comboType + '零尾';
     }
     const { odds, rebate } = getOddsForType(comboType, getOddsData());
-    stats.reportTotal += amt;
-    stats.reportRebate += amt * (rebate / 100);
+    const isPerItem = ['平特肖','平特肖带主肖','平特尾','平特尾零尾','平码'].includes(comboType);
+    const effectiveCount = isPerItem ? tokens.length : 1;
+    stats.reportTotal += effectiveCount * amt;
+    stats.reportRebate += effectiveCount * amt * (rebate / 100);
     if (hasValidDraw) {
       let hit = false;
       if (comboType === '平特肖' || comboType === '平特肖带主肖') { hit = drawZodiacsSet.has(tokens[0]); }
@@ -2284,8 +2303,21 @@ function processComboLineDuijiangNewReport(stats, playType, content, amt, drawZo
       else if (['二连尾','二连尾零尾','三连尾','三连尾零尾','四连尾','四连尾零尾','五连尾','五连尾零尾'].includes(comboType)) { hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
       else if (['五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中'].includes(comboType)) { hit = !tokens.some(t => drawNumbersSet.has(t.padStart(2,'0'))); }
       else if (comboType === '二中二' || comboType === '三中三') { hit = tokens.every(t => drawNumbersZhengma.includes(t.padStart(2,'0'))); }
-      if (hit) { stats.reportHitByType[comboType] = (stats.reportHitByType[comboType] || 0) + amt; }
-      stats.reportPL += amt - amt * (rebate / 100) - (hit ? amt * odds : 0);
+      if (hit) {
+        if (isPerItem) {
+          let hitCount = 0;
+          if (comboType === '平特肖' || comboType === '平特肖带主肖') { hitCount = tokens.filter(t => drawZodiacsSet.has(t)).length; }
+          else if (comboType === '平特尾' || comboType === '平特尾零尾') { hitCount = tokens.filter(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }).length; }
+          else if (comboType === '平码') { hitCount = tokens.filter(t => drawNumbersZhengma.includes(t.padStart(2,'0'))).length; }
+          if (hitCount > 0) { stats.reportHitByType[comboType] = (stats.reportHitByType[comboType] || 0) + hitCount * amt; }
+          stats.reportPL += effectiveCount * amt - effectiveCount * amt * (rebate / 100) - (hitCount * amt * odds);
+        } else {
+          stats.reportHitByType[comboType] = (stats.reportHitByType[comboType] || 0) + amt;
+          stats.reportPL += amt - amt * (rebate / 100) - (amt * odds);
+        }
+      } else {
+        stats.reportPL += effectiveCount * amt - effectiveCount * amt * (rebate / 100);
+      }
     }
   });
 }
@@ -2383,8 +2415,10 @@ function processComboLineDuijiangOld(stats, match, drawZodiacsSet, drawNumbersSe
       else if (['二连尾','三连尾','四连尾','五连尾'].includes(comboType)) comboType = comboType + '零尾';
     }
     const { odds, rebate } = getOddsForType(comboType, getOddsData());
-    stats.orderTotal += amt;
-    stats.orderRebate += amt * (rebate / 100);
+    const isPerItem = ['平特肖','平特肖带主肖','平特尾','平特尾零尾','平码'].includes(comboType);
+    const effectiveCount = isPerItem ? tokens.length : 1;
+    stats.orderTotal += effectiveCount * amt;
+    stats.orderRebate += effectiveCount * amt * (rebate / 100);
     if (hasValidDraw) {
       let hit = false;
       if (comboType === '平特肖' || comboType === '平特肖带主肖') { hit = drawZodiacsSet.has(tokens[0]); }
@@ -2394,8 +2428,21 @@ function processComboLineDuijiangOld(stats, match, drawZodiacsSet, drawNumbersSe
       else if (['二连尾','二连尾零尾','三连尾','三连尾零尾','四连尾','四连尾零尾','五连尾','五连尾零尾'].includes(comboType)) { hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
       else if (['五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中'].includes(comboType)) { hit = !tokens.some(t => drawNumbersSet.has(t.padStart(2,'0'))); }
       else if (comboType === '二中二' || comboType === '三中三') { hit = tokens.every(t => drawNumbersZhengma.includes(t.padStart(2,'0'))); }
-      if (hit) { stats.orderHitByType[comboType] = (stats.orderHitByType[comboType] || 0) + amt; }
-      stats.orderPL += amt - amt * (rebate / 100) - (hit ? amt * odds : 0);
+      if (hit) {
+        if (isPerItem) {
+          let hitCount = 0;
+          if (comboType === '平特肖' || comboType === '平特肖带主肖') { hitCount = tokens.filter(t => drawZodiacsSet.has(t)).length; }
+          else if (comboType === '平特尾' || comboType === '平特尾零尾') { hitCount = tokens.filter(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }).length; }
+          else if (comboType === '平码') { hitCount = tokens.filter(t => drawNumbersZhengma.includes(t.padStart(2,'0'))).length; }
+          if (hitCount > 0) { stats.orderHitByType[comboType] = (stats.orderHitByType[comboType] || 0) + hitCount * amt; }
+          stats.orderPL += effectiveCount * amt - effectiveCount * amt * (rebate / 100) - (hitCount * amt * odds);
+        } else {
+          stats.orderHitByType[comboType] = (stats.orderHitByType[comboType] || 0) + amt;
+          stats.orderPL += amt - amt * (rebate / 100) - (amt * odds);
+        }
+      } else {
+        stats.orderPL += effectiveCount * amt - effectiveCount * amt * (rebate / 100);
+      }
     }
   });
 }
@@ -2438,8 +2485,10 @@ function processComboLineDuijiangOldReport(stats, match, drawZodiacsSet, drawNum
       else if (['二连尾','三连尾','四连尾','五连尾'].includes(comboType)) comboType = comboType + '零尾';
     }
     const { odds, rebate } = getOddsForType(comboType, getOddsData());
-    stats.reportTotal += amt;
-    stats.reportRebate += amt * (rebate / 100);
+    const isPerItem = ['平特肖','平特肖带主肖','平特尾','平特尾零尾','平码'].includes(comboType);
+    const effectiveCount = isPerItem ? tokens.length : 1;
+    stats.reportTotal += effectiveCount * amt;
+    stats.reportRebate += effectiveCount * amt * (rebate / 100);
     if (hasValidDraw) {
       let hit = false;
       if (comboType === '平特肖' || comboType === '平特肖带主肖') { hit = drawZodiacsSet.has(tokens[0]); }
@@ -2449,8 +2498,21 @@ function processComboLineDuijiangOldReport(stats, match, drawZodiacsSet, drawNum
       else if (['二连尾','二连尾零尾','三连尾','三连尾零尾','四连尾','四连尾零尾','五连尾','五连尾零尾'].includes(comboType)) { hit = tokens.every(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }); }
       else if (['五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中'].includes(comboType)) { hit = !tokens.some(t => drawNumbersSet.has(t.padStart(2,'0'))); }
       else if (comboType === '二中二' || comboType === '三中三') { hit = tokens.every(t => drawNumbersZhengma.includes(t.padStart(2,'0'))); }
-      if (hit) { stats.reportHitByType[comboType] = (stats.reportHitByType[comboType] || 0) + amt; }
-      stats.reportPL += amt - amt * (rebate / 100) - (hit ? amt * odds : 0);
+      if (hit) {
+        if (isPerItem) {
+          let hitCount = 0;
+          if (comboType === '平特肖' || comboType === '平特肖带主肖') { hitCount = tokens.filter(t => drawZodiacsSet.has(t)).length; }
+          else if (comboType === '平特尾' || comboType === '平特尾零尾') { hitCount = tokens.filter(t => { const d=t.replace('尾',''); for(let i=0;i<=4;i++){ const n=(i*10+parseInt(d)).toString().padStart(2,'0'); if(drawNumbersSet.has(n)) return true; } return false; }).length; }
+          else if (comboType === '平码') { hitCount = tokens.filter(t => drawNumbersZhengma.includes(t.padStart(2,'0'))).length; }
+          if (hitCount > 0) { stats.reportHitByType[comboType] = (stats.reportHitByType[comboType] || 0) + hitCount * amt; }
+          stats.reportPL += effectiveCount * amt - effectiveCount * amt * (rebate / 100) - (hitCount * amt * odds);
+        } else {
+          stats.reportHitByType[comboType] = (stats.reportHitByType[comboType] || 0) + amt;
+          stats.reportPL += amt - amt * (rebate / 100) - (amt * odds);
+        }
+      } else {
+        stats.reportPL += effectiveCount * amt - effectiveCount * amt * (rebate / 100);
+      }
     }
   });
 }
@@ -3065,7 +3127,7 @@ async function deleteUser(name) { let users = getUsers(); users = users.filter(u
 function rebuildTotal() { tableBetData = {}; for (const u in userBetData) for (const n in userBetData[u]) tableBetData[n] = (tableBetData[n]||0) + userBetData[u][n]; }
 function refreshAll() { updateSelects(); updateTableFromRecords(); }
 function updateSelects() { const users = getUsers(); const orderSel = document.getElementById('orderUserSelect'); if (orderSel) { orderSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; orderSel.appendChild(o); }); } const comboUserSel = document.getElementById('comboUserSelect'); if (comboUserSel) { comboUserSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; comboUserSel.appendChild(o); }); } const viewSel = document.getElementById('viewUserSelect'); if (viewSel) { viewSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; viewSel.appendChild(o); }); } }
-  //===== 快捷添加与分词 =====
+ //===== 快捷添加与分词 =====
 function quickAddWithAmount(text, button) { const input = document.querySelector('.source-order-input'); if (!input) return; const lines = input.value.trim().split('\n').filter(l=>l.trim()); const idx = lines.findIndex(l=> l.includes(text) && (l.includes('各数')||l.includes('各号'))); if (idx !== -1) { lines.splice(idx,1); button.classList.remove('active'); } else { lines.push(`${text} 各数 `); button.classList.add('active'); } input.value = lines.join('\n'); performRecognition(input.value); const lastIndex = input.value.lastIndexOf('各数'); if (lastIndex !== -1) { const pos = lastIndex + 2; input.focus(); input.setSelectionRange(pos, pos); } }
 function getReplacePresets() { try { return JSON.parse(localStorage.getItem('replacePresets') || '[]'); } catch (e) { return []; } }
 function getCategoryAliases() { try { return JSON.parse(localStorage.getItem('categoryAliases') || '[]'); } catch (e) { return []; } }
@@ -3483,7 +3545,8 @@ function renderOrderStats(allOrders, allReports, filterUser, prizeNum) {
 
 function updatePrizeStats(pn) {}
 
-async function applyPrizeFilter(){ const pi=document.getElementById('prizeNumberInput'),uf=document.getElementById('recordUserFilter'); if(!pi||!uf) return; const sd = document.getElementById('filterDate')?.value; const pn=pi.value.trim(),uv=uf.value; const recs=await getOrderRecords(); const reports=await getReportOrderRecords(); const fRecs = sd ? recs.filter(r=>r.date===sd) : recs; const fReps = sd ? reports.filter(r=>r.date===sd) : reports; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); let filtered=pn ? [] : [...userOrders]; if(pn){ for(const it of userOrders){ if(orderContainsTarget(it.content,pn)) filtered.push(it); } } const cont=document.getElementById('orderListContainer'); if(!cont)return; if(filtered.length===0){cont.innerHTML='<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';} else{ cont.innerHTML=filtered.map(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; const lines=it.content.split('\n'); const hl=lines.map(l=>{const m=l.match(/^(.+?):(.+?)\s+各(?:数|)\s*(\d+)$/);if(!m)return l;const cont=m[2],amt=m[3];const hc=highlightContent(cont,pn);return`${m[1]}:${hc} 各数 ${amt}`;}).join('<br>'); return`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${hl}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }).join(''); } renderOrderStats(userOrders, userReports, uv, pn); }
+// 修改：高亮只对特码行生效，其他行保持原样
+async function applyPrizeFilter(){ const pi=document.getElementById('prizeNumberInput'),uf=document.getElementById('recordUserFilter'); if(!pi||!uf) return; const sd = document.getElementById('filterDate')?.value; const pn=pi.value.trim(),uv=uf.value; const recs=await getOrderRecords(); const reports=await getReportOrderRecords(); const fRecs = sd ? recs.filter(r=>r.date===sd) : recs; const fReps = sd ? reports.filter(r=>r.date===sd) : reports; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); let filtered=pn ? [] : [...userOrders]; if(pn){ for(const it of userOrders){ if(orderContainsTarget(it.content,pn)) filtered.push(it); } } const cont=document.getElementById('orderListContainer'); if(!cont)return; if(filtered.length===0){cont.innerHTML='<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';} else{ cont.innerHTML=filtered.map(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; const lines=it.content.split('\n'); const hl=lines.map(l=>{ const m=l.match(/^特码:(.+?)\s+各(?:数|)\s*(\d+)$/); if(!m)return l; const cont=m[1],amt=m[2]; const hc=highlightContent(cont,pn); return`特码:${hc} 各数 ${amt}`; }).join('<br>'); return`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${hl}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }).join(''); } renderOrderStats(userOrders, userReports, uv, pn); }
 
 window._orderListAllData = [];
 window._orderListPage = 0;
