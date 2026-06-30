@@ -3127,7 +3127,7 @@ async function deleteUser(name) { let users = getUsers(); users = users.filter(u
 function rebuildTotal() { tableBetData = {}; for (const u in userBetData) for (const n in userBetData[u]) tableBetData[n] = (tableBetData[n]||0) + userBetData[u][n]; }
 function refreshAll() { updateSelects(); updateTableFromRecords(); }
 function updateSelects() { const users = getUsers(); const orderSel = document.getElementById('orderUserSelect'); if (orderSel) { orderSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; orderSel.appendChild(o); }); } const comboUserSel = document.getElementById('comboUserSelect'); if (comboUserSel) { comboUserSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; comboUserSel.appendChild(o); }); } const viewSel = document.getElementById('viewUserSelect'); if (viewSel) { viewSel.innerHTML = ''; users.forEach(u => { const o = document.createElement('option'); o.value = u; o.textContent = u; viewSel.appendChild(o); }); } }
- //===== 快捷添加与分词 =====
+//===== 快捷添加与分词 =====
 function quickAddWithAmount(text, button) { const input = document.querySelector('.source-order-input'); if (!input) return; const lines = input.value.trim().split('\n').filter(l=>l.trim()); const idx = lines.findIndex(l=> l.includes(text) && (l.includes('各数')||l.includes('各号'))); if (idx !== -1) { lines.splice(idx,1); button.classList.remove('active'); } else { lines.push(`${text} 各数 `); button.classList.add('active'); } input.value = lines.join('\n'); performRecognition(input.value); const lastIndex = input.value.lastIndexOf('各数'); if (lastIndex !== -1) { const pos = lastIndex + 2; input.focus(); input.setSelectionRange(pos, pos); } }
 function getReplacePresets() { try { return JSON.parse(localStorage.getItem('replacePresets') || '[]'); } catch (e) { return []; } }
 function getCategoryAliases() { try { return JSON.parse(localStorage.getItem('categoryAliases') || '[]'); } catch (e) { return []; } }
@@ -3212,67 +3212,82 @@ async function saveOrder(){
   if(!pureLines || pureLines.length === 0){showToast('订单无效');return;} 
   const date=document.getElementById('filterDate')?.value||getTodayCST(); 
   
-  const allLines = pureLines;
-  let totalAmount = 0;
+  const teMaLines = pureLines.filter(l => l.startsWith('特码:'));
+  const otherLines = pureLines.filter(l => !l.startsWith('特码:'));
   
-  allLines.forEach(line => {
-    if(line.startsWith('特码:')){
-      const{numbers,zodiacs,amount}=countItemsInLine(line);
-      let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(ZODIAC_NUMS[z]||'').split(/[\s,，]+/).length;});
-      if(cnt>0 && amount>0) totalAmount+=cnt*amount;
-    } else {
-      const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
-      if(match){
-        const playType = match[1]; const content = match[2]; const amt = parseInt(match[3])||0;
-        if(playType==='平特肖'||playType==='平特尾'||playType==='平码'){
-          const items = content.split('-').filter(i=>i.trim());
-          totalAmount += items.length * amt;
-        } else {
-          const cleaned = content.replace(/[()]/g, '');
-          const groups = cleaned.split(/\s+/).filter(c=>c.trim());
-          totalAmount += groups.length * amt;
-        }
-      }
-    }
-  });
+  let teMaTotal = 0;
+  teMaLines.forEach(line => { const { numbers, zodiacs, amount } = countItemsInLine(line); let cnt = numbers.length; zodiacs.forEach(z => { cnt += (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length; }); teMaTotal += cnt * amount; });
   
+  let comboTotal = 0;
   const pingtexiaoData = getPingtexiaoData();
   let ptChanged = false;
-  allLines.forEach(line => {
+  otherLines.forEach(line => {
     const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
     if (match) {
       const playType = match[1];
       const content = match[2];
       const amt = parseInt(match[3]) || 0;
-      if (playType === '平特肖' || normalizePlayType(playType) === '平特肖') {
+      if (playType === '平特肖' || playType === '平特尾' || playType === '平码' || normalizePlayType(playType) === '平特肖') {
         const items = content.split('-').filter(i => i.trim());
-        items.forEach(item => {
-          const cleanItem = item.trim();
-          if (/^[\u4e00-\u9fa5]$/.test(cleanItem) && ZODIAC_NUMS[cleanItem]) {
-            if (!pingtexiaoData[cleanItem]) pingtexiaoData[cleanItem] = { amount: '', report: '' };
-            pingtexiaoData[cleanItem].amount = (parseFloat(pingtexiaoData[cleanItem].amount) || 0 + amt).toString();
-            ptChanged = true;
-          }
-        });
+        comboTotal += items.length * amt;
+        if (playType === '平特肖' || normalizePlayType(playType) === '平特肖') {
+          items.forEach(item => {
+            const cleanItem = item.trim();
+            if (/^[\u4e00-\u9fa5]$/.test(cleanItem) && ZODIAC_NUMS[cleanItem]) {
+              if (!pingtexiaoData[cleanItem]) pingtexiaoData[cleanItem] = { amount: '', report: '' };
+              pingtexiaoData[cleanItem].amount = (parseFloat(pingtexiaoData[cleanItem].amount) || 0 + amt).toString();
+              ptChanged = true;
+            }
+          });
+        }
+      } else {
+        const cleaned = content.replace(/[()]/g, '');
+        const groups = cleaned.split(/\s+/).filter(c => c.trim());
+        comboTotal += groups.length * amt;
       }
     }
   });
   if (ptChanged) { savePingtexiaoData(pingtexiaoData); renderPingtexiaoTable(); updatePingtexiaoTotal(); }
   
-  // 所有订单统一存入 STORE_NAME
-  const content = allLines.join('\n');
   const existingOrders = (await getOrderRecords()).filter(r => r.date === date && r.user === user);
-  if (existingOrders.some(o => o.content === content)) {
-    const confirmed = await confirm('该用户今天已保存过相同的订单，确定再次保存吗？');
-    if (!confirmed) { } else {
-      await saveOrderRecordToIDB(content,user,date,totalAmount);
+  const existingCombos = (await getComboOrders()).filter(r => r.date === date && r.user === user);
+  
+  // 特码存入 STORE_NAME（订单记录）
+  if (teMaLines.length > 0) {
+    const content = teMaLines.join('\n');
+    if (existingOrders.some(o => o.content === content)) {
+      const confirmed = await confirm('该用户今天已保存过相同的特码订单，确定再次保存吗？');
+      if (!confirmed) { } else {
+        await saveOrderRecordToIDB(content,user,date,teMaTotal);
+        processCurrentOrder(content,user,true,date);
+        addOperationLog('save_order', content, currentRegion, user, teMaTotal);
+      }
+    } else {
+      await saveOrderRecordToIDB(content,user,date,teMaTotal);
       processCurrentOrder(content,user,true,date);
-      addOperationLog('save_order', content, currentRegion, user, totalAmount);
+      addOperationLog('save_order', content, currentRegion, user, teMaTotal);
     }
-  } else {
-    await saveOrderRecordToIDB(content,user,date,totalAmount);
-    processCurrentOrder(content,user,true,date);
-    addOperationLog('save_order', content, currentRegion, user, totalAmount);
+  }
+  
+  // 其他玩法：存入 STORE_NAME（订单记录合并显示）+ COMBO_STORE_NAME（连肖统计）
+  if (otherLines.length > 0) {
+    const content = otherLines.join('\n');
+    // 存 STORE_NAME
+    if (existingOrders.some(o => o.content === content)) {
+      const confirmed = await confirm('该用户今天已保存过相同的订单，确定再次保存吗？');
+      if (!confirmed) { } else {
+        await saveOrderRecordToIDB(content,user,date,comboTotal);
+      }
+    } else {
+      await saveOrderRecordToIDB(content,user,date,comboTotal);
+    }
+    // 存 COMBO_STORE_NAME（连肖统计用）
+    if (existingCombos.some(o => o.content === content)) {
+      // 已存在，不重复保存到COMBO
+    } else {
+      await saveComboOrderRecordToIDB(content,user,date,comboTotal,'combo');
+    }
+    addOperationLog('save_order', content, currentRegion, user, comboTotal);
   }
   
   const si=document.querySelector('.source-order-input'); if(si)si.value=''; 
@@ -3293,43 +3308,65 @@ async function saveReportOrder(){
   if(!pureLines || pureLines.length === 0){showToast('订单无效');return;} 
   const date=document.getElementById('filterDate')?.value||getTodayCST(); 
   
-  const allLines = pureLines;
-  let totalAmount = 0;
+  const teMaLines = pureLines.filter(l => l.startsWith('特码:'));
+  const otherLines = pureLines.filter(l => !l.startsWith('特码:'));
   
-  allLines.forEach(line => {
-    if(line.startsWith('特码:')){
-      const{numbers,zodiacs,amount}=countItemsInLine(line);
-      let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(ZODIAC_NUMS[z]||'').split(/[\s,，]+/).length;});
-      if(cnt>0 && amount>0) totalAmount+=cnt*amount;
-    } else {
-      const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
-      if(match){
-        const playType = match[1]; const content = match[2]; const amt = parseInt(match[3])||0;
-        if(playType==='平特肖'||playType==='平特尾'||playType==='平码'){
-          const items = content.split('-').filter(i=>i.trim());
-          totalAmount += items.length * amt;
-        } else {
-          const cleaned = content.replace(/[()]/g, '');
-          const groups = cleaned.split(/\s+/).filter(c=>c.trim());
-          totalAmount += groups.length * amt;
-        }
+  let teMaTotal = 0;
+  teMaLines.forEach(line => { const { numbers, zodiacs, amount } = countItemsInLine(line); let cnt = numbers.length; zodiacs.forEach(z => { cnt += (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length; }); teMaTotal += cnt * amount; });
+  
+  let comboTotal = 0;
+  otherLines.forEach(line => {
+    const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
+    if (match) {
+      const playType = match[1];
+      const content = match[2];
+      const amt = parseInt(match[3]) || 0;
+      if (playType === '平特肖' || playType === '平特尾' || playType === '平码' || normalizePlayType(playType) === '平特肖') {
+        const items = content.split('-').filter(i => i.trim());
+        comboTotal += items.length * amt;
+      } else {
+        const cleaned = content.replace(/[()]/g, '');
+        const groups = cleaned.split(/\s+/).filter(c => c.trim());
+        comboTotal += groups.length * amt;
       }
     }
   });
   
-  const content = allLines.join('\n');
   const existingReports = (await getReportOrderRecords()).filter(r => r.date === date && r.user === user);
-  if (existingReports.some(o => o.content === content)) {
-    const confirmed = await confirm('该用户今天已上报过相同的内容，确定再次上报吗？');
-    if (!confirmed) { } else {
-      await saveReportOrderRecordToIDB(content,user,date,totalAmount);
+  const existingCombos = (await getComboOrders()).filter(r => r.date === date && r.user === user);
+  
+  // 特码上报存入 REPORT_STORE_NAME
+  if (teMaLines.length > 0) {
+    const content = teMaLines.join('\n');
+    if (existingReports.some(o => o.content === content)) {
+      const confirmed = await confirm('该用户今天已上报过相同的内容，确定再次上报吗？');
+      if (!confirmed) { } else {
+        await saveReportOrderRecordToIDB(content,user,date,teMaTotal);
+        processCurrentOrder(content,user,false,date);
+        addOperationLog('save_report', content, currentRegion, user, teMaTotal);
+      }
+    } else {
+      await saveReportOrderRecordToIDB(content,user,date,teMaTotal);
       processCurrentOrder(content,user,false,date);
-      addOperationLog('save_report', content, currentRegion, user, totalAmount);
+      addOperationLog('save_report', content, currentRegion, user, teMaTotal);
     }
-  } else {
-    await saveReportOrderRecordToIDB(content,user,date,totalAmount);
-    processCurrentOrder(content,user,false,date);
-    addOperationLog('save_report', content, currentRegion, user, totalAmount);
+  }
+  
+  // 其他玩法上报：存入 REPORT_STORE_NAME + COMBO_STORE_NAME
+  if (otherLines.length > 0) {
+    const content = otherLines.join('\n');
+    if (existingReports.some(o => o.content === content)) {
+      const confirmed = await confirm('该用户今天已上报过相同的订单，确定再次上报吗？');
+      if (!confirmed) { } else {
+        await saveReportOrderRecordToIDB(content,user,date,comboTotal);
+      }
+    } else {
+      await saveReportOrderRecordToIDB(content,user,date,comboTotal);
+    }
+    if (!existingCombos.some(o => o.content === content)) {
+      await saveComboOrderRecordToIDB(content,user,date,comboTotal,'combo');
+    }
+    addOperationLog('save_report', content, currentRegion, user, comboTotal);
   }
   
   const si=document.querySelector('.source-order-input'); if(si)si.value=''; 
@@ -3341,8 +3378,7 @@ async function saveReportOrder(){
   calculateStorageUsage(); showStorageDrawerTemporary(5000); renderSmartDecision(); clearStatsCache(); 
   showToast('已上报成功'); setTimeout(() => { const toast = document.querySelector('.toast-message.show'); if (toast) toast.style.color = '#ff0000'; }, 10); 
 }
-
-function updateOrderCountDisplay() {
+    function updateOrderCountDisplay() {
   const fd = document.getElementById('filterDate')?.value || getTodayCST();
   getOrderRecords().then(orders => {
     const todayOrders = orders.filter(r => r.date === fd);
@@ -3399,7 +3435,8 @@ async function updateTableFromRecords(){
     calculateStorageUsage(); renderSmartDecision(); updateSingleBetDisplay(); updateOrderCountDisplay();
   }catch(e){}
 }
-    function updateDirectAmountTotals() {
+
+function updateDirectAmountTotals() {
   let orderTotal = 0; let reportTotal = 0;
   for (let n in directOrderAmount) { orderTotal += directOrderAmount[n] || 0; }
   for (let n in directReportAmount) { reportTotal += directReportAmount[n] || 0; }
@@ -3546,7 +3583,7 @@ function renderOrderStats(allOrders, allReports, filterUser, prizeNum) {
 function updatePrizeStats(pn) {}
 
 // 修改：高亮只对特码行生效，其他行保持原样
-async function applyPrizeFilter(){ const pi=document.getElementById('prizeNumberInput'),uf=document.getElementById('recordUserFilter'); if(!pi||!uf) return; const sd = document.getElementById('filterDate')?.value; const pn=pi.value.trim(),uv=uf.value; const recs=await getOrderRecords(); const reports=await getReportOrderRecords(); const fRecs = sd ? recs.filter(r=>r.date===sd) : recs; const fReps = sd ? reports.filter(r=>r.date===sd) : reports; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); let filtered=pn ? [] : [...userOrders]; if(pn){ for(const it of userOrders){ if(orderContainsTarget(it.content,pn)) filtered.push(it); } } const cont=document.getElementById('orderListContainer'); if(!cont)return; if(filtered.length===0){cont.innerHTML='<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';} else{ cont.innerHTML=filtered.map(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; const lines=it.content.split('\n'); const hl=lines.map(l=>{ const m=l.match(/^特码:(.+?)\s+各(?:数|)\s*(\d+)$/); if(!m)return l; const cont=m[1],amt=m[2]; const hc=highlightContent(cont,pn); return`特码:${hc} 各数 ${amt}`; }).join('<br>'); return`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${hl}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }).join(''); } renderOrderStats(userOrders, userReports, uv, pn); }
+async function applyPrizeFilter(){ const pi=document.getElementById('prizeNumberInput'),uf=document.getElementById('recordUserFilter'); if(!pi||!uf) return; const sd = document.getElementById('filterDate')?.value; const pn=pi.value.trim(),uv=uf.value; const recs=await getOrderRecords(); const reports=await getReportOrderRecords(); const fRecs = sd ? recs.filter(r=>r.date===sd) : recs; const fReps = sd ? reports.filter(r=>r.date===sd) : reports; const userOrders = uv==='all' ? fRecs : fRecs.filter(r=>r.user===uv); const userReports = uv==='all' ? fReps : fReps.filter(r=>r.user===uv); let filtered=pn ? [] : [...userOrders]; if(pn){ for(const it of userOrders){ if(orderContainsTarget(it.content,pn)) filtered.push(it); } } const cont=document.getElementById('orderListContainer'); if(!cont)return; if(filtered.length===0){cont.innerHTML='<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>';} else{ cont.innerHTML=filtered.map(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',col=getUserColor(ud),ta=it.totalAmount||0; const lines=it.content.split('\n'); const hl=lines.map(l=>{ const m=l.match(/^特码:(.+?)\s+各(?:数|)\s*(\d+)$/); if(!m)return l; const cont2=m[1],amt2=m[2]; const hc=highlightContent(cont2,pn); return`特码:${hc} 各数 ${amt2}`; }).join('<br>'); return`<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${hl}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }).join(''); } renderOrderStats(userOrders, userReports, uv, pn); }
 
 window._orderListAllData = [];
 window._orderListPage = 0;
