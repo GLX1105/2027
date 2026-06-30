@@ -1564,7 +1564,7 @@ function parseTeMaSegment(content) {
   }
   return deduped;
 }
-    function processOneLine(line) {
+   function processOneLine(line) {
   if (!line.trim()) return [];
   const specialMatches = collectSpecialMatches(line);
   const results = [];
@@ -1620,23 +1620,43 @@ function performRecognition(text) {
   const lines = processedText.split('\n');
   const allResults = [];
   for (const line of lines) { if (!line.trim()) continue; allResults.push(...processOneLine(line)); }
-  const merged = []; const seen = new Map();
+  
+  // 特码玩法不去重，其他玩法合并去重
+  const teMaResults = [];
+  const otherResults = [];
   for (const r of allResults) {
+    if (r.cat === '特码') {
+      teMaResults.push(r);
+    } else {
+      otherResults.push(r);
+    }
+  }
+  
+  // 其他玩法合并去重
+  const mergedOther = [];
+  const seenOther = new Map();
+  for (const r of otherResults) {
     const key = r.cat + '|||' + r.nums.join(',');
-    if (seen.has(key)) {
-      const ex = seen.get(key);
+    if (seenOther.has(key)) {
+      const ex = seenOther.get(key);
       ex.totalCount += r.cnt;
       ex.totalAmount += r.total;
       ex.unitAmount = Math.round(ex.totalAmount / ex.totalCount);
       ex.warnings = [...new Set([...(ex.warnings || []), ...(r.warnings || [])])];
     } else {
-      seen.set(key, {
+      seenOther.set(key, {
         category: r.cat, numbers: r.nums, unitAmount: r.amt,
         totalCount: r.cnt, totalAmount: r.total, kw: r.kw || '', warnings: r.warnings || []
       });
     }
   }
-  const mergedArray = Array.from(seen.values());
+  
+  // 合并结果：特码不去重 + 其他玩法去重
+  const mergedArray = [...teMaResults.map(r => ({
+    category: r.cat, numbers: r.nums, unitAmount: r.amt,
+    totalCount: r.cnt, totalAmount: r.total, kw: r.kw || '', warnings: r.warnings || []
+  })), ...Array.from(seenOther.values())];
+  
   if (resultDiv) {
     if (mergedArray.length === 0) {
       resultDiv.innerHTML = text ? `<div class="result-line">${text}</div>` : '';
@@ -1987,10 +2007,65 @@ async function refreshLianxiaoStats() {
   records.forEach(rec => {
     const lines = rec.content.split('\n');
     lines.forEach(line => {
-      const match = line.match(/^(.+?)\s*(?:各组|各)\s*(\d+)$/);
-      if (!match) return;
-      const content = match[1];
-      const amount = parseInt(match[2]) || 0;
+      // 尝试匹配新版格式：玩法名:内容 各/各组 金额
+      const newMatch = line.match(/^(.+?):(.+?)\s+(各(?:组|))\s*(\d+)$/);
+      if (newMatch) {
+        const playType = newMatch[1];
+        const content = newMatch[2];
+        const amount = parseInt(newMatch[4]) || 0;
+        const groups = content.split(/\s+/);
+        groups.forEach(group => {
+          const rawGroup = group.replace(/^\(|\)$/g, '');
+          const tokens = rawGroup.split('-');
+          if (playType === '平特肖' || playType === '平特尾' || playType === '平码') {
+            // 平特肖/平特尾/平码：每组只有一个元素
+            tokens.forEach(token => {
+              const comboType = playType === '平特肖' ? 'pingtexiao' : (playType === '平特尾' ? 'pingtewei' : 'pingma');
+              if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+              const cleanToken = token.trim();
+              if (comboType === 'pingtexiao') {
+                const hasYear = cleanToken === curYearZodiac;
+                (hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).set(cleanToken, ((hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).get(cleanToken) || 0) + amount);
+              } else if (comboType === 'pingtewei') {
+                const hasZero = cleanToken.replace('尾', '') === '0';
+                (hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).set(cleanToken, ((hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).get(cleanToken) || 0) + amount);
+              } else {
+                stats[comboType].withYear.set(cleanToken, (stats[comboType].withYear.get(cleanToken) || 0) + amount);
+              }
+              grandTotal += amount;
+            });
+          } else if (tokens.every(t => /^[\u4e00-\u9fa5]$/.test(t) && ZODIAC_NUMS[t])) {
+            // 连肖
+            const comboType = `lianxiao${tokens.length}`;
+            if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+            const hasYear = tokens.some(t => t === curYearZodiac);
+            const comboKey = tokens.join('-');
+            (hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).set(comboKey, ((hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).get(comboKey) || 0) + amount);
+            grandTotal += amount;
+          } else if (tokens.every(t => /^\d+尾$/.test(t))) {
+            // 连尾
+            const comboType = `lianwei${tokens.length}`;
+            if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+            const hasZero = tokens.some(t => t.replace('尾', '') === '0');
+            const comboKey = tokens.join('-');
+            (hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).set(comboKey, ((hasZero ? stats[comboType].withYear : stats[comboType].withoutYear).get(comboKey) || 0) + amount);
+            grandTotal += amount;
+          } else if (tokens.every(t => /^\d{2}$/.test(t))) {
+            // 二中二/三中三/不中
+            const comboType = tokens.length === 1 ? 'pingma' : (tokens.length === 2 ? 'zhong2' : (tokens.length === 3 ? 'zhong3' : 'buzhong' + tokens.length));
+            if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+            const comboKey = tokens.join('-');
+            stats[comboType].withYear.set(comboKey, (stats[comboType].withYear.get(comboKey) || 0) + amount);
+            grandTotal += amount;
+          }
+        });
+        return;
+      }
+      // 兼容旧版格式：鼠 各组 10 或 鼠-牛 各组 10
+      const oldMatch = line.match(/^(.+?)\s*(?:各组|各)\s*(\d+)$/);
+      if (!oldMatch) return;
+      const content = oldMatch[1];
+      const amount = parseInt(oldMatch[2]) || 0;
       const groups = content.split(/\s+/);
       groups.forEach(group => {
         const rawGroup = group.replace(/^\(|\)$/g, '');
@@ -2459,10 +2534,26 @@ async function saveOrder(){
   const pureLines = window._pureOrderLines; 
   if(!pureLines || pureLines.length === 0){showToast('订单无效');return;} 
   const date=document.getElementById('filterDate')?.value||getTodayCST(); 
-  const total=computeCurrentOrderTotal(); 
   
   const teMaLines = pureLines.filter(l => l.startsWith('特码:'));
   const otherLines = pureLines.filter(l => !l.startsWith('特码:'));
+  
+  // 计算特码总额
+  let teMaTotal = 0;
+  teMaLines.forEach(line => { const { numbers, zodiacs, amount } = countItemsInLine(line); let cnt = numbers.length; zodiacs.forEach(z => { cnt += (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length; }); teMaTotal += cnt * amount; });
+  
+  // 计算连肖总额
+  let comboTotal = 0;
+  otherLines.forEach(line => {
+    const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
+    if (match) {
+      const content = match[2];
+      const amt = parseInt(match[3]) || 0;
+      const cleaned = content.replace(/[()]/g, '');
+      const groups = cleaned.split(/\s+/).filter(c => c.trim());
+      comboTotal += groups.length * amt;
+    }
+  });
   
   const existingOrders = (await getOrderRecords()).filter(r => r.date === date && r.user === user);
   const existingCombos = (await getComboOrders()).filter(r => r.date === date && r.user === user);
@@ -2472,14 +2563,14 @@ async function saveOrder(){
     if (existingOrders.some(o => o.content === content)) {
       const confirmed = await confirm('该用户今天已保存过相同的特码订单，确定再次保存吗？');
       if (!confirmed) { } else {
-        await saveOrderRecordToIDB(content,user,date,total);
+        await saveOrderRecordToIDB(content,user,date,teMaTotal);
         processCurrentOrder(content,user,true,date);
-        addOperationLog('save_order', content, currentRegion, user, total);
+        addOperationLog('save_order', content, currentRegion, user, teMaTotal);
       }
     } else {
-      await saveOrderRecordToIDB(content,user,date,total);
+      await saveOrderRecordToIDB(content,user,date,teMaTotal);
       processCurrentOrder(content,user,true,date);
-      addOperationLog('save_order', content, currentRegion, user, total);
+      addOperationLog('save_order', content, currentRegion, user, teMaTotal);
     }
   }
   
@@ -2488,12 +2579,12 @@ async function saveOrder(){
     if (existingCombos.some(o => o.content === content)) {
       const confirmed = await confirm('该用户今天已保存过相同的连肖订单，确定再次保存吗？');
       if (!confirmed) { } else {
-        await saveComboOrderRecordToIDB(content,user,date,total,'combo');
-        addOperationLog('save_order', content, currentRegion, user, total);
+        await saveComboOrderRecordToIDB(content,user,date,comboTotal,'combo');
+        addOperationLog('save_order', content, currentRegion, user, comboTotal);
       }
     } else {
-      await saveComboOrderRecordToIDB(content,user,date,total,'combo');
-      addOperationLog('save_order', content, currentRegion, user, total);
+      await saveComboOrderRecordToIDB(content,user,date,comboTotal,'combo');
+      addOperationLog('save_order', content, currentRegion, user, comboTotal);
     }
   }
   
@@ -2512,10 +2603,24 @@ async function saveReportOrder(){
   const pureLines = window._pureOrderLines; 
   if(!pureLines || pureLines.length === 0){showToast('订单无效');return;} 
   const date=document.getElementById('filterDate')?.value||getTodayCST(); 
-  const total=computeCurrentOrderTotal(); 
   
   const teMaLines = pureLines.filter(l => l.startsWith('特码:'));
   const otherLines = pureLines.filter(l => !l.startsWith('特码:'));
+  
+  let teMaTotal = 0;
+  teMaLines.forEach(line => { const { numbers, zodiacs, amount } = countItemsInLine(line); let cnt = numbers.length; zodiacs.forEach(z => { cnt += (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length; }); teMaTotal += cnt * amount; });
+  
+  let comboTotal = 0;
+  otherLines.forEach(line => {
+    const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
+    if (match) {
+      const content = match[2];
+      const amt = parseInt(match[3]) || 0;
+      const cleaned = content.replace(/[()]/g, '');
+      const groups = cleaned.split(/\s+/).filter(c => c.trim());
+      comboTotal += groups.length * amt;
+    }
+  });
   
   const existingReports = (await getReportOrderRecords()).filter(r => r.date === date && r.user === user);
   const existingCombos = (await getComboOrders()).filter(r => r.date === date && r.user === user);
@@ -2525,14 +2630,14 @@ async function saveReportOrder(){
     if (existingReports.some(o => o.content === content)) {
       const confirmed = await confirm('该用户今天已上报过相同的内容，确定再次上报吗？');
       if (!confirmed) { } else {
-        await saveReportOrderRecordToIDB(content,user,date,total);
+        await saveReportOrderRecordToIDB(content,user,date,teMaTotal);
         processCurrentOrder(content,user,false,date);
-        addOperationLog('save_report', content, currentRegion, user, total);
+        addOperationLog('save_report', content, currentRegion, user, teMaTotal);
       }
     } else {
-      await saveReportOrderRecordToIDB(content,user,date,total);
+      await saveReportOrderRecordToIDB(content,user,date,teMaTotal);
       processCurrentOrder(content,user,false,date);
-      addOperationLog('save_report', content, currentRegion, user, total);
+      addOperationLog('save_report', content, currentRegion, user, teMaTotal);
     }
   }
   
@@ -2541,12 +2646,12 @@ async function saveReportOrder(){
     if (existingCombos.some(o => o.content === content)) {
       const confirmed = await confirm('该用户今天已上报过相同的连肖订单，确定再次上报吗？');
       if (!confirmed) { } else {
-        await saveComboOrderRecordToIDB(content,user,date,total,'combo');
-        addOperationLog('save_report', content, currentRegion, user, total);
+        await saveComboOrderRecordToIDB(content,user,date,comboTotal,'combo');
+        addOperationLog('save_report', content, currentRegion, user, comboTotal);
       }
     } else {
-      await saveComboOrderRecordToIDB(content,user,date,total,'combo');
-      addOperationLog('save_report', content, currentRegion, user, total);
+      await saveComboOrderRecordToIDB(content,user,date,comboTotal,'combo');
+      addOperationLog('save_report', content, currentRegion, user, comboTotal);
     }
   }
   
@@ -2622,16 +2727,49 @@ function renderOriginalAmountTable() { const tbl = document.getElementById('orig
 
 function updateOrderTotalDisplay(){
   const re=document.getElementById('orderResult'); const box=document.getElementById('orderTotalAmountBox'); const span=document.getElementById('orderTotalAmount'); const lineCountSpan=document.getElementById('orderLineCount');
-  if(!re||!box||!span)return; const txt=re.innerText.trim();
-  if(!txt){ box.style.display='none'; if(lineCountSpan) lineCountSpan.style.display='none'; return; }
+  if(!re||!box||!span)return;
   const pureLines = window._pureOrderLines || [];
+  if(pureLines.length === 0){ box.style.display='none'; if(lineCountSpan) lineCountSpan.style.display='none'; return; }
   let total=0; let validLineCount=pureLines.length;
-  pureLines.forEach(line=>{ const{numbers,zodiacs,amount}=countItemsInLine(line); let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(ZODIAC_NUMS[z]||'').split(/[\s,，]+/).length;}); if(cnt>0 && amount>0){ total+=cnt*amount; } });
+  pureLines.forEach(line=>{
+    if(line.startsWith('特码:')){
+      const{numbers,zodiacs,amount}=countItemsInLine(line);
+      let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(ZODIAC_NUMS[z]||'').split(/[\s,，]+/).length;});
+      if(cnt>0 && amount>0) total+=cnt*amount;
+    } else {
+      const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
+      if(match){
+        const content = match[2]; const amt = parseInt(match[3])||0;
+        const cleaned = content.replace(/[()]/g, '');
+        const groups = cleaned.split(/\s+/).filter(c=>c.trim());
+        total += groups.length * amt;
+      }
+    }
+  });
   span.textContent=total;
   if(total>0){ box.style.display='inline-flex'; if(lineCountSpan){ lineCountSpan.innerHTML = '<span style="color:#000;">' + validLineCount + '</span>行'; lineCountSpan.style.display = 'inline'; } }
   else { box.style.display='none'; if(lineCountSpan) lineCountSpan.style.display='none'; }
 }
-function computeCurrentOrderTotal(){ const pureLines = window._pureOrderLines || []; let total=0; pureLines.forEach(line=>{ const{numbers,zodiacs,amount}=countItemsInLine(line); let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(ZODIAC_NUMS[z]||'').split(/[\s,，]+/).length;}); if(cnt>0)total+=cnt*amount; }); return total; }
+function computeCurrentOrderTotal(){ 
+  const pureLines = window._pureOrderLines || []; 
+  let total=0; 
+  pureLines.forEach(line=>{
+    if(line.startsWith('特码:')){
+      const{numbers,zodiacs,amount}=countItemsInLine(line);
+      let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(ZODIAC_NUMS[z]||'').split(/[\s,，]+/).length;});
+      if(cnt>0) total+=cnt*amount;
+    } else {
+      const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
+      if(match){
+        const content = match[2]; const amt = parseInt(match[3])||0;
+        const cleaned = content.replace(/[()]/g, '');
+        const groups = cleaned.split(/\s+/).filter(c=>c.trim());
+        total += groups.length * amt;
+      }
+    }
+  });
+  return total; 
+}
 function updateAmountDisplays(){ const nb=document.getElementById('numberTotalBox'); const zb=document.getElementById('zodiacTotalBox'); if(numberOrderTotal>0){document.getElementById('numberTotalAmount').textContent=numberOrderTotal;nb.style.display='inline-flex';}else{nb.style.display='none';} if(zodiacWeightedTotal>0){document.getElementById('zodiacTotalAmount').textContent=zodiacWeightedTotal;zb.style.display='inline-flex';}else{zb.style.display='none';} }
 function updateReportAmountTotal(){ const box=document.getElementById('reportAmountTotalBox'); const span=document.getElementById('reportAmountTotalValue'); let total=0; for(let n in reportAmountData)total+=reportAmountData[n]||0; if(total>0){span.textContent=total;box.style.display='inline-flex';}else{box.style.display='none';} }
 
