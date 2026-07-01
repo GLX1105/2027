@@ -1182,6 +1182,7 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   c = c.replace(/[\s]{2,}/g, ' ');
   
   // 头数连写：支持数字间有分隔符（空格、标点等）
+  // 匹配：数字+分隔符+数字+...+头，提取所有数字用-连接
   c = c.replace(/((?:\d[\s,，.。、+\-*＊\/\\|]*)+)头/g, (match, digits) => {
     const nums = (digits.match(/\d/g) || []);
     if (nums.length >= 2) return nums.map(n => n + '头').join('-');
@@ -1196,6 +1197,77 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   
   return c.trim();
 }
+
+const KW_RE_STR = `(${KW_LIST.join('|')})`;
+const AMT_RE_STR = '(\\d+|[一二三四五六七八九十百千两]+)';
+const SEP_CHARS = '[\\s\\-,\\.\u3001\uff0c\u3002\uff01\uff1f\uff1b\uff1a\\(\\)\\[\\]{}<>/|@#$%^&*+=]';
+const SEP = SEP_CHARS + '*';
+const KW_GROUP = `(${KW_LIST.join('|')})`;
+const AMT_GROUP = `(${AMT_RE_STR})`;
+const END_AMT_RE = `\\s*(?:(?:${KW_GROUP})\\s*)?${AMT_GROUP}`;
+
+function extractAmtAndKw(matchedText) { let amt = 0, kw = ''; const re = new RegExp(`(${KW_LIST.join('|')})${SEP}(${AMT_RE_STR})`, 'g'); let m, last = null; while ((m = re.exec(matchedText)) !== null) { last = m; } if (last) { kw = last[1]; amt = toNum(last[2]); } else { const nums = matchedText.match(new RegExp(AMT_RE_STR, 'g')); if (nums) amt = toNum(nums[nums.length - 1]); } return { amt, kw }; }
+
+function parseTeMaSegment(content) {
+  if (!content.trim()) return null;
+  const allDictKeys = Object.keys(D).filter(k => !ZODIAC.includes(k) && !/^\d+$/.test(k) && !/^\d{2}$/.test(k));
+  allDictKeys.sort((a, b) => b.length - a.length);
+  let remaining = content.trim();
+  const tokens = [];
+  const invalidNums = [];
+  const zodRegex = new RegExp(`^[${ZODIAC}]`);
+  while (remaining.length > 0) {
+    remaining = remaining.trim();
+    let matched = false;
+    for (const key of allDictKeys) {
+      if (remaining.startsWith(key)) {
+        if (keyToAllNums(key).length > 0) tokens.push({ type: 'key', value: key });
+        remaining = remaining.slice(key.length);
+        matched = true;
+        break;
+      }
+    }
+    if (matched) continue;
+    const zodMatch = remaining.match(zodRegex);
+    if (zodMatch) { tokens.push({ type: 'zodiac', value: zodMatch[0] }); remaining = remaining.slice(1); continue; }
+    const numMatch = remaining.match(/^(\d+)/);
+    if (numMatch) {
+      const nStr = numMatch[1];
+      const n = parseInt(nStr);
+      if (n >= 1 && n <= 49) {
+        tokens.push({ type: 'num', value: String(n) });
+        remaining = remaining.slice(nStr.length);
+        continue;
+      } else {
+        invalidNums.push(nStr);
+        remaining = remaining.slice(nStr.length);
+        continue;
+      }
+    }
+    remaining = remaining.slice(1);
+  }
+  if (tokens.length === 0) return null;
+  const allNumsArr = [];
+  const displayItems = [];
+  for (const t of tokens) {
+    if (t.type === 'num') {
+      const padded = String(parseInt(t.value)).padStart(2, '0');
+      displayItems.push(padded);
+      allNumsArr.push(padded);
+    } else if (t.type === 'zodiac') {
+      displayItems.push(t.value);
+      const nums = ZODIAC_NUMS[t.value] ? ZODIAC_NUMS[t.value].split(/[\s,，]+/) : [];
+      nums.forEach(n => allNumsArr.push(n));
+    } else if (t.type === 'key') {
+      displayItems.push(t.value);
+      const nums = keyToAllNums(t.value);
+      nums.forEach(n => allNumsArr.push(n));
+    }
+  }
+  const cnt = allNumsArr.length;
+  const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
+  return { displayItems, totalCount: cnt, warnings, allNumsArr: allNumsArr };
+}
     function collectSpecialMatches(text) {
   const Z = ZODIAC;
   const allMatches = [];
@@ -1207,10 +1279,8 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   function itemsToNums(items) {
     const nums = [];
     for (const item of items) {
-      if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(item)) {
-        if (ZODIAC_NUMS[item]) nums.push(...ZODIAC_NUMS[item].split(/[\s,，]+/));
-      } else if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]+$/.test(item)) {
-        // 连续生肖串：逐个字符拆分处理
+      if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]+$/.test(item)) {
+        // 支持连续生肖串，逐个字符拆分
         for (const ch of item) {
           if (ZODIAC_NUMS[ch]) nums.push(...ZODIAC_NUMS[ch].split(/[\s,，]+/));
         }
@@ -1308,8 +1378,8 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
     }
   };
 
-  // 修复：拖/托前后分隔符允许零个（SEP_CHARS* 替代 SEP_CHARS+）
-  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}*(?:[${Z}]+|\\d+尾|\\d{1,2}))${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}*(?:[${Z}]+|\\d+尾|\\d{1,2}))[\\s]*${END_AMT_RE}`, 'g'), m => {
+  // 修复：拖/托前后分隔符改为可选（SEP_CHARS*），支持牛托马狗、牛,托.马狗等格式
+  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))[\\s]*${END_AMT_RE}`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const leftPart = m[1], rightPart = m[2];
     return handleDragMatch(leftPart, rightPart, amt, kw);
@@ -1318,8 +1388,11 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   addMatch(new RegExp(`[二2]中[二2]${SEP}([${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*([${Z}]+|\\d+尾|\\d{1,2})[\\s]*${END_AMT_RE}`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const left = m[1], right = m[2];
-    const leftNums = itemsToNums([left]);
-    const rightNums = itemsToNums([right]);
+    // 拆分连续生肖串为数组
+    const leftItems = left.split('').filter(c => c.trim());
+    const rightItems = right.split('').filter(c => c.trim());
+    const leftNums = itemsToNums(leftItems.length ? leftItems : [left]);
+    const rightNums = itemsToNums(rightItems.length ? rightItems : [right]);
     if (leftNums.length === 0 || rightNums.length === 0) return null;
     const pairs = [];
     for (const a of leftNums) for (const b of rightNums) if (a !== b) pairs.push(a + '-' + b);
@@ -1523,11 +1596,10 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   if (!line.trim()) return [];
   
   // ===== 拦截处理：纯生肖串 + 各/各肖 + 数字（特肖玩法） =====
-  // 只调用一次 collectSpecialMatches
-  const specialMatches = collectSpecialMatches(line);
-  
-  // 如果没有其他玩法匹配，检查是否符合特肖条件
-  if (specialMatches.length === 0) {
+  // 先检查是否匹配其他玩法
+  const specialMatchesCheck = collectSpecialMatches(line);
+  if (specialMatchesCheck.length === 0) {
+    // 没有其他玩法匹配，检查是否符合特肖条件
     const ZODIAC_SET = new Set('鼠牛虎兔龙蛇马羊猴鸡狗猪'.split(''));
     const AMTS = '(?:元|米|块|角|分|毛|¥|￥|\\$)';
     // 只匹配单独的"各"（后不跟数/号/组/码/注/下/买）或"各肖"
@@ -1554,6 +1626,7 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
     }
   }
   
+  const specialMatches = specialMatchesCheck;
   const results = [];
   let lastEnd = 0;
   for (const m of specialMatches) {
@@ -1595,6 +1668,245 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
     }
   }
   return results;
+}
+
+function performRecognition(text) {
+  const resultDiv = document.getElementById('orderResult');
+  if (!text || !text.trim()) {
+    if (resultDiv) resultDiv.innerHTML = '';
+    updateOrderTotalDisplay();
+    window._pureOrderLines = [];
+    return;
+  }
+  let processedText = preprocess(text);
+  const lines = processedText.split('\n');
+  const allResults = [];
+  for (const line of lines) { if (!line.trim()) continue; allResults.push(...processOneLine(line)); }
+  
+  const mergedArray = allResults.map(r => ({
+    category: r.cat, numbers: r.nums, unitAmount: r.amt,
+    totalCount: r.cnt, totalAmount: r.total, kw: r.kw || '', warnings: r.warnings || []
+  }));
+  
+  if (resultDiv) {
+    if (mergedArray.length === 0) {
+      resultDiv.innerHTML = text ? `<div class="result-line">${text}</div>` : '';
+      window._pureOrderLines = [];
+    } else {
+      displayResults(mergedArray, resultDiv);
+    }
+  }
+  updateOrderTotalDisplay();
+  updateMaxLossDisplay();
+}
+
+function displayResults(rs, container) {
+  if (!container) container = document.getElementById('orderResult');
+  if (!container) return;
+  if (rs.length === 0) { container.innerHTML = ''; window._pureOrderLines = []; return; }
+  let total = 0; let html = '';
+  const pureLines = [];
+  for (const r of rs) {
+    total += r.totalAmount;
+    const kwDisplay = (r.category === '特码') ? '各数' : '各';
+    const amountStr = `${kwDisplay}${Math.round(r.unitAmount)}`;
+    const info = r.totalCount > 1 ? `(${r.totalCount}注, 共${Math.round(r.totalAmount)})` : `(共${Math.round(r.totalAmount)})`;
+    const numStr = formatNums(r.category, r.numbers);
+    let line = `${r.category}:${numStr}${amountStr} ${info}`;
+    if (r.warnings && r.warnings.length) { line += ` <span style="color:red;">[${r.warnings.join('；')}]</span>`; }
+    html += `<div class="result-line">${line}</div>`;
+    const pureNumStr = formatNums(r.category, r.numbers);
+    pureLines.push(`${r.category}:${pureNumStr} ${kwDisplay} ${Math.round(r.unitAmount)}`);
+  }
+  container.innerHTML = html;
+  window._pureOrderLines = pureLines;
+}
+
+function formatNums(cat, numsArr) {
+  const simpleCats = ['特码', '特肖', '平特肖', '平码', '平特尾'];
+  if (simpleCats.includes(cat)) return numsArr.join('-');
+  if (cat.includes('连肖')) return numsArr.map(g => '(' + g.split('').join('-') + ')').join(' ');
+  return numsArr.map(g => `(` + g + `)`).join(' ');
+}
+
+// ===== countItemsInLine 适配新版识别格式（不去重，增加特肖识别） =====
+function countItemsInLine(line) {
+  // 特肖行：特肖:生肖-生肖 各 金额
+  const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
+  if (teXiaoMatch) {
+    const zodiacsStr = teXiaoMatch[1];
+    const amt = parseInt(teXiaoMatch[2]) || 0;
+    const zodiacs = zodiacsStr.split('-').map(z => z.trim()).filter(z => z);
+    // 特肖返回生肖个数和原始金额，不展开成号码
+    return { numbers: [], zodiacs: zodiacs, amount: amt, playType: '特肖', zodiacCount: zodiacs.length };
+  }
+  
+  const newMatch = line.match(/^(.+?):(.+?)\s+(各(?:数|))\s*(\d+)$/);
+  if (newMatch) {
+    const playType = newMatch[1];
+    const content = newMatch[2];
+    const amt = parseInt(newMatch[4]) || 0;
+    if (playType !== '特码') {
+      return { numbers: [], zodiacs: [], amount: 0, playType };
+    }
+    const items = content.split('-').map(i => i.trim()).filter(i => i);
+    const nums = [];
+    const zods = [];
+    items.forEach(item => {
+      if (/^\d{2}$/.test(item) && parseInt(item) >= 1 && parseInt(item) <= 49) {
+        nums.push(item);
+      } else if (/^\d$/.test(item) && parseInt(item) >= 1 && parseInt(item) <= 49) {
+        nums.push(item.padStart(2, '0'));
+      } else if (D[item]) {
+        const val = D[item];
+        if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(val)) {
+          for (const z of val) { if (ZODIAC_NUMS[z]) zods.push(z); }
+          for (const z of val) { if (ZODIAC_NUMS[z]) ZODIAC_NUMS[z].split(/[\s,，]+/).forEach(n => nums.push(n)); }
+        } else {
+          val.split(/[\s,，]+/).filter(n => n.trim()).forEach(n => nums.push(n.padStart(2, '0')));
+        }
+      } else if (/^[\u4e00-\u9fa5]$/.test(item) && ZODIAC_NUMS[item]) {
+        zods.push(item);
+        ZODIAC_NUMS[item].split(/[\s,，]+/).forEach(n => nums.push(n));
+      }
+    });
+    return { numbers: nums, zodiacs: [...new Set(zods)], amount: amt, playType };
+  }
+  const oldMatch = line.match(/^(.+?)\s+各(?:数|)\s*(\d+)$/);
+  if (oldMatch) {
+    const content = oldMatch[1];
+    const amt = parseInt(oldMatch[2]) || 0;
+    const items = content.split('-').map(i => i.trim()).filter(i => i);
+    const nums = [];
+    const zods = [];
+    items.forEach(item => {
+      if (/^\d{2}$/.test(item) && parseInt(item) >= 1 && parseInt(item) <= 49) {
+        nums.push(item);
+      } else if (/^\d$/.test(item) && parseInt(item) >= 1 && parseInt(item) <= 49) {
+        nums.push(item.padStart(2, '0'));
+      } else if (D[item]) {
+        const val = D[item];
+        if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(val)) {
+          for (const z of val) { if (ZODIAC_NUMS[z]) zods.push(z); }
+          for (const z of val) { if (ZODIAC_NUMS[z]) ZODIAC_NUMS[z].split(/[\s,，]+/).forEach(n => nums.push(n)); }
+        } else {
+          val.split(/[\s,，]+/).filter(n => n.trim()).forEach(n => nums.push(n.padStart(2, '0')));
+        }
+      } else if (/^[\u4e00-\u9fa5]$/.test(item) && ZODIAC_NUMS[item]) {
+        zods.push(item);
+        ZODIAC_NUMS[item].split(/[\s,，]+/).forEach(n => nums.push(n));
+      }
+    });
+    return { numbers: nums, zodiacs: [...new Set(zods)], amount: amt };
+  }
+  return { numbers: [], zodiacs: [], amount: 0 };
+}
+
+function processCurrentOrder(input, user, isNormal, date = null) {
+  const lines = input.split('\n').filter(l => l.trim());
+  if (!userBetData[user]) userBetData[user] = {};
+  const curZod = localStorage.getItem('selectedStartZodiac') || '马';
+  lines.forEach(line => {
+    // 先尝试匹配特肖格式：特肖:生肖-生肖 各 金额
+    const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
+    if (teXiaoMatch) {
+      const zodiacsStr = teXiaoMatch[1];
+      const amtRaw = parseInt(teXiaoMatch[2]) || 0;
+      if (amtRaw <= 0) return;
+      const zodiacs = zodiacsStr.split('-').map(z => z.trim()).filter(z => z);
+      zodiacs.forEach(z => {
+        const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
+        const isBenming = z === curZod;
+        const perNumAmt = Math.round(amtRaw / (isBenming ? 5 : 4));
+        if (perNumAmt <= 0) return;
+        const nums = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/);
+        nums.forEach(num => {
+          const numPadded = num.padStart(2, '0');
+          if (isNormal) {
+            userBetData[user][numPadded] = (userBetData[user][numPadded] || 0) + perNumAmt;
+            tableBetData[numPadded] = (tableBetData[numPadded] || 0) + perNumAmt;
+            reportBetData[numPadded] = (reportBetData[numPadded] || 0) + perNumAmt;
+            numberCount[numPadded] = (numberCount[numPadded] || 0) + 1;
+            originalOrderAmount[numPadded] = (originalOrderAmount[numPadded] || 0) + perNumAmt;
+            directOrderAmount[numPadded] = (directOrderAmount[numPadded] || 0) + perNumAmt;
+            orderCountAll++;
+            numberOrderTotal += perNumAmt;
+          } else {
+            userBetData[user][numPadded] = (userBetData[user][numPadded] || 0) - perNumAmt;
+            reportBetData[numPadded] = (reportBetData[numPadded] || 0) - perNumAmt;
+            reportAmountData[numPadded] = (reportAmountData[numPadded] || 0) + perNumAmt;
+            directReportAmount[numPadded] = (directReportAmount[numPadded] || 0) + perNumAmt;
+          }
+        });
+        if (isNormal) {
+          zodiacCount[z] = (zodiacCount[z] || 0) + 1;
+          zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + perNumAmt * zNumCount;
+          zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + perNumAmt * zNumCount;
+        } else {
+          zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + perNumAmt * zNumCount;
+          zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + perNumAmt * zNumCount;
+        }
+      });
+      generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards();
+      renderReportAmountTable(); renderOriginalAmountTable(); updateReportAmountTotal(); updateAmountDisplays();
+      return;
+    }
+    
+    const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
+    if (!amount || amount <= 0) return;
+    if (playType && playType !== '特码') return;
+    const nMin = parseInt(document.getElementById('numAmountMin')?.value) || 1, nMax = parseInt(document.getElementById('numAmountMax')?.value) || 50000;
+    const zMin = parseInt(document.getElementById('zodiacAmountMin')?.value) || 1, zMax = parseInt(document.getElementById('zodiacAmountMax')?.value) || 50000;
+    if (isNormal) {
+      if (zodiacs.length > 0) { zodiacs.forEach(z => { const w = z === curZod ? 5 : 4; zodiacWeightedTotal += amount * w; }); } else if (numbers.length > 0) { numberOrderTotal += numbers.length * amount; }
+      orderCountAll++;
+    }
+    numbers.forEach(num => {
+      if (isNormal) {
+        userBetData[user][num] = (userBetData[user][num] || 0) + amount;
+        tableBetData[num] = (tableBetData[num] || 0) + amount;
+        reportBetData[num] = (reportBetData[num] || 0) + amount;
+        numberCount[num] = (numberCount[num] || 0) + 1;
+        if (amount >= nMin && amount <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+        originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amount;
+        if (zodiacs.length === 0) directOrderAmount[num] = (directOrderAmount[num] || 0) + amount;
+      } else {
+        userBetData[user][num] = (userBetData[user][num] || 0) - amount;
+        reportBetData[num] = (reportBetData[num] || 0) - amount;
+        reportAmountData[num] = (reportAmountData[num] || 0) + amount;
+        if (zodiacs.length === 0) directReportAmount[num] = (directReportAmount[num] || 0) + amount;
+      }
+    });
+    if (isNormal) {
+      zodiacs.forEach(z => {
+        zodiacCount[z] = (zodiacCount[z] || 0) + 1;
+        const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
+        zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amount * zNumCount;
+        if (amount >= zMin && amount <= zMax) { zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1; zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amount * zNumCount; }
+        (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
+          const num = n.padStart(2, '0');
+          userBetData[user][num] = (userBetData[user][num] || 0) + amount;
+          tableBetData[num] = (tableBetData[num] || 0) + amount;
+          reportBetData[num] = (reportBetData[num] || 0) + amount;
+          originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amount;
+        });
+      });
+    } else {
+      zodiacs.forEach(z => {
+        const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
+        zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + amount * zNumCount;
+        if (amount >= zMin && amount <= zMax) { zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + amount * zNumCount; }
+        (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
+          const num = n.padStart(2, '0');
+          userBetData[user][num] = (userBetData[user][num] || 0) - amount;
+          reportBetData[num] = (reportBetData[num] || 0) - amount;
+          reportAmountData[num] = (reportAmountData[num] || 0) + amount;
+        });
+      });
+    }
+  });
+  generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards();
+  renderReportAmountTable(); renderOriginalAmountTable(); updateReportAmountTotal(); updateAmountDisplays();
 }
     // ===== 连肖统计弹窗 =====
 function showLianxiaoStatsWin() {
