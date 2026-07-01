@@ -1182,7 +1182,6 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   c = c.replace(/[\s]{2,}/g, ' ');
   
   // 头数连写：支持数字间有分隔符（空格、标点等）
-  // 匹配：数字+分隔符+数字+...+头，提取所有数字用-连接
   c = c.replace(/((?:\d[\s,，.。、+\-*＊\/\\|]*)+)头/g, (match, digits) => {
     const nums = (digits.match(/\d/g) || []);
     if (nums.length >= 2) return nums.map(n => n + '头').join('-');
@@ -1197,77 +1196,6 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   
   return c.trim();
 }
-
-const KW_RE_STR = `(${KW_LIST.join('|')})`;
-const AMT_RE_STR = '(\\d+|[一二三四五六七八九十百千两]+)';
-const SEP_CHARS = '[\\s\\-,\\.\u3001\uff0c\u3002\uff01\uff1f\uff1b\uff1a\\(\\)\\[\\]{}<>/|@#$%^&*+=]';
-const SEP = SEP_CHARS + '*';
-const KW_GROUP = `(${KW_LIST.join('|')})`;
-const AMT_GROUP = `(${AMT_RE_STR})`;
-const END_AMT_RE = `\\s*(?:(?:${KW_GROUP})\\s*)?${AMT_GROUP}`;
-
-function extractAmtAndKw(matchedText) { let amt = 0, kw = ''; const re = new RegExp(`(${KW_LIST.join('|')})${SEP}(${AMT_RE_STR})`, 'g'); let m, last = null; while ((m = re.exec(matchedText)) !== null) { last = m; } if (last) { kw = last[1]; amt = toNum(last[2]); } else { const nums = matchedText.match(new RegExp(AMT_RE_STR, 'g')); if (nums) amt = toNum(nums[nums.length - 1]); } return { amt, kw }; }
-
-function parseTeMaSegment(content) {
-  if (!content.trim()) return null;
-  const allDictKeys = Object.keys(D).filter(k => !ZODIAC.includes(k) && !/^\d+$/.test(k) && !/^\d{2}$/.test(k));
-  allDictKeys.sort((a, b) => b.length - a.length);
-  let remaining = content.trim();
-  const tokens = [];
-  const invalidNums = [];
-  const zodRegex = new RegExp(`^[${ZODIAC}]`);
-  while (remaining.length > 0) {
-    remaining = remaining.trim();
-    let matched = false;
-    for (const key of allDictKeys) {
-      if (remaining.startsWith(key)) {
-        if (keyToAllNums(key).length > 0) tokens.push({ type: 'key', value: key });
-        remaining = remaining.slice(key.length);
-        matched = true;
-        break;
-      }
-    }
-    if (matched) continue;
-    const zodMatch = remaining.match(zodRegex);
-    if (zodMatch) { tokens.push({ type: 'zodiac', value: zodMatch[0] }); remaining = remaining.slice(1); continue; }
-    const numMatch = remaining.match(/^(\d+)/);
-    if (numMatch) {
-      const nStr = numMatch[1];
-      const n = parseInt(nStr);
-      if (n >= 1 && n <= 49) {
-        tokens.push({ type: 'num', value: String(n) });
-        remaining = remaining.slice(nStr.length);
-        continue;
-      } else {
-        invalidNums.push(nStr);
-        remaining = remaining.slice(nStr.length);
-        continue;
-      }
-    }
-    remaining = remaining.slice(1);
-  }
-  if (tokens.length === 0) return null;
-  const allNumsArr = [];
-  const displayItems = [];
-  for (const t of tokens) {
-    if (t.type === 'num') {
-      const padded = String(parseInt(t.value)).padStart(2, '0');
-      displayItems.push(padded);
-      allNumsArr.push(padded);
-    } else if (t.type === 'zodiac') {
-      displayItems.push(t.value);
-      const nums = ZODIAC_NUMS[t.value] ? ZODIAC_NUMS[t.value].split(/[\s,，]+/) : [];
-      nums.forEach(n => allNumsArr.push(n));
-    } else if (t.type === 'key') {
-      displayItems.push(t.value);
-      const nums = keyToAllNums(t.value);
-      nums.forEach(n => allNumsArr.push(n));
-    }
-  }
-  const cnt = allNumsArr.length;
-  const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
-  return { displayItems, totalCount: cnt, warnings, allNumsArr: allNumsArr };
-}
     function collectSpecialMatches(text) {
   const Z = ZODIAC;
   const allMatches = [];
@@ -1281,6 +1209,11 @@ function parseTeMaSegment(content) {
     for (const item of items) {
       if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(item)) {
         if (ZODIAC_NUMS[item]) nums.push(...ZODIAC_NUMS[item].split(/[\s,，]+/));
+      } else if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]+$/.test(item)) {
+        // 连续生肖串：逐个字符拆分处理
+        for (const ch of item) {
+          if (ZODIAC_NUMS[ch]) nums.push(...ZODIAC_NUMS[ch].split(/[\s,，]+/));
+        }
       } else if (/^\d+尾$/.test(item)) {
         const d = item.replace('尾', '');
         if (D[d + '尾']) nums.push(...D[d + '尾'].split(/[\s,，]+/));
@@ -1375,7 +1308,8 @@ function parseTeMaSegment(content) {
     }
   };
 
-  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))[\\s]*${END_AMT_RE}`, 'g'), m => {
+  // 修复：拖/托前后分隔符允许零个（SEP_CHARS* 替代 SEP_CHARS+）
+  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}*(?:[${Z}]+|\\d+尾|\\d{1,2}))${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}*(?:[${Z}]+|\\d+尾|\\d{1,2}))[\\s]*${END_AMT_RE}`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const leftPart = m[1], rightPart = m[2];
     return handleDragMatch(leftPart, rightPart, amt, kw);
