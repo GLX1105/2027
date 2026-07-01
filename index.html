@@ -1592,7 +1592,7 @@ function parseTeMaSegment(content) {
   }
   return deduped;
 }
-    function processOneLine(line) {
+   function processOneLine(line) {
   if (!line.trim()) return [];
   
   // ===== 拦截处理：纯生肖串 + 各/各肖 + 数字（特肖玩法） =====
@@ -1729,7 +1729,7 @@ function formatNums(cat, numsArr) {
   return numsArr.map(g => `(` + g + `)`).join(' ');
 }
 
-// ===== countItemsInLine 适配新版识别格式（不去重，增加特肖识别） =====
+// ===== countItemsInLine 适配新版识别格式（不去重，增加特肖识别，修复属性肖双重统计） =====
 function countItemsInLine(line) {
   // 特肖行：特肖:生肖-生肖 各 金额
   const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
@@ -1737,7 +1737,6 @@ function countItemsInLine(line) {
     const zodiacsStr = teXiaoMatch[1];
     const amt = parseInt(teXiaoMatch[2]) || 0;
     const zodiacs = zodiacsStr.split('-').map(z => z.trim()).filter(z => z);
-    // 特肖返回生肖个数和原始金额，不展开成号码
     return { numbers: [], zodiacs: zodiacs, amount: amt, playType: '特肖', zodiacCount: zodiacs.length };
   }
   
@@ -1760,8 +1759,17 @@ function countItemsInLine(line) {
       } else if (D[item]) {
         const val = D[item];
         if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(val)) {
-          for (const z of val) { if (ZODIAC_NUMS[z]) zods.push(z); }
-          for (const z of val) { if (ZODIAC_NUMS[z]) ZODIAC_NUMS[z].split(/[\s,，]+/).forEach(n => nums.push(n)); }
+          // 判断是属性肖/分类词还是单个生肖
+          if (val.length === 1) {
+            // 单个生肖：如 D["鼠"] = "07 19 31 43"
+            zods.push(item);
+            ZODIAC_NUMS[item].split(/[\s,，]+/).forEach(n => nums.push(n));
+          } else {
+            // 属性肖/分类词：如 D["家禽"] = "牛马羊鸡狗猪"，只展开号码，不填充zods
+            for (const z of val) {
+              if (ZODIAC_NUMS[z]) ZODIAC_NUMS[z].split(/[\s,，]+/).forEach(n => nums.push(n));
+            }
+          }
         } else {
           val.split(/[\s,，]+/).filter(n => n.trim()).forEach(n => nums.push(n.padStart(2, '0')));
         }
@@ -1787,8 +1795,14 @@ function countItemsInLine(line) {
       } else if (D[item]) {
         const val = D[item];
         if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(val)) {
-          for (const z of val) { if (ZODIAC_NUMS[z]) zods.push(z); }
-          for (const z of val) { if (ZODIAC_NUMS[z]) ZODIAC_NUMS[z].split(/[\s,，]+/).forEach(n => nums.push(n)); }
+          if (val.length === 1) {
+            zods.push(item);
+            ZODIAC_NUMS[item].split(/[\s,，]+/).forEach(n => nums.push(n));
+          } else {
+            for (const z of val) {
+              if (ZODIAC_NUMS[z]) ZODIAC_NUMS[z].split(/[\s,，]+/).forEach(n => nums.push(n));
+            }
+          }
         } else {
           val.split(/[\s,，]+/).filter(n => n.trim()).forEach(n => nums.push(n.padStart(2, '0')));
         }
