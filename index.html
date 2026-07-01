@@ -1378,26 +1378,11 @@ function parseTeMaSegment(content) {
     }
   };
 
-  // 修复：拖/托前后分隔符改为可选（SEP_CHARS*），支持牛托马狗、牛,托.马狗等格式
-  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))[\\s]*${END_AMT_RE}`, 'g'), m => {
+  // 拖法正则：支持多项拖多项（号码/生肖/尾数均可，拖/托前后分隔符可选）
+  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*)${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*)[\\s]*${END_AMT_RE}`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const leftPart = m[1], rightPart = m[2];
     return handleDragMatch(leftPart, rightPart, amt, kw);
-  });
-
-  addMatch(new RegExp(`[二2]中[二2]${SEP}([${Z}]+|\\d+尾|\\d{1,2})${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*([${Z}]+|\\d+尾|\\d{1,2})[\\s]*${END_AMT_RE}`, 'g'), m => {
-    const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
-    const left = m[1], right = m[2];
-    // 拆分连续生肖串为数组
-    const leftItems = left.split('').filter(c => c.trim());
-    const rightItems = right.split('').filter(c => c.trim());
-    const leftNums = itemsToNums(leftItems.length ? leftItems : [left]);
-    const rightNums = itemsToNums(rightItems.length ? rightItems : [right]);
-    if (leftNums.length === 0 || rightNums.length === 0) return null;
-    const pairs = [];
-    for (const a of leftNums) for (const b of rightNums) if (a !== b) pairs.push(a + '-' + b);
-    if (pairs.length === 0) return null;
-    return { cat: '二中二', nums: pairs, amt, cnt: pairs.length, total: amt * pairs.length, kw };
   });
 
   addMatch(new RegExp(`复[式试]?[二2]中[二2]${SEP}((?:\\d+${SEP_CHARS}+)+\\d+)(?!${SEP_CHARS}*[拖托])[\\s]*${END_AMT_RE}`, 'g'), m => {
@@ -1592,7 +1577,7 @@ function parseTeMaSegment(content) {
   }
   return deduped;
 }
-   function processOneLine(line) {
+    function processOneLine(line) {
   if (!line.trim()) return [];
   
   // ===== 拦截处理：纯生肖串 + 各/各肖 + 数字（特肖玩法） =====
@@ -1729,7 +1714,7 @@ function formatNums(cat, numsArr) {
   return numsArr.map(g => `(` + g + `)`).join(' ');
 }
 
-// ===== countItemsInLine 适配新版识别格式（不去重，增加特肖识别，修复属性肖双重统计） =====
+// ===== countItemsInLine 适配新版识别格式（不去重，增加特肖识别，修复属性肖双重统计和单个生肖判断） =====
 function countItemsInLine(line) {
   // 特肖行：特肖:生肖-生肖 各 金额
   const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
@@ -1759,9 +1744,9 @@ function countItemsInLine(line) {
       } else if (D[item]) {
         const val = D[item];
         if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(val)) {
-          // 判断是属性肖/分类词还是单个生肖
-          if (val.length === 1) {
-            // 单个生肖：如 D["鼠"] = "07 19 31 43"
+          // 判断是单个生肖还是属性肖/分类词
+          if (/^[\u4e00-\u9fa5]$/.test(item) && ZODIAC_NUMS[item]) {
+            // 单个生肖：如 D["鼠"]
             zods.push(item);
             ZODIAC_NUMS[item].split(/[\s,，]+/).forEach(n => nums.push(n));
           } else {
@@ -1795,7 +1780,7 @@ function countItemsInLine(line) {
       } else if (D[item]) {
         const val = D[item];
         if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(val)) {
-          if (val.length === 1) {
+          if (/^[\u4e00-\u9fa5]$/.test(item) && ZODIAC_NUMS[item]) {
             zods.push(item);
             ZODIAC_NUMS[item].split(/[\s,，]+/).forEach(n => nums.push(n));
           } else {
@@ -1827,6 +1812,7 @@ function processCurrentOrder(input, user, isNormal, date = null) {
       const zodiacsStr = teXiaoMatch[1];
       const amtRaw = parseInt(teXiaoMatch[2]) || 0;
       if (amtRaw <= 0) return;
+      orderCountAll++; // 每行特肖订单只计数一次
       const zodiacs = zodiacsStr.split('-').map(z => z.trim()).filter(z => z);
       zodiacs.forEach(z => {
         const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
@@ -1843,7 +1829,6 @@ function processCurrentOrder(input, user, isNormal, date = null) {
             numberCount[numPadded] = (numberCount[numPadded] || 0) + 1;
             originalOrderAmount[numPadded] = (originalOrderAmount[numPadded] || 0) + perNumAmt;
             directOrderAmount[numPadded] = (directOrderAmount[numPadded] || 0) + perNumAmt;
-            orderCountAll++;
             numberOrderTotal += perNumAmt;
           } else {
             userBetData[user][numPadded] = (userBetData[user][numPadded] || 0) - perNumAmt;
@@ -1869,11 +1854,11 @@ function processCurrentOrder(input, user, isNormal, date = null) {
     const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
     if (!amount || amount <= 0) return;
     if (playType && playType !== '特码') return;
+    orderCountAll++; // 每行非特肖订单只计数一次
     const nMin = parseInt(document.getElementById('numAmountMin')?.value) || 1, nMax = parseInt(document.getElementById('numAmountMax')?.value) || 50000;
     const zMin = parseInt(document.getElementById('zodiacAmountMin')?.value) || 1, zMax = parseInt(document.getElementById('zodiacAmountMax')?.value) || 50000;
     if (isNormal) {
       if (zodiacs.length > 0) { zodiacs.forEach(z => { const w = z === curZod ? 5 : 4; zodiacWeightedTotal += amount * w; }); } else if (numbers.length > 0) { numberOrderTotal += numbers.length * amount; }
-      orderCountAll++;
     }
     numbers.forEach(num => {
       if (isNormal) {
