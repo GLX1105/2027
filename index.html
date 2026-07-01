@@ -1094,6 +1094,10 @@ function buildDict() {
   d['绿波'] = '05 06 11 16 17 21 22 27 28 32 33 38 39 43 44 49'; d['绿'] = d['绿波'];
   d['绿小'] = '05 06 11 16 17 21 22'; d['绿大'] = '27 28 32 33 38 39 43 44 49';
   d['绿单'] = '05 11 17 21 27 33 39 43 49'; d['绿双'] = '06 16 22 28 32 38 44';
+  // 波色别名（DICT_DIRECT_ALIAS）
+  d['红波单'] = d['红单']; d['红波双'] = d['红双']; d['红波单数'] = d['红单']; d['红波双数'] = d['红双'];
+  d['蓝波单'] = d['蓝单']; d['蓝波双'] = d['蓝双']; d['兰波单'] = d['蓝单']; d['兰波双'] = d['蓝双']; d['兰单'] = d['蓝单']; d['兰双'] = d['蓝双'];
+  d['绿波单'] = d['绿单']; d['绿波双'] = d['绿双'];
   const tails = { 0: '10 20 30 40', 1: '01 11 21 31 41', 2: '02 12 22 32 42', 3: '03 13 23 33 43', 4: '04 14 24 34 44', 5: '05 15 25 35 45', 6: '06 16 26 36 46', 7: '07 17 27 37 47', 8: '08 18 28 38 48', 9: '09 19 29 39 49' };
   for (let i = 0; i <= 9; i++) d[i + '尾'] = tails[i];
   const cnT = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九']; for (let i = 0; i <= 9; i++) d[cnT[i] + '尾'] = tails[i];
@@ -1149,7 +1153,7 @@ function zodiacToNums(zStr) { const ns = []; for (const z of zStr) { if (D[z]) D
 function extractNums(txt) { return (txt.match(/\d+/g) || []).map(n => parseInt(n)).filter(n => n >= 1 && n <= 49).map(n => String(n).padStart(2, '0')); }
 function extractZodiacs(txt) { return (txt.match(new RegExp(`[${ZODIAC}]`, 'g')) || []); }
 function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(/\d+/g) || []).map(n => parseInt(n)); return allNums.filter(n => n > 49); }
-    function preprocess(txt) {
+ function preprocess(txt) {
   let c = txt;
   c = c.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
   c = c.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -1163,16 +1167,25 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
     三全中: '三中三', 復制: '复式', 鳮: '鸡', 単: '单', 組: '组', 平待: '平特', 泼: '波', 肖连: '连肖', 消: '肖', '〇': '0',
     l: '1', I: '1', 壹: '一', 贰: '二', 叁: '三', 肆: '四', 陆: '六', 柒: '七', 捌: '八', 玖: '九', 伍: '五', 免: '兔', 拘: '狗',
     馬: '马', 龍: '龙', 雞: '鸡', 豬: '猪', 候: '猴', 侯: '猴', 兔子: '兔', 猴子: '猴', 子: '鼠', 老蛇: '蛇',
-    '红波小': '红小', '红波大': '红大', '绿波小': '绿小', '绿波大': '绿大', '蓝波小': '蓝小', 兰小: '蓝小', 兰波小: '蓝小',
-    '蓝波大': '蓝大', 兰大: '蓝大', 兰波大: '蓝大', 尾数小: '小尾', 尾数大: '大尾', 持: '特', 個數: '个数', 數: '数', 號: '号',
-    碼: '码', 壓: '压', 篮: '蓝', 名: '各', O: '0', o: '0', Ⅰ: '1', 三三二二串: '复三复二', 三三二二: '复三复二', 家属: '家肖',
-    '特六肖共': '共', '澳门特肖': '澳门', '澳门特': '澳门', 減: '减', '—': '一', '_': '', '–': '-', '—': '-', '～': '~', '′': "'",
-    '＇': "'", '‘': "'",
-    '复3': '复三', '复三': '复式三', '复试三肖': '复式三连肖', '三肖复式': '三连肖复式',
+    // 波色大小（PREPROCESS_REPLACE）
+    '红波小': '红小', '红波大': '红大', '绿波小': '绿小', '绿波大': '绿大',
+    '蓝波小': '蓝小', '兰小': '蓝小', '兰波小': '蓝小',
+    '蓝波大': '蓝大', '兰大': '蓝大', '兰波大': '蓝大',
+    // 尾数
+    '尾数小': '小尾', '尾数大': '大尾',
+    // 平特
+    '平特一肖': '平特肖', '平特二肖': '平特肖', '平特三肖': '平特肖',
+    // 复式连肖
+    '复试三肖': '复式三连肖', '三肖复式': '三连肖复式',
+    // 复式连尾
     '复试三尾': '复式三连尾', '三尾复式': '三连尾复式', '复3尾': '复三尾', '复三尾': '复式三连尾',
+    // 二中二
     '复试二中二': '复式二中二', '二中二复试': '复式二中二', '2中2复试': '复式二中二', '复试2中2': '复式二中二',
+    // 三中三
     '复试三中三': '复式三中三', '三中三复试': '复式三中三', '3中3复试': '复式三中三', '复试3中3': '复式三中三',
-    '平特一肖': '平特肖', '平特二肖': '平特肖', '平特三肖': '平特肖'
+    // 其他
+    '三三二二串': '复三复二', '三三二二': '复三复二', '家属': '家肖',
+    '复3': '复三', '复三': '复式三', '复3尾': '复三尾'
   };
   for (const [k, v] of Object.entries(reps)) c = c.split(k).join(v);
   ['天天彩', '天天采', '天天', '天彩', '天采', '总单'].forEach(s => c = c.split(s).join(''));
@@ -1182,7 +1195,6 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   c = c.replace(/[\s]{2,}/g, ' ');
   
   // 头数连写：支持数字间有分隔符（空格、标点等）
-  // 匹配：数字+分隔符+数字+...+头，提取所有数字用-连接
   c = c.replace(/((?:\d[\s,，.。、+\-*＊\/\\|]*)+)头/g, (match, digits) => {
     const nums = (digits.match(/\d/g) || []);
     if (nums.length >= 2) return nums.map(n => n + '头').join('-');
@@ -1280,7 +1292,6 @@ function parseTeMaSegment(content) {
     const nums = [];
     for (const item of items) {
       if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]+$/.test(item)) {
-        // 支持连续生肖串，逐个字符拆分
         for (const ch of item) {
           if (ZODIAC_NUMS[ch]) nums.push(...ZODIAC_NUMS[ch].split(/[\s,，]+/));
         }
@@ -1744,13 +1755,10 @@ function countItemsInLine(line) {
       } else if (D[item]) {
         const val = D[item];
         if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(val)) {
-          // 判断是单个生肖还是属性肖/分类词
           if (/^[\u4e00-\u9fa5]$/.test(item) && ZODIAC_NUMS[item]) {
-            // 单个生肖：如 D["鼠"]
             zods.push(item);
             ZODIAC_NUMS[item].split(/[\s,，]+/).forEach(n => nums.push(n));
           } else {
-            // 属性肖/分类词：如 D["家禽"] = "牛马羊鸡狗猪"，只展开号码，不填充zods
             for (const z of val) {
               if (ZODIAC_NUMS[z]) ZODIAC_NUMS[z].split(/[\s,，]+/).forEach(n => nums.push(n));
             }
@@ -1812,7 +1820,7 @@ function processCurrentOrder(input, user, isNormal, date = null) {
       const zodiacsStr = teXiaoMatch[1];
       const amtRaw = parseInt(teXiaoMatch[2]) || 0;
       if (amtRaw <= 0) return;
-      orderCountAll++; // 每行特肖订单只计数一次
+      orderCountAll++;
       const zodiacs = zodiacsStr.split('-').map(z => z.trim()).filter(z => z);
       zodiacs.forEach(z => {
         const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
@@ -1854,7 +1862,7 @@ function processCurrentOrder(input, user, isNormal, date = null) {
     const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
     if (!amount || amount <= 0) return;
     if (playType && playType !== '特码') return;
-    orderCountAll++; // 每行非特肖订单只计数一次
+    orderCountAll++;
     const nMin = parseInt(document.getElementById('numAmountMin')?.value) || 1, nMax = parseInt(document.getElementById('numAmountMax')?.value) || 50000;
     const zMin = parseInt(document.getElementById('zodiacAmountMin')?.value) || 1, zMax = parseInt(document.getElementById('zodiacAmountMax')?.value) || 50000;
     if (isNormal) {
@@ -2288,16 +2296,15 @@ function processTexiaoLineDuijiang(stats, content, amt, drawTeMaZodiac, drawTeMa
   if (zodiacs.length === 0) return;
   const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
   const totalAmt = zodiacs.length * amt;
-  const rebate = 4; // 默认反水4%
+  const rebate = 4;
   stats.orderTotal += totalAmt;
   stats.orderRebate += totalAmt * (rebate / 100);
   if (hasValidDraw && drawTeMaZodiac) {
     let hitZodiac = null;
     let hitAmt = 0;
-    // 检查第七个特码生肖是否在列表中
     if (zodiacs.includes(drawTeMaZodiac)) {
       hitZodiac = drawTeMaZodiac;
-      hitAmt = amt; // 命中的那一个生肖的金额
+      hitAmt = amt;
     }
     if (hitZodiac) {
       const isBenming = hitZodiac === curYearZodiac;
@@ -2801,7 +2808,6 @@ async function refreshLianxiaoStats() {
   if (!db) { container.innerHTML = '数据库不可用'; return; }
   const fd = document.getElementById('filterDate')?.value || getTodayCST();
   
-  // 改为从 STORE_NAME 读取所有订单
   const tx = db.transaction([STORE_NAME], 'readonly');
   const store = tx.objectStore(STORE_NAME);
   const all = await new Promise(resolve => {
@@ -2809,13 +2815,11 @@ async function refreshLianxiaoStats() {
     req.onsuccess = (e) => resolve(e.target.result || []);
   });
   
-  // 筛选当前地区、当前日期、非特码玩法的订单
   const allOrders = all.filter(r => r.region === currentRegion && r.date === fd);
   const records = [];
   allOrders.forEach(order => {
     const lines = order.content.split('\n');
     lines.forEach(line => {
-      // 新版格式：玩法名:内容 各/各组 金额
       const newMatch = line.match(/^(.+?):(.+?)\s+各(?:数|组|)\s*(\d+)$/);
       if (newMatch) {
         const playType = normalizePlayType(newMatch[1]);
@@ -2824,7 +2828,6 @@ async function refreshLianxiaoStats() {
         }
         return;
       }
-      // 旧版格式：内容 各组 金额
       const oldMatch = line.match(/^(.+?)\s+各组\s+(\d+)$/);
       if (oldMatch) {
         records.push({ content: line, user: order.user, date: order.date });
@@ -2879,21 +2882,19 @@ async function refreshLianxiaoStats() {
   
   records.forEach(rec => {
     const line = rec.content;
-    // 新版格式
     const newMatch = line.match(/^(.+?):(.+?)\s+(各(?:组|))\s*(\d+)$/);
     if (newMatch) {
       const playType = normalizePlayType(newMatch[1]);
       const content = newMatch[2];
       const amount = parseInt(newMatch[4]) || 0;
       
-      // 特肖玩法：按单个生肖拆分展示
       if (playType === '特肖') {
         const zodiacs = content.split('-').filter(z => z.trim());
         zodiacs.forEach(z => {
-          const comboType = '特肖';
-          if (!stats[comboType]) stats[comboType] = { withYear: new Map(), withoutYear: new Map() };
+          if (!stats['特肖']) stats['特肖'] = { withYear: new Map(), withoutYear: new Map() };
           const hasYear = z === curYearZodiac;
-          (hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).set(z, ((hasYear ? stats[comboType].withYear : stats[comboType].withoutYear).get(z) || 0) + amount);
+          const target = hasYear ? stats['特肖'].withYear : stats['特肖'].withoutYear;
+          target.set(z, (target.get(z) || 0) + amount);
           grandTotal += amount;
         });
         return;
@@ -2943,7 +2944,6 @@ async function refreshLianxiaoStats() {
       });
       return;
     }
-    // 旧版格式
     const oldMatch = line.match(/^(.+?)\s*(?:各组|各)\s*(\d+)$/);
     if (!oldMatch) return;
     const content = oldMatch[1];
@@ -3445,7 +3445,7 @@ async function saveOrder(){
   
   allLines.forEach(line => {
     if(line.startsWith('特肖:')){
-      // 特肖行：按生肖个数 × 金额计算合计，不展开成号码
+      // 特肖行：按生肖个数 × 金额计算合计
       const match = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
       if(match){
         const zodiacs = match[1].split('-').map(z => z.trim()).filter(z => z);
@@ -3559,6 +3559,31 @@ async function saveReportOrder(){
       }
     }
   });
+  
+  // 上报时同步更新平特肖卡片上报列
+  const pingtexiaoData = getPingtexiaoData();
+  let ptChanged = false;
+  allLines.forEach(line => {
+    const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
+    if (match) {
+      const playType = match[1];
+      const content = match[2];
+      const amt = parseInt(match[3]) || 0;
+      if (playType === '平特肖' || normalizePlayType(playType) === '平特肖') {
+        const items = content.split('-').filter(i => i.trim());
+        items.forEach(item => {
+          const cleanItem = item.trim();
+          if (/^[\u4e00-\u9fa5]$/.test(cleanItem) && ZODIAC_NUMS[cleanItem]) {
+            if (!pingtexiaoData[cleanItem]) pingtexiaoData[cleanItem] = { amount: '', report: '' };
+            const oldReport = parseFloat(pingtexiaoData[cleanItem].report) || 0;
+            pingtexiaoData[cleanItem].report = (oldReport + amt).toString();
+            ptChanged = true;
+          }
+        });
+      }
+    }
+  });
+  if (ptChanged) { savePingtexiaoData(pingtexiaoData); renderPingtexiaoTable(); updatePingtexiaoTotal(); }
   
   const content = allLines.join('\n');
   const existingReports = (await getReportOrderRecords()).filter(r => r.date === date && r.user === user);
@@ -4072,8 +4097,8 @@ function getPingtexiaoKey() { const fd = document.getElementById('filterDate')?.
 function getPingtexiaoData() { try { return JSON.parse(localStorage.getItem(getPingtexiaoKey()) || '{}'); } catch (e) { return {}; } }
 function savePingtexiaoData(data) { localStorage.setItem(getPingtexiaoKey(), JSON.stringify(data)); }
 
-// ===== 平特肖渲染（只读，删除双击编辑功能） =====
-function renderPingtexiaoTable() { const container = document.getElementById('pingtexiaoTableContainer'); if (!container) return; const data = getPingtexiaoData(); const leftZodiacs = ['鼠','牛','虎','兔','龙','蛇']; const rightZodiacs = ['马','羊','猴','鸡','狗','猪']; const zcm = {'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let html = '<table class="freq-table"><thead><tr>'; html += '<th>生肖</th><th>金额</th><th>上报</th><th>剩余</th>'; html += '<th>生肖</th><th>金额</th><th>上报</th><th>剩余</th>'; html += '</tr></thead><tbody>'; for (let r = 0; r < 6; r++) { html += '<tr>'; [leftZodiacs[r], rightZodiacs[r]].forEach(zodiac => { const d = data[zodiac] || { amount: '', report: '' }; const amountVal = d.amount !== undefined && d.amount !== '' ? d.amount : ''; const reportVal = d.report !== undefined && d.report !== '' ? d.report : ''; const remain = (amountVal !== '') ? (parseFloat(amountVal) - (reportVal !== '' ? parseFloat(reportVal) : 0)) : ''; html += `<td class="${zcm[zodiac] || ''}">${zodiac}</td>`; html += `<td><input type="number" class="pt-edit-input amount-red-text" data-zodiac="${zodiac}" data-field="amount" value="${amountVal}" readonly style="width:50px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid transparent;background:transparent;"></td>`; html += `<td><input type="number" class="pt-edit-input pt-report-text" data-zodiac="${zodiac}" data-field="report" value="${reportVal}" readonly style="width:50px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid transparent;background:transparent;"></td>`; html += `<td style="font-size:12px;">${remain !== '' ? remain : ''}</td>`; }); html += '</tr>'; } html += '</tbody></table>'; container.innerHTML = html; updatePingtexiaoTotal(); }
+// ===== 平特肖渲染（只读，数据为0时显示为空） =====
+function renderPingtexiaoTable() { const container = document.getElementById('pingtexiaoTableContainer'); if (!container) return; const data = getPingtexiaoData(); const leftZodiacs = ['鼠','牛','虎','兔','龙','蛇']; const rightZodiacs = ['马','羊','猴','鸡','狗','猪']; const zcm = {'鼠':'red-text','兔':'red-text','马':'red-text','鸡':'red-text','虎':'blue-text','蛇':'blue-text','猴':'blue-text','猪':'blue-text','牛':'green-text','龙':'green-text','羊':'green-text','狗':'green-text'}; let html = '<table class="freq-table"><thead><tr>'; html += '<th>生肖</th><th>金额</th><th>上报</th><th>剩余</th>'; html += '<th>生肖</th><th>金额</th><th>上报</th><th>剩余</th>'; html += '</tr></thead><tbody>'; for (let r = 0; r < 6; r++) { html += '<tr>'; [leftZodiacs[r], rightZodiacs[r]].forEach(zodiac => { const d = data[zodiac] || { amount: '', report: '' }; const amountVal = d.amount !== undefined && d.amount !== '' && parseFloat(d.amount) !== 0 ? d.amount : ''; const reportVal = d.report !== undefined && d.report !== '' && parseFloat(d.report) !== 0 ? d.report : ''; const remainVal = (amountVal !== '') ? (parseFloat(amountVal) - (reportVal !== '' ? parseFloat(reportVal) : 0)) : 0; const remain = remainVal !== 0 ? remainVal : ''; html += `<td class="${zcm[zodiac] || ''}">${zodiac}</td>`; html += `<td><input type="number" class="pt-edit-input amount-red-text" data-zodiac="${zodiac}" data-field="amount" value="${amountVal}" readonly style="width:50px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid transparent;background:transparent;"></td>`; html += `<td><input type="number" class="pt-edit-input pt-report-text" data-zodiac="${zodiac}" data-field="report" value="${reportVal}" readonly style="width:50px;padding:1px 2px;font-size:12px;text-align:center;border:1px solid transparent;background:transparent;"></td>`; html += `<td style="font-size:12px;">${remain !== '' ? remain : ''}</td>`; }); html += '</tr>'; } html += '</tbody></table>'; container.innerHTML = html; updatePingtexiaoTotal(); }
 function finishPtEdit(input) { if (input.hasAttribute('readonly')) return; input.setAttribute('readonly', 'readonly'); input.style.border = '1px solid transparent'; input.style.background = 'transparent'; updatePtRemain(input); savePingtexiaoCell(); }
 function updatePtRemain(input) { const row = input.closest('tr'); if (!row) return; const zodiac = input.dataset.zodiac; const cells = row.cells; let amountVal = '', reportVal = ''; for (let i = 0; i < cells.length; i++) { const amountInput = cells[i].querySelector(`.pt-edit-input[data-zodiac="${zodiac}"][data-field="amount"]`); if (amountInput) { amountVal = amountInput.value.trim(); const reportInput = cells[i+1].querySelector(`.pt-edit-input[data-zodiac="${zodiac}"][data-field="report"]`); if (reportInput) reportVal = reportInput.value.trim(); const remainCell = cells[i+2]; if (remainCell) { const a = amountVal !== '' ? parseFloat(amountVal) : 0; const r = reportVal !== '' ? parseFloat(reportVal) : 0; remainCell.textContent = amountVal !== '' ? (a - r) : ''; } break; } } updatePingtexiaoTotal(); }
 function savePingtexiaoCell() { const data = getPingtexiaoData(); document.querySelectorAll('.pt-edit-input[data-field="amount"]').forEach(input => { const zodiac = input.dataset.zodiac; if (!data[zodiac]) data[zodiac] = { amount: '', report: '' }; data[zodiac].amount = input.value.trim(); }); document.querySelectorAll('.pt-edit-input[data-field="report"]').forEach(input => { const zodiac = input.dataset.zodiac; if (!data[zodiac]) data[zodiac] = { amount: '', report: '' }; data[zodiac].report = input.value.trim(); }); savePingtexiaoData(data); updatePingtexiaoTotal(); }
