@@ -1180,10 +1180,21 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   c = c.replace(/[。！？；]/g, ' ');
   c = c.replace(/[^\dA-Za-z\u4e00-\u9fa5\s,\-，\=＝\.]/g, ' ');
   c = c.replace(/[\s]{2,}/g, ' ');
-  // 头数连写：123头 → 1头-2头-3头（至少2个连续数字+头才触发）
-  c = c.replace(/(\d{2,})头/g, (m, d) => d.split('').map(n => n + '头').join('-'));
-  // 尾数连写：123尾 → 1尾-2尾-3尾（至少2个连续数字+尾才触发）
-  c = c.replace(/(\d{2,})尾/g, (m, d) => d.split('').map(n => n + '尾').join('-'));
+  
+  // 头数连写：支持数字间有分隔符（空格、标点等）
+  // 匹配：数字+分隔符+数字+...+头，提取所有数字用-连接
+  c = c.replace(/((?:\d[\s,，.。、+\-*＊\/\\|]*)+)头/g, (match, digits) => {
+    const nums = (digits.match(/\d/g) || []);
+    if (nums.length >= 2) return nums.map(n => n + '头').join('-');
+    return match;
+  });
+  // 尾数连写：同上
+  c = c.replace(/((?:\d[\s,，.。、+\-*＊\/\\|]*)+)尾/g, (match, digits) => {
+    const nums = (digits.match(/\d/g) || []);
+    if (nums.length >= 2) return nums.map(n => n + '尾').join('-');
+    return match;
+  });
+  
   return c.trim();
 }
 
@@ -1236,7 +1247,6 @@ function parseTeMaSegment(content) {
     remaining = remaining.slice(1);
   }
   if (tokens.length === 0) return null;
-  // 修改：不去重，保留所有出现的号码
   const allNumsArr = [];
   const displayItems = [];
   for (const t of tokens) {
@@ -1578,29 +1588,38 @@ function parseTeMaSegment(content) {
     function processOneLine(line) {
   if (!line.trim()) return [];
   
-  // ===== 拦截处理：纯生肖串 + 各肖/各 + 数字（特肖玩法） =====
-  const ZODIAC_SET = new Set('鼠牛虎兔龙蛇马羊猴鸡狗猪'.split(''));
-  const AMTS = '(?:元|米|块|角|分|毛|¥|￥|\\$)';
-  const shxMatch = line.match(new RegExp(`^(.+?)(各肖|各)\\s*(\\d+)${AMTS}?$`));
-  if (shxMatch) {
-    const rawContent = shxMatch[1];
-    const amtRaw = parseInt(shxMatch[3]) || 0;
-    
-    // 提取所有生肖字符（忽略任何分隔符）
-    const zodiacChars = [];
-    for (const ch of rawContent) {
-      if (ZODIAC_SET.has(ch)) zodiacChars.push(ch);
-    }
-    
-    if (zodiacChars.length > 0 && !/\d/.test(rawContent)) {
-      // 特肖玩法：金额不分摊，保持原始金额，玩法名 cat='特肖'，关键字 kw='各'
-      const cnt = zodiacChars.length;
-      const total = amtRaw * cnt;
-      return [{ cat: '特肖', nums: zodiacChars, amt: amtRaw, cnt: cnt, total: total, kw: '各', warnings: [] }];
+  // ===== 拦截处理：纯生肖串 + 各/各肖 + 数字（特肖玩法） =====
+  // 先检查是否匹配其他玩法
+  const specialMatchesCheck = collectSpecialMatches(line);
+  if (specialMatchesCheck.length === 0) {
+    // 没有其他玩法匹配，检查是否符合特肖条件
+    const ZODIAC_SET = new Set('鼠牛虎兔龙蛇马羊猴鸡狗猪'.split(''));
+    const AMTS = '(?:元|米|块|角|分|毛|¥|￥|\\$)';
+    // 只匹配单独的"各"（后不跟数/号/组/码/注/下/买）或"各肖"
+    const shxMatch = line.match(new RegExp(`^(.+?)(各肖|各(?!数|号|组|码|注|下|买))\\s*(\\d+)${AMTS}?$`));
+    if (shxMatch) {
+      const rawContent = shxMatch[1];
+      const amtRaw = parseInt(shxMatch[3]) || 0;
+      
+      // 提取所有生肖字符（忽略任何分隔符）
+      const zodiacChars = [];
+      for (const ch of rawContent) {
+        if (ZODIAC_SET.has(ch)) zodiacChars.push(ch);
+      }
+      
+      // 检查是否包含非生肖的有效字符（玩法关键字）
+      const nonZodiacChars = rawContent.replace(/[鼠牛虎兔龙蛇马羊猴鸡狗猪\s,，.。、+\-*＊\/\\|]+/g, '');
+      
+      if (zodiacChars.length > 0 && nonZodiacChars.length === 0) {
+        // 特肖玩法：金额不分摊，保持原始金额，玩法名 cat='特肖'，关键字 kw='各'
+        const cnt = zodiacChars.length;
+        const total = amtRaw * cnt;
+        return [{ cat: '特肖', nums: zodiacChars, amt: amtRaw, cnt: cnt, total: total, kw: '各', warnings: [] }];
+      }
     }
   }
   
-  const specialMatches = collectSpecialMatches(line);
+  const specialMatches = specialMatchesCheck;
   const results = [];
   let lastEnd = 0;
   for (const m of specialMatches) {
@@ -1705,12 +1724,22 @@ function formatNums(cat, numsArr) {
 
 // ===== countItemsInLine 适配新版识别格式（不去重，增加特肖识别） =====
 function countItemsInLine(line) {
+  // 特肖行：特肖:生肖-生肖 各 金额
+  const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
+  if (teXiaoMatch) {
+    const zodiacsStr = teXiaoMatch[1];
+    const amt = parseInt(teXiaoMatch[2]) || 0;
+    const zodiacs = zodiacsStr.split('-').map(z => z.trim()).filter(z => z);
+    // 特肖返回生肖个数和原始金额，不展开成号码
+    return { numbers: [], zodiacs: zodiacs, amount: amt, playType: '特肖', zodiacCount: zodiacs.length };
+  }
+  
   const newMatch = line.match(/^(.+?):(.+?)\s+(各(?:数|))\s*(\d+)$/);
   if (newMatch) {
     const playType = newMatch[1];
     const content = newMatch[2];
     const amt = parseInt(newMatch[4]) || 0;
-    if (playType !== '特码' && playType !== '特肖') {
+    if (playType !== '特码') {
       return { numbers: [], zodiacs: [], amount: 0, playType };
     }
     const items = content.split('-').map(i => i.trim()).filter(i => i);
@@ -1818,7 +1847,7 @@ function processCurrentOrder(input, user, isNormal, date = null) {
     
     const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
     if (!amount || amount <= 0) return;
-    if (playType && playType !== '特码' && playType !== '特肖') return;
+    if (playType && playType !== '特码') return;
     const nMin = parseInt(document.getElementById('numAmountMin')?.value) || 1, nMax = parseInt(document.getElementById('numAmountMax')?.value) || 50000;
     const zMin = parseInt(document.getElementById('zodiacAmountMin')?.value) || 1, zMax = parseInt(document.getElementById('zodiacAmountMax')?.value) || 50000;
     if (isNormal) {
@@ -3404,24 +3433,18 @@ async function saveOrder(){
   const pureLines = window._pureOrderLines; 
   if(!pureLines || pureLines.length === 0){showToast('订单无效');return;} 
   const date=document.getElementById('filterDate')?.value||getTodayCST(); 
-  const curZod = localStorage.getItem('selectedStartZodiac') || '马';
   
   const allLines = pureLines;
   let totalAmount = 0;
   
   allLines.forEach(line => {
     if(line.startsWith('特肖:')){
-      // 特肖行：按分摊后号码级金额计算totalAmount
+      // 特肖行：按生肖个数 × 金额计算合计，不展开成号码
       const match = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
       if(match){
         const zodiacs = match[1].split('-').map(z => z.trim()).filter(z => z);
         const amtRaw = parseInt(match[2]) || 0;
-        zodiacs.forEach(z => {
-          const isBenming = z === curZod;
-          const perNumAmt = Math.round(amtRaw / (isBenming ? 5 : 4));
-          const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
-          totalAmount += perNumAmt * zNumCount;
-        });
+        totalAmount += zodiacs.length * amtRaw;
       }
     } else if(line.startsWith('特码:')){
       const{numbers,zodiacs,amount}=countItemsInLine(line);
@@ -3499,7 +3522,6 @@ async function saveReportOrder(){
   const pureLines = window._pureOrderLines; 
   if(!pureLines || pureLines.length === 0){showToast('订单无效');return;} 
   const date=document.getElementById('filterDate')?.value||getTodayCST(); 
-  const curZod = localStorage.getItem('selectedStartZodiac') || '马';
   
   const allLines = pureLines;
   let totalAmount = 0;
@@ -3510,12 +3532,7 @@ async function saveReportOrder(){
       if(match){
         const zodiacs = match[1].split('-').map(z => z.trim()).filter(z => z);
         const amtRaw = parseInt(match[2]) || 0;
-        zodiacs.forEach(z => {
-          const isBenming = z === curZod;
-          const perNumAmt = Math.round(amtRaw / (isBenming ? 5 : 4));
-          const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
-          totalAmount += perNumAmt * zNumCount;
-        });
+        totalAmount += zodiacs.length * amtRaw;
       }
     } else if(line.startsWith('特码:')){
       const{numbers,zodiacs,amount}=countItemsInLine(line);
@@ -3638,7 +3655,15 @@ function updateOrderTotalDisplay(){
   if(pureLines.length === 0){ box.style.display='none'; if(lineCountSpan) lineCountSpan.style.display='none'; return; }
   let total=0; let validLineCount=pureLines.length;
   pureLines.forEach(line=>{
-    if(line.startsWith('特码:')||line.startsWith('特肖:')){
+    // 特肖行：按生肖个数 × 金额计算合计
+    if(line.startsWith('特肖:')){
+      const match = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
+      if(match){
+        const zodiacs = match[1].split('-').filter(z => z.trim());
+        const amt = parseInt(match[2]) || 0;
+        total += zodiacs.length * amt;
+      }
+    } else if(line.startsWith('特码:')){
       const{numbers,zodiacs,amount}=countItemsInLine(line);
       let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(ZODIAC_NUMS[z]||'').split(/[\s,，]+/).length;});
       if(cnt>0 && amount>0) total+=cnt*amount;
@@ -3665,7 +3690,14 @@ function computeCurrentOrderTotal(){
   const pureLines = window._pureOrderLines || []; 
   let total=0; 
   pureLines.forEach(line=>{
-    if(line.startsWith('特码:')||line.startsWith('特肖:')){
+    if(line.startsWith('特肖:')){
+      const match = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
+      if(match){
+        const zodiacs = match[1].split('-').filter(z => z.trim());
+        const amt = parseInt(match[2]) || 0;
+        total += zodiacs.length * amt;
+      }
+    } else if(line.startsWith('特码:')){
       const{numbers,zodiacs,amount}=countItemsInLine(line);
       let cnt=numbers.length; zodiacs.forEach(z=>{cnt+=(ZODIAC_NUMS[z]||'').split(/[\s,，]+/).length;});
       if(cnt>0) total+=cnt*amount;
