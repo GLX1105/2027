@@ -1634,16 +1634,17 @@ function parseTeMaSegment(content) {
   }
   return deduped;
 }
-    function processOneLine(line) {
+   function processOneLine(line) {
   if (!line.trim()) return [];
 
-  // ===== 号码-金额对识别（优先处理） =====
+  // ===== 号码-金额对识别（优先处理，支持任意标点分隔，金额支持中文和自定义后缀） =====
   const amountSuffixes = getCustomAmountSuffixes();
   const suffixList = amountSuffixes.length ? amountSuffixes.join('|') : '';
   const suffixPattern = suffixList ? `(?:${suffixList})?` : '';
   const amtPart = `((?:\\d+|[一二三四五六七八九十百千两]+)${suffixPattern})`;
   const numPart = '(\\d{1,2})';
-  const sepPart = `[\\s,\\-.。、+\\-*＊\\/\\\\|]+`;
+  // 分隔符：匹配任意非数字、非中文、非空格的字符（至少一个）
+  const sepPart = `[^\\d\\s\\u4e00-\\u9fa5]+`;
   const pairRe = new RegExp(`^\\s*${numPart}\\s*${sepPart}\\s*${amtPart}\\s*$`);
   const pairMatch = line.match(pairRe);
   if (pairMatch) {
@@ -1819,9 +1820,8 @@ function formatNums(cat, numsArr) {
   return numsArr.map(g => `(` + g + `)`).join(' ');
 }
 
-// ===== countItemsInLine 适配新版识别格式（不去重，增加特肖识别，修复属性肖双重统计和单个生肖判断） =====
+// ===== countItemsInLine 适配新版识别格式 =====
 function countItemsInLine(line) {
-  // 特肖行：特肖:生肖-生肖 各 金额
   const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
   if (teXiaoMatch) {
     const zodiacsStr = teXiaoMatch[1];
@@ -1908,7 +1908,6 @@ function processCurrentOrder(input, user, isNormal, date = null) {
   if (!userBetData[user]) userBetData[user] = {};
   const curZod = localStorage.getItem('selectedStartZodiac') || '马';
   lines.forEach(line => {
-    // 先尝试匹配特肖格式：特肖:生肖-生肖 各 金额
     const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
     if (teXiaoMatch) {
       const zodiacsStr = teXiaoMatch[1];
