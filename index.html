@@ -982,21 +982,21 @@ function computeMaxLoss() {
       } else if (category === '特肖') {
         numbers.forEach(zodiac => {
           const isBenming = zodiac === curYearZodiac;
-          const type = isBenming ? '特肖本年肖' : '特肖';
-          const { odds } = getOddsForType(type, oddsData);
+          const playType = isBenming ? '特肖本年肖' : '特肖';
+          const { odds } = getOddsForType(playType, oddsData);
           (ZODIAC_NUMS[zodiac] || '').split(/[\s,，]+/).forEach(num => {
             numPayout[num] = (numPayout[num] || 0) + unitAmount * odds;
           });
         });
         totalTcTsAmount += totalAmount;
       } else {
-        const type = category;
-        const { odds } = getOddsForType(type, oddsData);
+        const playType = category;
+        const { odds } = getOddsForType(playType, oddsData);
         const payout = unitAmount * odds;
         totalOtherAmount += unitAmount;
         totalOtherPayoutAll += payout;
-        if (!maxPayoutByCategory[type] || payout > maxPayoutByCategory[type]) {
-          maxPayoutByCategory[type] = payout;
+        if (!maxPayoutByCategory[playType] || payout > maxPayoutByCategory[playType]) {
+          maxPayoutByCategory[playType] = payout;
         }
       }
     });
@@ -1020,8 +1020,8 @@ function computeMaxLoss() {
 
   // 小亏损（每种玩法只中最大金额一组）
   let totalMaxPayoutSum = 0;
-  for (const cat in maxPayoutByCategory) {
-    totalMaxPayoutSum += maxPayoutByCategory[cat];
+  for (const key in maxPayoutByCategory) {
+    totalMaxPayoutSum += maxPayoutByCategory[key];
   }
   let smallLoss = 0;
   if (totalOtherAmount > 0 && totalMaxPayoutSum > 0) {
