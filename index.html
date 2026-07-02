@@ -1237,7 +1237,8 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   ['天天彩', '天天采', '天天', '天彩', '天采', '总单'].forEach(s => c = c.split(s).join(''));
   c = c.replace(/澳门\d+期/g, '');
   c = c.replace(/[。！？；]/g, ' ');
-  c = c.replace(/[^\dA-Za-z\u4e00-\u9fa5\s,\-，\=＝\.]/g, ' ');
+  // 修改：允许更多分隔符通过，不再删除 + - * / \ | 等字符
+  c = c.replace(/[^\dA-Za-z\u4e00-\u9fa5\s,\-，\=＝\.\+\-\*＊\/\\\|]/g, ' ');
   c = c.replace(/[\s]{2,}/g, ' ');
   
   // 头数连写：支持数字间有分隔符（空格、标点等）
@@ -1254,77 +1255,6 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   });
   
   return c.trim();
-}
-
-const KW_RE_STR = `(${KW_LIST.join('|')})`;
-const AMT_RE_STR = '(\\d+|[一二三四五六七八九十百千两]+)';
-const SEP_CHARS = '[\\s\\-,\\.\u3001\uff0c\u3002\uff01\uff1f\uff1b\uff1a\\(\\)\\[\\]{}<>/|@#$%^&*+=]';
-const SEP = SEP_CHARS + '*';
-const KW_GROUP = `(${KW_LIST.join('|')})`;
-const AMT_GROUP = `(${AMT_RE_STR})`;
-const END_AMT_RE = `\\s*(?:(?:${KW_GROUP})\\s*)?${AMT_GROUP}`;
-
-function extractAmtAndKw(matchedText) { let amt = 0, kw = ''; const re = new RegExp(`(${KW_LIST.join('|')})${SEP}(${AMT_RE_STR})`, 'g'); let m, last = null; while ((m = re.exec(matchedText)) !== null) { last = m; } if (last) { kw = last[1]; amt = toNum(last[2]); } else { const nums = matchedText.match(new RegExp(AMT_RE_STR, 'g')); if (nums) amt = toNum(nums[nums.length - 1]); } return { amt, kw }; }
-
-function parseTeMaSegment(content) {
-  if (!content.trim()) return null;
-  const allDictKeys = Object.keys(D).filter(k => !ZODIAC.includes(k) && !/^\d+$/.test(k) && !/^\d{2}$/.test(k));
-  allDictKeys.sort((a, b) => b.length - a.length);
-  let remaining = content.trim();
-  const tokens = [];
-  const invalidNums = [];
-  const zodRegex = new RegExp(`^[${ZODIAC}]`);
-  while (remaining.length > 0) {
-    remaining = remaining.trim();
-    let matched = false;
-    for (const key of allDictKeys) {
-      if (remaining.startsWith(key)) {
-        if (keyToAllNums(key).length > 0) tokens.push({ type: 'key', value: key });
-        remaining = remaining.slice(key.length);
-        matched = true;
-        break;
-      }
-    }
-    if (matched) continue;
-    const zodMatch = remaining.match(zodRegex);
-    if (zodMatch) { tokens.push({ type: 'zodiac', value: zodMatch[0] }); remaining = remaining.slice(1); continue; }
-    const numMatch = remaining.match(/^(\d+)/);
-    if (numMatch) {
-      const nStr = numMatch[1];
-      const n = parseInt(nStr);
-      if (n >= 1 && n <= 49) {
-        tokens.push({ type: 'num', value: String(n) });
-        remaining = remaining.slice(nStr.length);
-        continue;
-      } else {
-        invalidNums.push(nStr);
-        remaining = remaining.slice(nStr.length);
-        continue;
-      }
-    }
-    remaining = remaining.slice(1);
-  }
-  if (tokens.length === 0) return null;
-  const allNumsArr = [];
-  const displayItems = [];
-  for (const t of tokens) {
-    if (t.type === 'num') {
-      const padded = String(parseInt(t.value)).padStart(2, '0');
-      displayItems.push(padded);
-      allNumsArr.push(padded);
-    } else if (t.type === 'zodiac') {
-      displayItems.push(t.value);
-      const nums = ZODIAC_NUMS[t.value] ? ZODIAC_NUMS[t.value].split(/[\s,，]+/) : [];
-      nums.forEach(n => allNumsArr.push(n));
-    } else if (t.type === 'key') {
-      displayItems.push(t.value);
-      const nums = keyToAllNums(t.value);
-      nums.forEach(n => allNumsArr.push(n));
-    }
-  }
-  const cnt = allNumsArr.length;
-  const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
-  return { displayItems, totalCount: cnt, warnings, allNumsArr: allNumsArr };
 }
     function collectSpecialMatches(text) {
   const Z = ZODIAC;
@@ -1634,30 +1564,17 @@ function parseTeMaSegment(content) {
   }
   return deduped;
 }
-   function processOneLine(line) {
+    function processOneLine(line) {
   if (!line.trim()) return [];
 
-  // ===== 号码-金额对识别（优化版：支持空格、中文金额、金额后缀） =====
-  const amountSuffixes = getCustomAmountSuffixes();
-  const suffixPart = amountSuffixes.length ? `(?:${amountSuffixes.join('|')})?` : '';
-  const SIMPLE_PAIR = new RegExp(
-    `^(\\d{1,2})\\s*[^\\d\\s\\u4e00-\\u9fa5]*\\s*((?:\\d+|[一二三四五六七八九十百千两]+)${suffixPart})\\s*$`
-  );
-  const pairMatch = line.match(SIMPLE_PAIR);
+  // ===== 号码-金额对识别（简化的通用匹配） =====
+  // 匹配格式: 1~2位数字 + 任意非数字分隔符 + 数字/中文数字
+  const pairMatch = line.match(/^(\d{1,2})\D+(\d+|[一二三四五六七八九十百千两]+)$/);
   if (pairMatch) {
     let num = pairMatch[1];
-    let amtStr = pairMatch[2];
-
-    // 移除金额后缀（如果存在）
-    if (amountSuffixes.length) {
-      const suffixRe = new RegExp(`(${amountSuffixes.join('|')})$`);
-      amtStr = amtStr.replace(suffixRe, '');
-    }
-
-    const amount = toNum(amtStr);
+    const amount = toNum(pairMatch[2]);
     if (num.length === 1) num = '0' + num;
-    const numInt = parseInt(num);
-
+    const numInt = parseInt(num, 10);
     if (numInt >= 1 && numInt <= 49 && amount > 0) {
       return [{ cat: '特码', nums: [num], amt: amount, cnt: 1, total: amount, kw: '各', warnings: [] }];
     }
