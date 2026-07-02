@@ -1716,12 +1716,40 @@ function processOneLine(line) {
     }
   }
   
-  // 如果没有任何特殊匹配
+  // 如果没有任何特殊匹配，尝试匹配“号码-金额”对（整行只有两个数字，中间任意标点，金额支持中文数字和后缀）
   if (specialMatches.length === 0 && results.length === 0) {
     // 先尝试特肖整行匹配
     const teXiaoResult = tryMatchTeXiao(line);
     if (teXiaoResult) {
       return [teXiaoResult];
+    }
+    
+    // 尝试匹配“号码-金额”对
+    // 获取金额后缀列表
+    const amountSuffixes = getCustomAmountSuffixes().join('|');
+    const suffixPattern = amountSuffixes ? `(?:${amountSuffixes})?` : '';
+    // 金额部分：数字（阿拉伯或中文）+ 可选后缀
+    const amtPattern = `((?:\\d+|[一二三四五六七八九十百千两]+)${suffixPattern})`;
+    // 号码：1-2位数字
+    const numPattern = '(\\d{1,2})';
+    // 中间分隔符：任意非数字非中文非空格的标点字符（至少一个）
+    const sepPattern = '[^\\d\\s\\u4e00-\\u9fa5]+';
+    const pairRe = new RegExp(`^\\s*${numPattern}\\s*${sepPattern}\\s*${amtPattern}\\s*$`);
+    const pairMatch = line.match(pairRe);
+    if (pairMatch) {
+      const num = pairMatch[1].padStart(2, '0');
+      // 从捕获的金额字符串中移除后缀，再调用toNum
+      let amtStr = pairMatch[2];
+      // 去掉金额后缀
+      if (amountSuffixes) {
+        const suffixRe = new RegExp(`(${amountSuffixes})$`);
+        amtStr = amtStr.replace(suffixRe, '');
+      }
+      const amt = toNum(amtStr);
+      if (parseInt(num) >= 1 && parseInt(num) <= 49 && amt > 0) {
+        results.push({ cat: '特码', nums: [num], amt, cnt: 1, total: amt, kw: '各', warnings: [] });
+        return results;
+      }
     }
     
     // 走原有的纯特码解析逻辑（基于关键字金额）
