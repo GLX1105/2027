@@ -947,49 +947,105 @@ async function switchRiskReport() {
   await updateTableFromRecords();
 }
 
-// ===== 计算最大亏损（适配新版识别逻辑） =====
+// ===== 计算亏损（特码亏损 + 其他亏损 + 小亏损） =====
 function computeMaxLoss() {
   const pureLines = window._pureOrderLines;
-  if (!pureLines || pureLines.length === 0) return 0;
-  const numAmountMap = {};
-  let totalAmount = 0;
+  if (!pureLines || pureLines.length === 0) return { maxLoss: 0, otherLoss: 0, smallLoss: 0 };
+
+  const oddsData = getOddsData();
+  const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
+  const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
+
+  // ---- 特码 + 特肖部分 ----
+  const numPayout = {};
+  let totalTcTsAmount = 0;
+
+  // ---- 其他玩法部分 ----
+  let totalOtherAmount = 0;
+  let totalOtherPayoutAll = 0;
+  const maxPayoutByCategory = {};
+
   pureLines.forEach(line => {
-    const { numbers, zodiacs, amount } = countItemsInLine(line);
-    if (amount <= 0) return;
-    numbers.forEach(num => {
-      numAmountMap[num] = (numAmountMap[num] || 0) + amount;
-      totalAmount += amount;
-    });
-    zodiacs.forEach(z => {
-      const znums = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/);
-      znums.forEach(n => {
-        const num = n.padStart(2, '0');
-        numAmountMap[num] = (numAmountMap[num] || 0) + amount;
-        totalAmount += amount;
-      });
+    const results = processOneLine(preprocess(line));
+    results.forEach(r => {
+      const { category, numbers, unitAmount, totalAmount } = r;
+      if (!unitAmount || unitAmount <= 0) return;
+
+      if (category === '特码') {
+        const { odds } = getOddsForType('特码', oddsData);
+        numbers.forEach(item => {
+          (keyToAllNums(item) || [item]).forEach(num => {
+            numPayout[num] = (numPayout[num] || 0) + unitAmount * odds;
+          });
+        });
+        totalTcTsAmount += totalAmount;
+      } else if (category === '特肖') {
+        numbers.forEach(zodiac => {
+          const isBenming = zodiac === curYearZodiac;
+          const type = isBenming ? '特肖本年肖' : '特肖';
+          const { odds } = getOddsForType(type, oddsData);
+          (ZODIAC_NUMS[zodiac] || '').split(/[\s,，]+/).forEach(num => {
+            numPayout[num] = (numPayout[num] || 0) + unitAmount * odds;
+          });
+        });
+        totalTcTsAmount += totalAmount;
+      } else {
+        const type = category;
+        const { odds } = getOddsForType(type, oddsData);
+        const payout = unitAmount * odds;
+        totalOtherAmount += unitAmount;
+        totalOtherPayoutAll += payout;
+        if (!maxPayoutByCategory[type] || payout > maxPayoutByCategory[type]) {
+          maxPayoutByCategory[type] = payout;
+        }
+      }
     });
   });
-  if (totalAmount === 0) return 0;
-  let maxNumAmount = 0;
-  for (const num in numAmountMap) {
-    if (numAmountMap[num] > maxNumAmount) maxNumAmount = numAmountMap[num];
+
+  // 特码亏损
+  let maxPayout = 0;
+  for (const num in numPayout) {
+    if (numPayout[num] > maxPayout) maxPayout = numPayout[num];
   }
-  if (maxNumAmount === 0) return 0;
-  const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
-  const multiple = parseFloat(document.getElementById('multipleVal')?.value) || 47;
-  const maxLoss = Math.round(totalAmount - totalAmount * (rebateRate / 100) - maxNumAmount * multiple);
-  return maxLoss;
+  let maxLoss = 0;
+  if (totalTcTsAmount > 0 && maxPayout > 0) {
+    maxLoss = Math.round(totalTcTsAmount - totalTcTsAmount * (rebateRate / 100) - maxPayout);
+  }
+
+  // 其他亏损（全部命中）
+  let otherLoss = 0;
+  if (totalOtherAmount > 0 && totalOtherPayoutAll > 0) {
+    otherLoss = Math.round(totalOtherAmount - totalOtherAmount * (rebateRate / 100) - totalOtherPayoutAll);
+  }
+
+  // 小亏损（每种玩法只中最大金额一组）
+  let totalMaxPayoutSum = 0;
+  for (const cat in maxPayoutByCategory) {
+    totalMaxPayoutSum += maxPayoutByCategory[cat];
+  }
+  let smallLoss = 0;
+  if (totalOtherAmount > 0 && totalMaxPayoutSum > 0) {
+    smallLoss = Math.round(totalOtherAmount - totalOtherAmount * (rebateRate / 100) - totalMaxPayoutSum);
+  }
+
+  return { maxLoss, otherLoss, smallLoss };
 }
 
 function updateMaxLossDisplay() {
   const display = document.getElementById('maxLossDisplay');
   if (!display) return;
-  const maxLoss = computeMaxLoss();
-  if (maxLoss !== 0) {
-    display.textContent = '最大亏损：' + maxLoss;
+
+  const { maxLoss, otherLoss, smallLoss } = computeMaxLoss();
+  let parts = [];
+  if (maxLoss !== 0) parts.push('特码亏损：' + maxLoss);
+  if (otherLoss !== 0) parts.push('其他亏损：' + otherLoss);
+  if (smallLoss !== 0) parts.push('小亏损：' + smallLoss);
+
+  if (parts.length > 0) {
+    display.innerHTML = parts.join('&nbsp;&nbsp;');
     display.style.display = 'inline';
   } else {
-    display.textContent = '';
+    display.innerHTML = '';
     display.style.display = 'none';
   }
 }
