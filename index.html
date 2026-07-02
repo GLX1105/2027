@@ -947,7 +947,7 @@ async function switchRiskReport() {
   await updateTableFromRecords();
 }
 
-// ===== 计算最大亏损（适配新版识别逻辑） =====
+// ===== 计算亏损（特码/特肖 + 其他全部/小亏） =====
 function computeMaxLoss() {
   const pureLines = window._pureOrderLines;
   if (!pureLines || pureLines.length === 0) return { maxLoss: 0, otherLoss: 0, smallLoss: 0 };
@@ -956,48 +956,45 @@ function computeMaxLoss() {
   const curYearZodiac = document.getElementById('startZodiacSelect')?.value || '马';
   const rebateRate = parseFloat(document.getElementById('rebateRate')?.value) || 4;
 
-  const numPayout = {};
-  let totalTcTsAmount = 0;
-  let totalOtherAmount = 0;
-  let totalOtherPayoutAll = 0;
-  const maxPayoutByCategory = {};
+  const numPayout = {};               // 每个号码的赔付（特码/特肖）
+  let totalTcTsAmount = 0;            // 特码+特肖总投注
+  let totalOtherAmount = 0;           // 其他玩法总投注
+  let totalOtherPayoutAll = 0;        // 其他玩法全部赔付之和
+  const maxPayoutByCategory = {};     // 每种玩法最大单组赔付
 
   pureLines.forEach(line => {
-    const results = processOneLine(preprocess(line));
-    results.forEach(r => {
-      const { category, numbers, unitAmount, totalAmount } = r;
-      if (!unitAmount || unitAmount <= 0) return;
+    const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
+    if (!amount || amount <= 0) return;
 
-      if (category === '特码') {
-        const { odds } = getOddsForType('特码', oddsData);
-        numbers.forEach(item => {
-          (keyToAllNums(item) || [item]).forEach(num => {
-            numPayout[num] = (numPayout[num] || 0) + unitAmount * odds;
-          });
+    if (playType === '特码') {
+      const { odds } = getOddsForType('特码', oddsData);
+      numbers.forEach(num => {
+        numPayout[num] = (numPayout[num] || 0) + amount * odds;
+      });
+      totalTcTsAmount += numbers.length * amount;
+    } else if (playType === '特肖') {
+      zodiacs.forEach(zodiac => {
+        const isBenming = zodiac === curYearZodiac;
+        const type = isBenming ? '特肖本年肖' : '特肖';
+        const { odds } = getOddsForType(type, oddsData);
+        (ZODIAC_NUMS[zodiac] || '').split(/[\s,，]+/).forEach(num => {
+          numPayout[num] = (numPayout[num] || 0) + amount * odds;
         });
-        totalTcTsAmount += totalAmount;
-      } else if (category === '特肖') {
-        numbers.forEach(zodiac => {
-          const isBenming = zodiac === curYearZodiac;
-          const type = isBenming ? '特肖本年肖' : '特肖';
-          const { odds } = getOddsForType(type, oddsData);
-          (ZODIAC_NUMS[zodiac] || '').split(/[\s,，]+/).forEach(num => {
-            numPayout[num] = (numPayout[num] || 0) + unitAmount * odds;
-          });
-        });
-        totalTcTsAmount += totalAmount;
-      } else {
-        const { odds } = getOddsForType(category, oddsData);
-        const payout = unitAmount * odds;
-        totalOtherAmount += unitAmount;
-        totalOtherPayoutAll += payout;
-        if (!maxPayoutByCategory[category] || payout > maxPayoutByCategory[category]) {
-          maxPayoutByCategory[category] = payout;
-        }
+      });
+      totalTcTsAmount += zodiacs.length * amount;
+    } else if (playType) {
+      const normalizedType = normalizePlayType(playType);
+      const { odds } = getOddsForType(normalizedType, oddsData);
+      const payout = amount * odds;
+      totalOtherAmount += amount;
+      totalOtherPayoutAll += payout;
+      if (!maxPayoutByCategory[normalizedType] || payout > maxPayoutByCategory[normalizedType]) {
+        maxPayoutByCategory[normalizedType] = payout;
       }
-    });
+    }
   });
 
+  // 特码亏损：取最高赔付的号码
   let maxPayout = 0;
   for (const num in numPayout) {
     if (numPayout[num] > maxPayout) maxPayout = numPayout[num];
@@ -1007,11 +1004,13 @@ function computeMaxLoss() {
     maxLoss = Math.round(totalTcTsAmount - totalTcTsAmount * (rebateRate / 100) - maxPayout);
   }
 
+  // 其他亏损：全部命中
   let otherLoss = 0;
   if (totalOtherAmount > 0 && totalOtherPayoutAll > 0) {
     otherLoss = Math.round(totalOtherAmount - totalOtherAmount * (rebateRate / 100) - totalOtherPayoutAll);
   }
 
+  // 小亏损：每种玩法只中赔付最大的一组
   let totalMaxPayoutSum = 0;
   for (const cat in maxPayoutByCategory) {
     totalMaxPayoutSum += maxPayoutByCategory[cat];
