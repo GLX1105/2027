@@ -3904,10 +3904,8 @@ async function updateTableFromRecords(){
               originalOrderAmount[numPadded] = (originalOrderAmount[numPadded] || 0) + perNumAmt;
               numberOrderTotal += perNumAmt;
             });
-            // 特肖行：zodiacDirectAmount 直接加 amtRaw
             zodiacCount[z] = (zodiacCount[z] || 0) + 1;
             zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amtRaw;
-            // 生肖金额次数：用分摊金额 perNumAmt 判断范围，计入原始金额 amtRaw
             if (perNumAmt >= zMin && perNumAmt <= zMax) {
               zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
               zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amtRaw;
@@ -3939,8 +3937,8 @@ async function updateTableFromRecords(){
             }
 
             if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(item)) {
-              const zNumCount = (ZODIAC_NUMS[item] || '').split(/[\s,，]+/).length || 0;
               zodiacCount[item] = (zodiacCount[item] || 0) + 1;
+              const zNumCount = (ZODIAC_NUMS[item] || '').split(/[\s,，]+/).length || 0;
               zodiacDirectAmount[item] = (zodiacDirectAmount[item] || 0) + amt * zNumCount;
               if (amt >= zMin && amt <= zMax) {
                 zodiacAmountCount[item] = (zodiacAmountCount[item] || 0) + 1;
@@ -3961,8 +3959,8 @@ async function updateTableFromRecords(){
               const zodiacList = expandKeyToZodiacs(item);
               if (zodiacList.length > 0) {
                 zodiacList.forEach(z => {
-                  const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
                   zodiacCount[z] = (zodiacCount[z] || 0) + 1;
+                  const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
                   zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amt * zNumCount;
                   if (amt >= zMin && amt <= zMax) {
                     zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
@@ -4057,6 +4055,7 @@ async function updateTableFromRecords(){
               reportAmountData[numPadded] = (reportAmountData[numPadded] || 0) + perNumAmt;
               if (user && userBetData[user]) userBetData[user][numPadded] = (userBetData[user][numPadded] || 0) - perNumAmt;
             });
+            const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
             zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + amtRaw;
             if (perNumAmt >= zMin && perNumAmt <= zMax) zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + amtRaw;
           });
@@ -4175,20 +4174,21 @@ function computeCurrentOrderTotal(){
   });
   return total; 
 }
-function updateAmountDisplays(){
-  const nb=document.getElementById('numberTotalBox');
-  const zb=document.getElementById('zodiacTotalBox');
+// 修改：生肖合计改为直接用 zodiacDirectAmount 的总和
+function updateAmountDisplays(){ 
+  const nb=document.getElementById('numberTotalBox'); 
+  const zb=document.getElementById('zodiacTotalBox'); 
   if(numberOrderTotal>0){
     document.getElementById('numberTotalAmount').textContent=numberOrderTotal;
     nb.style.display='inline-flex';
-  } else { nb.style.display='none'; }
-  // 修改：生肖合计改为 zodiacDirectAmount 的总和
+  } else { nb.style.display='none'; } 
+  // 用 zodiacDirectAmount 的总和作为生肖合计
   let zodiacTotal = 0;
   for (let z in zodiacDirectAmount) { zodiacTotal += zodiacDirectAmount[z] || 0; }
   if(zodiacTotal > 0){
     document.getElementById('zodiacTotalAmount').textContent = zodiacTotal;
     zb.style.display = 'inline-flex';
-  } else { zb.style.display = 'none'; }
+  } else { zb.style.display = 'none'; } 
 }
 function updateReportAmountTotal(){ const box=document.getElementById('reportAmountTotalBox'); const span=document.getElementById('reportAmountTotalValue'); let total=0; for(let n in reportAmountData)total+=reportAmountData[n]||0; if(total>0){span.textContent=total;box.style.display='inline-flex';}else{box.style.display='none';} }
 
