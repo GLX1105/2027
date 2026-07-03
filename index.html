@@ -1927,10 +1927,11 @@ function performRecognition(text) {
   const resultDiv = document.getElementById('orderResult');
   if (!text || !text.trim()) {
     if (resultDiv) resultDiv.innerHTML = '';
-    updateOrderTotalDisplay();
-    updateMaxLossDisplay();
+    // 先清空数据，再更新显示，确保合计归零
     window._pureOrderLines = [];
     window._cachedMaxLossData = [];
+    updateOrderTotalDisplay();
+    updateMaxLossDisplay();
     return;
   }
   let processedText = preprocess(text);
