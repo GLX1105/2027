@@ -1625,7 +1625,8 @@ function parseTeMaSegment(content) {
     return { cat: k + '连尾', nums: comb, amt, cnt: comb.length, total: amt * comb.length, kw, warnings };
   });
 
-  addMatch(new RegExp(`(?:平特(?:一肖|肖)?|[1一]肖中|平肖|平码[肖]?|一肖|独肖)${SEP}((?:[${Z}]+))\\s*${END_AMT_RE}`, 'g'), m => {
+  // 修复：平特肖（支持生肖之间用分隔符分隔，如 平特马.猴各100）
+  addMatch(new RegExp(`(?:平特(?:一肖|肖)?|[1一]肖中|平肖|平码[肖]?|一肖|独肖)${SEP}((?:[${Z}]+${SEP_CHARS}*)+)\\s*${END_AMT_RE}`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const zs = extractZodiacs(m[1]);
     if (zs.length >= 2 && !kw) {
@@ -1634,6 +1635,7 @@ function parseTeMaSegment(content) {
     return { cat: '平特肖', nums: zs, amt, cnt: zs.length, total: amt * zs.length, kw };
   });
 
+  // 修复：平特尾（支持尾数之间用分隔符分隔）
   addMatch(new RegExp(`(?:平特(?:一尾|尾)?|平尾|尾中)${SEP}((?:\\d+尾${SEP_CHARS}*)+)\\s*${END_AMT_RE}`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const tails = (m[1].match(/\d/g) || []).map(d => d + '尾');
@@ -1643,6 +1645,7 @@ function parseTeMaSegment(content) {
     return { cat: '平特尾', nums: tails, amt, cnt: tails.length, total: amt * tails.length, kw };
   });
 
+  // 修复：平码（支持号码之间用分隔符分隔）
   addMatch(new RegExp(`(?:平码|独平)${SEP}((?:\\d+${SEP_CHARS}*)+)[\\s]*${END_AMT_RE}`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const nums = extractNums(m[1]); const invalidNums = findInvalidNums(m[1]);
