@@ -1759,6 +1759,25 @@ function parseTeMaSegment(content) {
       }
       subLast = subMatch.index + subMatch[0].length;
     }
+    // 关键修复：如果还有残留内容无法解析，包装成待定对象返回
+    if (subLast < content.length) {
+      const remaining = content.substring(subLast).trim();
+      if (remaining && containsDictElement(remaining)) {
+        const hasAmount = /\d+|[一二三四五六七八九十百千两]+/.test(remaining);
+        if (hasAmount) {
+          results.push({
+            cat: '__unrecognized__',
+            nums: [],
+            amt: 0,
+            cnt: 0,
+            total: 0,
+            kw: '',
+            warnings: ['缺少金额关键字或有效玩法'],
+            rawLine: remaining
+          });
+        }
+      }
+    }
   }
 
   if (specialMatches.length === 0 && results.length === 0) {
@@ -1779,6 +1798,24 @@ function parseTeMaSegment(content) {
         results.push({ cat: '特码', nums: seg.displayItems, amt, cnt: cnt, total: amt * cnt, kw, warnings: seg.warnings || [] });
       }
       subLast = subMatch.index + subMatch[0].length;
+    }
+    if (subLast < line.length) {
+      const remaining = line.substring(subLast).trim();
+      if (remaining && containsDictElement(remaining)) {
+        const hasAmount = /\d+|[一二三四五六七八九十百千两]+/.test(remaining);
+        if (hasAmount) {
+          results.push({
+            cat: '__unrecognized__',
+            nums: [],
+            amt: 0,
+            cnt: 0,
+            total: 0,
+            kw: '',
+            warnings: ['缺少金额关键字或有效玩法'],
+            rawLine: remaining
+          });
+        }
+      }
     }
   }
 
