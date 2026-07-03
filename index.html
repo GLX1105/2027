@@ -3902,7 +3902,7 @@ async function updateTableFromRecords(){
               tableBetData[numPadded] = (tableBetData[numPadded] || 0) + perNumAmt;
               reportBetData[numPadded] = (reportBetData[numPadded] || 0) + perNumAmt;
               originalOrderAmount[numPadded] = (originalOrderAmount[numPadded] || 0) + perNumAmt;
-              numberOrderTotal += perNumAmt;
+              // 特肖行不计入号码合计
             });
             zodiacCount[z] = (zodiacCount[z] || 0) + 1;
             zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amtRaw;
@@ -3923,6 +3923,7 @@ async function updateTableFromRecords(){
           const items = content.split('-').map(i => i.trim()).filter(i => i);
 
           items.forEach(item => {
+            // 1. 单个数字号码
             if (/^\d{1,2}$/.test(item) && parseInt(item) >= 1 && parseInt(item) <= 49) {
               const num = item.padStart(2, '0');
               numberCount[num] = (numberCount[num] || 0) + 1;
@@ -3936,6 +3937,7 @@ async function updateTableFromRecords(){
               return;
             }
 
+            // 2. 单个生肖字符（不统计号码合计）
             if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(item)) {
               zodiacCount[item] = (zodiacCount[item] || 0) + 1;
               const zNumCount = (ZODIAC_NUMS[item] || '').split(/[\s,，]+/).length || 0;
@@ -3951,10 +3953,10 @@ async function updateTableFromRecords(){
                 reportBetData[num] = (reportBetData[num] || 0) + amt;
                 originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
               });
-              numberOrderTotal += amt;
               return;
             }
 
+            // 3. 字典属性词
             if (D[item]) {
               const zodiacList = expandKeyToZodiacs(item);
               if (zodiacList.length > 0) {
@@ -3974,7 +3976,6 @@ async function updateTableFromRecords(){
                     originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
                   });
                 });
-                numberOrderTotal += zodiacList.length * amt;
                 return;
               }
               const numList = expandKeyToNums(item);
@@ -4055,7 +4056,6 @@ async function updateTableFromRecords(){
               reportAmountData[numPadded] = (reportAmountData[numPadded] || 0) + perNumAmt;
               if (user && userBetData[user]) userBetData[user][numPadded] = (userBetData[user][numPadded] || 0) - perNumAmt;
             });
-            const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
             zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + amtRaw;
             if (perNumAmt >= zMin && perNumAmt <= zMax) zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + amtRaw;
           });
