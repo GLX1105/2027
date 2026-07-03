@@ -3761,7 +3761,6 @@ async function saveOrder(){
   
   allLines.forEach(line => {
     if(line.startsWith('特肖:')){
-      // 特肖行：按生肖个数 × 金额计算合计
       const match = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
       if(match){
         const zodiacs = match[1].split('-').map(z => z.trim()).filter(z => z);
@@ -3811,7 +3810,6 @@ async function saveOrder(){
   });
   if (ptChanged) { savePingtexiaoData(pingtexiaoData); renderPingtexiaoTable(); updatePingtexiaoTotal(); }
   
-  // 所有订单统一存入 STORE_NAME
   const content = allLines.join('\n');
   const existingOrders = (await getOrderRecords()).filter(r => r.date === date && r.user === user);
   if (existingOrders.some(o => o.content === content)) {
@@ -3876,7 +3874,6 @@ async function saveReportOrder(){
     }
   });
   
-  // 上报时同步更新平特肖卡片上报列
   const pingtexiaoData = getPingtexiaoData();
   let ptChanged = false;
   allLines.forEach(line => {
@@ -3980,7 +3977,7 @@ async function updateTableFromRecords(){
     fRecsFiltered.forEach(rec=>{ try{
       if(!userBetData[rec.user])userBetData[rec.user]={};
       rec.content.split('\n').filter(l=>l.trim()).forEach(line=>{
-        // 特肖行处理
+        // 特肖行处理（不去重：直接从原始字符串提取生肖字符）
         const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
         if (teXiaoMatch) {
           const zodiacsStr = teXiaoMatch[1];
@@ -4001,7 +3998,7 @@ async function updateTableFromRecords(){
               originalOrderAmount[numPadded] = (originalOrderAmount[numPadded] || 0) + perNumAmt;
               numberOrderTotal += perNumAmt;
             });
-            // 特肖类型的生肖统计（不去重）
+            // 特肖类型的生肖统计（不去重，直接累加）
             zodiacCount[z] = (zodiacCount[z] || 0) + 1;
             if (perNumAmt >= zMin && perNumAmt <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
             const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
@@ -4011,6 +4008,55 @@ async function updateTableFromRecords(){
           return;
         }
         
+        // 特码行处理（不去重：直接从原始字符串提取生肖字符）
+        const teMaMatch = line.match(/^特码:(.+?)\s+各(?:数|)\s*(\d+)$/);
+        if (teMaMatch) {
+          const content = teMaMatch[1];
+          const amt = parseInt(teMaMatch[2]) || 0;
+          if (amt <= 0) return;
+          orderCountAll++;
+          const { numbers, zodiacs } = countItemsInLine(line);
+          
+          // 号码统计（不去重）
+          numbers.forEach(num => {
+            userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
+            tableBetData[num] = (tableBetData[num] || 0) + amt;
+            reportBetData[num] = (reportBetData[num] || 0) + amt;
+            originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
+            if (zodiacs.length === 0) {
+              numberCount[num] = (numberCount[num] || 0) + 1;
+              if (amt >= nMin && amt <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+              directOrderAmount[num] = (directOrderAmount[num] || 0) + amt;
+            }
+            if (zodiacs.length > 0) numberOrderTotal += amt;
+            else numberOrderTotal += amt;
+          });
+          
+          // 生肖统计（不去重：直接从原始内容提取生肖字符逐个累加）
+          if (zodiacs.length > 0) {
+            const zodiacChars = content.split('').filter(ch => /[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(ch));
+            zodiacChars.forEach(z => {
+              zodiacCount[z] = (zodiacCount[z] || 0) + 1;
+              if (amt >= zMin && amt <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
+              const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
+              zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amt * zNumCount;
+              zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amt * zNumCount;
+            });
+            // 同步累加生肖对应的号码
+            zodiacs.forEach(z => {
+              (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
+                const num = n.padStart(2, '0');
+                userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
+                tableBetData[num] = (tableBetData[num] || 0) + amt;
+                reportBetData[num] = (reportBetData[num] || 0) + amt;
+                originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
+              });
+            });
+          }
+          return;
+        }
+        
+        // 兼容旧格式
         const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
         if (!amount || amount <= 0) return;
         if (playType && playType !== '特码') return;
@@ -4020,8 +4066,6 @@ async function updateTableFromRecords(){
         } else if (numbers.length > 0) {
           numberOrderTotal += numbers.length * amount;
         }
-        
-        // 统计号码（只统计纯号码，即 zodiacs 为空时，不去重）
         numbers.forEach(num => {
           userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amount;
           tableBetData[num] = (tableBetData[num] || 0) + amount;
@@ -4033,8 +4077,6 @@ async function updateTableFromRecords(){
             directOrderAmount[num] = (directOrderAmount[num] || 0) + amount;
           }
         });
-        
-        // 统计生肖（特码类型，不去重）
         if (zodiacs.length > 0) {
           zodiacs.forEach(z => {
             zodiacCount[z] = (zodiacCount[z] || 0) + 1;
@@ -4042,7 +4084,6 @@ async function updateTableFromRecords(){
             const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
             zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amount * zNumCount;
             zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amount * zNumCount;
-            // 每个生肖对应的号码也同步累加
             (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
               const num = n.padStart(2, '0');
               userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amount;
@@ -4059,7 +4100,6 @@ async function updateTableFromRecords(){
     fRepsFiltered.forEach(rec=>{ try{
       const user=rec.user;
       rec.content.split('\n').filter(l=>l.trim()).forEach(line=>{
-        // 特肖行处理（上报）
         const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
         if (teXiaoMatch) {
           const zodiacsStr = teXiaoMatch[1];
