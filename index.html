@@ -1307,7 +1307,7 @@ function parseTeMaSegment(content) {
   const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
   return { displayItems, totalCount: cnt, warnings, allNumsArr: allNumsArr };
 }
-    function collectSpecialMatches(text) {
+   function collectSpecialMatches(text) {
   const Z = ZODIAC;
   const allMatches = [];
 
@@ -1659,7 +1659,7 @@ function parseTeMaSegment(content) {
   }
   return deduped;
 }
-   function processOneLine(line) {
+    function processOneLine(line) {
   if (!line.trim()) return [];
 
   // ===== 号码-金额对识别（优先处理） =====
@@ -2110,7 +2110,13 @@ function processCurrentOrder(input, user, isNormal, date = null) {
   const lines = input.split('\n').filter(l => l.trim());
   if (!userBetData[user]) userBetData[user] = {};
   const curZod = localStorage.getItem('selectedStartZodiac') || '马';
+  const nMin = parseInt(document.getElementById('numAmountMin')?.value) || 1;
+  const nMax = parseInt(document.getElementById('numAmountMax')?.value) || 50000;
+  const zMin = parseInt(document.getElementById('zodiacAmountMin')?.value) || 1;
+  const zMax = parseInt(document.getElementById('zodiacAmountMax')?.value) || 50000;
+  
   lines.forEach(line => {
+    // 特肖行处理
     const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
     if (teXiaoMatch) {
       const zodiacsStr = teXiaoMatch[1];
@@ -2131,6 +2137,7 @@ function processCurrentOrder(input, user, isNormal, date = null) {
             tableBetData[numPadded] = (tableBetData[numPadded] || 0) + perNumAmt;
             reportBetData[numPadded] = (reportBetData[numPadded] || 0) + perNumAmt;
             numberCount[numPadded] = (numberCount[numPadded] || 0) + 1;
+            if (perNumAmt >= nMin && perNumAmt <= nMax) numberAmountCount[numPadded] = (numberAmountCount[numPadded] || 0) + 1;
             originalOrderAmount[numPadded] = (originalOrderAmount[numPadded] || 0) + perNumAmt;
             directOrderAmount[numPadded] = (directOrderAmount[numPadded] || 0) + perNumAmt;
             numberOrderTotal += perNumAmt;
@@ -2141,13 +2148,15 @@ function processCurrentOrder(input, user, isNormal, date = null) {
             directReportAmount[numPadded] = (directReportAmount[numPadded] || 0) + perNumAmt;
           }
         });
+        // 特肖类型的生肖统计
         if (isNormal) {
           zodiacCount[z] = (zodiacCount[z] || 0) + 1;
+          if (perNumAmt >= zMin && perNumAmt <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
           zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + perNumAmt * zNumCount;
           zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + perNumAmt * zNumCount;
         } else {
           zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + perNumAmt * zNumCount;
-          zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + perNumAmt * zNumCount;
+          if (perNumAmt >= zMin && perNumAmt <= zMax) zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + perNumAmt * zNumCount;
         }
       });
       generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards();
@@ -2157,20 +2166,28 @@ function processCurrentOrder(input, user, isNormal, date = null) {
     
     const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
     if (!amount || amount <= 0) return;
+    // 只有特码类型（或未指定类型）才参与统计
     if (playType && playType !== '特码') return;
     orderCountAll++;
-    const nMin = parseInt(document.getElementById('numAmountMin')?.value) || 1, nMax = parseInt(document.getElementById('numAmountMax')?.value) || 50000;
-    const zMin = parseInt(document.getElementById('zodiacAmountMin')?.value) || 1, zMax = parseInt(document.getElementById('zodiacAmountMax')?.value) || 50000;
+    
     if (isNormal) {
-      if (zodiacs.length > 0) { zodiacs.forEach(z => { const w = z === curZod ? 5 : 4; zodiacWeightedTotal += amount * w; }); } else if (numbers.length > 0) { numberOrderTotal += numbers.length * amount; }
+      if (zodiacs.length > 0) {
+        zodiacs.forEach(z => { const w = z === curZod ? 5 : 4; zodiacWeightedTotal += amount * w; });
+      } else if (numbers.length > 0) {
+        numberOrderTotal += numbers.length * amount;
+      }
     }
+    
+    // 统计号码（只统计纯号码，即 zodiacs 为空时）
     numbers.forEach(num => {
       if (isNormal) {
         userBetData[user][num] = (userBetData[user][num] || 0) + amount;
         tableBetData[num] = (tableBetData[num] || 0) + amount;
         reportBetData[num] = (reportBetData[num] || 0) + amount;
-        numberCount[num] = (numberCount[num] || 0) + 1;
-        if (amount >= nMin && amount <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+        if (zodiacs.length === 0) {
+          numberCount[num] = (numberCount[num] || 0) + 1;
+          if (amount >= nMin && amount <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+        }
         originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amount;
         if (zodiacs.length === 0) directOrderAmount[num] = (directOrderAmount[num] || 0) + amount;
       } else {
@@ -2180,30 +2197,33 @@ function processCurrentOrder(input, user, isNormal, date = null) {
         if (zodiacs.length === 0) directReportAmount[num] = (directReportAmount[num] || 0) + amount;
       }
     });
-    if (isNormal) {
-      zodiacs.forEach(z => {
-        zodiacCount[z] = (zodiacCount[z] || 0) + 1;
-        const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
-        zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amount * zNumCount;
-        if (amount >= zMin && amount <= zMax) { zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1; zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amount * zNumCount; }
-        (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
-          const num = n.padStart(2, '0');
-          userBetData[user][num] = (userBetData[user][num] || 0) + amount;
-          tableBetData[num] = (tableBetData[num] || 0) + amount;
-          reportBetData[num] = (reportBetData[num] || 0) + amount;
-          originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amount;
-        });
-      });
-    } else {
+    
+    // 统计生肖（只统计特码类型的行中的生肖）
+    if (zodiacs.length > 0) {
       zodiacs.forEach(z => {
         const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
-        zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + amount * zNumCount;
-        if (amount >= zMin && amount <= zMax) { zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + amount * zNumCount; }
+        if (isNormal) {
+          zodiacCount[z] = (zodiacCount[z] || 0) + 1;
+          if (amount >= zMin && amount <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
+          zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amount * zNumCount;
+          zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amount * zNumCount;
+        } else {
+          zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + amount * zNumCount;
+          if (amount >= zMin && amount <= zMax) zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + amount * zNumCount;
+        }
+        // 每个生肖对应的号码也同步累加到 userBetData 等
         (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
           const num = n.padStart(2, '0');
-          userBetData[user][num] = (userBetData[user][num] || 0) - amount;
-          reportBetData[num] = (reportBetData[num] || 0) - amount;
-          reportAmountData[num] = (reportAmountData[num] || 0) + amount;
+          if (isNormal) {
+            userBetData[user][num] = (userBetData[user][num] || 0) + amount;
+            tableBetData[num] = (tableBetData[num] || 0) + amount;
+            reportBetData[num] = (reportBetData[num] || 0) + amount;
+            originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amount;
+          } else {
+            userBetData[user][num] = (userBetData[user][num] || 0) - amount;
+            reportBetData[num] = (reportBetData[num] || 0) - amount;
+            reportAmountData[num] = (reportAmountData[num] || 0) + amount;
+          }
         });
       });
     }
