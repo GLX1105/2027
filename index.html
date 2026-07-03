@@ -1180,7 +1180,7 @@ function zodiacToNums(zStr) { const ns = []; for (const z of zStr) { if (D[z]) D
 function extractNums(txt) { return (txt.match(/\d+/g) || []).map(n => parseInt(n)).filter(n => n >= 1 && n <= 49).map(n => String(n).padStart(2, '0')); }
 function extractZodiacs(txt) { return (txt.match(new RegExp(`[${ZODIAC}]`, 'g')) || []); }
 function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(/\d+/g) || []).map(n => parseInt(n)); return allNums.filter(n => n > 49); }
-    function preprocess(txt) {
+   function preprocess(txt) {
   let c = txt;
   c = c.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
   c = c.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -1219,7 +1219,10 @@ function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(
   c = c.replace(/澳门\d+期/g, '');
   c = c.replace(/[。！？；]/g, ' ');
   c = c.replace(/[^\dA-Za-z\u4e00-\u9fa5\s,\-，\=＝\.]/g, ' ');
+  // 修复：保护换行符不被空白压缩合并
+  c = c.replace(/\n/g, '[[[NL]]]');
   c = c.replace(/[\s]{2,}/g, ' ');
+  c = c.replace(/\[\[\[NL\]\]\]/g, '\n');
   
   // 头数连写：支持数字间有分隔符（空格、标点等）
   c = c.replace(/((?:\d[\s,，.。、+\-*＊\/\\|]*)+)头/g, (match, digits) => {
@@ -1306,7 +1309,7 @@ function parseTeMaSegment(content) {
   const cnt = allNumsArr.length;
   const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
   return { displayItems, totalCount: cnt, warnings, allNumsArr: allNumsArr };
-}
+} 
     function collectSpecialMatches(text) {
   const Z = ZODIAC;
   const allMatches = [];
