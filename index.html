@@ -3972,7 +3972,7 @@ async function updateTableFromRecords(){
     const fReps=fd?reps.filter(r=>r.date===fd):reps;
     const fRecsFiltered = filterUser ? fRecs.filter(r => r.user === filterUser) : fRecs;
     const fRepsFiltered = filterUser ? fReps.filter(r => r.user === filterUser) : fReps;
-    
+
     // 处理下单订单
     fRecsFiltered.forEach(rec=>{ try{
       if(!userBetData[rec.user])userBetData[rec.user]={};
@@ -4007,34 +4007,20 @@ async function updateTableFromRecords(){
           });
           return;
         }
-        
-        // 特码行处理（不去重：直接从原始字符串提取生肖字符）
+
+        // 特码行处理（不去重：直接从原始内容提取生肖字符或数字号码）
         const teMaMatch = line.match(/^特码:(.+?)\s+各(?:数|)\s*(\d+)$/);
         if (teMaMatch) {
           const content = teMaMatch[1];
           const amt = parseInt(teMaMatch[2]) || 0;
           if (amt <= 0) return;
           orderCountAll++;
-          const { numbers, zodiacs } = countItemsInLine(line);
-          
-          // 号码统计（不去重）
-          numbers.forEach(num => {
-            userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
-            tableBetData[num] = (tableBetData[num] || 0) + amt;
-            reportBetData[num] = (reportBetData[num] || 0) + amt;
-            originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
-            if (zodiacs.length === 0) {
-              numberCount[num] = (numberCount[num] || 0) + 1;
-              if (amt >= nMin && amt <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
-              directOrderAmount[num] = (directOrderAmount[num] || 0) + amt;
-            }
-            if (zodiacs.length > 0) numberOrderTotal += amt;
-            else numberOrderTotal += amt;
-          });
-          
-          // 生肖统计（不去重：直接从原始内容提取生肖字符逐个累加）
-          if (zodiacs.length > 0) {
-            const zodiacChars = content.split('').filter(ch => /[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(ch));
+
+          // 从原始 content 提取生肖字符（不去重）
+          const zodiacChars = content.split('').filter(ch => /[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(ch));
+
+          if (zodiacChars.length > 0) {
+            // 该行包含生肖，只统计生肖次数和金额次数（不去重）
             zodiacChars.forEach(z => {
               zodiacCount[z] = (zodiacCount[z] || 0) + 1;
               if (amt >= zMin && amt <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
@@ -4042,8 +4028,9 @@ async function updateTableFromRecords(){
               zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amt * zNumCount;
               zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amt * zNumCount;
             });
-            // 同步累加生肖对应的号码
-            zodiacs.forEach(z => {
+            // 同步累加生肖对应的号码到投注数据
+            const uniqueZodiacs = [...new Set(zodiacChars)];
+            uniqueZodiacs.forEach(z => {
               (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
                 const num = n.padStart(2, '0');
                 userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
@@ -4052,11 +4039,28 @@ async function updateTableFromRecords(){
                 originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
               });
             });
+            numberOrderTotal += zodiacChars.length * amt;
+          } else {
+            // 该行不包含生肖，只统计数字号码（不去重）
+            const numItems = content.split('-').map(i => i.trim()).filter(i => i);
+            numItems.forEach(item => {
+              if (/^\d{1,2}$/.test(item) && parseInt(item) >= 1 && parseInt(item) <= 49) {
+                const num = item.padStart(2, '0');
+                numberCount[num] = (numberCount[num] || 0) + 1;
+                if (amt >= nMin && amt <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+                userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
+                tableBetData[num] = (tableBetData[num] || 0) + amt;
+                reportBetData[num] = (reportBetData[num] || 0) + amt;
+                originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
+                directOrderAmount[num] = (directOrderAmount[num] || 0) + amt;
+                numberOrderTotal += amt;
+              }
+            });
           }
           return;
         }
-        
-        // 兼容旧格式
+
+        // 兼容旧格式：不匹配上述正则的，使用原有 countItemsInLine 解析
         const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
         if (!amount || amount <= 0) return;
         if (playType && playType !== '特码') return;
@@ -4095,7 +4099,7 @@ async function updateTableFromRecords(){
         }
       });
     } catch(e) {} });
-    
+
     // 处理上报订单
     fRepsFiltered.forEach(rec=>{ try{
       const user=rec.user;
@@ -4123,18 +4127,18 @@ async function updateTableFromRecords(){
           });
           return;
         }
-        
+
         const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
         if (!amount || amount <= 0) return;
         if (playType && playType !== '特码') return;
-        
+
         numbers.forEach(num => {
           reportBetData[num] = (reportBetData[num] || 0) - amount;
           reportAmountData[num] = (reportAmountData[num] || 0) + amount;
           if (user && userBetData[user]) userBetData[user][num] = (userBetData[user][num] || 0) - amount;
           if (zodiacs.length === 0) directReportAmount[num] = (directReportAmount[num] || 0) + amount;
         });
-        
+
         zodiacs.forEach(z => {
           const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
           zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + amount * zNumCount;
@@ -4148,7 +4152,7 @@ async function updateTableFromRecords(){
         });
       });
     } catch(e) {} });
-    
+
     statsCache.set(cacheKey, { tableBetData: {...tableBetData}, userBetData: {...userBetData}, reportBetData: {...reportBetData}, reportAmountData: {...reportAmountData}, reportRiskData: {...reportRiskData}, numberCount: {...numberCount}, zodiacCount: {...zodiacCount}, numberAmountCount: {...numberAmountCount}, zodiacAmountCount: {...zodiacAmountCount}, zodiacDirectAmount: {...zodiacDirectAmount}, zodiacFilteredAmount: {...zodiacFilteredAmount}, zodiacReportAmount: {...zodiacReportAmount}, zodiacFilteredReportAmount: {...zodiacFilteredReportAmount}, numberOrderTotal, zodiacWeightedTotal, originalOrderAmount: {...originalOrderAmount}, directOrderAmount: {...directOrderAmount}, directReportAmount: {...directReportAmount}, orderCountAll });
     generateRiskTable(); generateReportTable(); renderFrequencyCards(); renderAmountFrequencyCards();
     renderReportAmountTable(); renderOriginalAmountTable(); updateReportAmountTotal(); updateAmountDisplays();
