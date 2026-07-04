@@ -578,7 +578,77 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
         </div>
       </div>
     </div>
-    <!-- 右侧风险报告区域 -->
+        <!-- 右侧风险报告区域 -->
+    <div class="risk-report-area">
+        <div class="card" id="riskReportCard">
+          <div class="card-title">
+            <div class="title-left">
+              <input type="date" id="filterDate" style="padding:4px;border-radius:4px;border:1px solid #ccc;" onchange="updateTableFromRecords()">
+              <button onclick="updateTableFromRecords()" style="margin-left:5px;background:none;border:none;cursor:pointer;font-size:16px;" title="强制刷新">🔄</button>
+              <select id="riskReportSwitcher" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:14px;" onchange="switchRiskReport()">
+                <option value="total" selected>总风险</option>
+                <option value="user">用户</option>
+                <option value="report">净风险</option>
+              </select>
+              <select id="viewUserSelect" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;font-size:14px;display:none;" onchange="updateTableFromRecords()"></select>
+            </div>
+            <div class="year-zodiac-area">
+              <span>本年生肖：</span>
+              <select id="startZodiacSelect">
+                <option value="马">马</option><option value="蛇">蛇</option><option value="龙">龙</option><option value="兔">兔</option><option value="虎">虎</option><option value="牛">牛</option><option value="鼠">鼠</option><option value="猪">猪</option><option value="狗">狗</option><option value="鸡">鸡</option><option value="猴">猴</option><option value="羊">羊</option>
+              </select>
+              <button class="btn-screenshot" style="padding:2px 8px; font-size:12px; min-height:auto; border-radius:20px; background:#27ae60; color:#fff; border:none; cursor:pointer; margin-left:4px;" onclick="screenshotRiskCard()">截图</button>
+            </div>
+          </div>
+          <div id="riskSection">
+            <div class="summary-row">
+              <div class="summary-item">总下注：<span id="totalBet">0</span></div>
+              <div class="summary-item">返水%：<input type="number" id="rebateRate" class="small-input" value="4" min="0" max="100" step="0.1"></div>
+              <div class="summary-item">返水：<span id="totalRebate">0</span></div>
+              <div class="summary-item">倍数：<input type="number" id="multipleVal" class="small-input" value="47" min="0.1" step="0.1">
+                <button class="btn-screenshot" style="padding:2px 8px; font-size:12px; min-height:auto; border-radius:20px; background:#27ae60; color:#fff; border:none; cursor:pointer;" onclick="screenshotTable('riskTable')">截图</button>
+                <button class="btn-copy-nums" style="padding:2px 8px; font-size:12px; min-height:auto; border-radius:20px; background:#8e44ad; color:#fff; border:none; cursor:pointer;" onclick="copySelectedNumbers('riskTable')">复制</button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="riskTable"><thead><tr><th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th></tr></thead><tbody id="tableBody" onclick="handleTableRowClick(event)"></tbody></table>
+            </div>
+          </div>
+          <div id="reportSection" style="display:none;">
+            <div class="summary-row">
+              <div class="summary-item">总下注：<span id="reportTotalBet">0</span></div>
+              <div class="summary-item">返水%：<input type="number" id="reportRebateRate" class="small-input" value="4" min="0" max="100" step="0.1"></div>
+              <div class="summary-item">返水：<span id="reportTotalRebate">0</span></div>
+              <div class="summary-item">倍数：<input type="number" id="reportMultipleVal" class="small-input" value="47" min="0.1" step="0.1">
+                <button class="btn-screenshot" style="padding:2px 8px; font-size:12px; min-height:auto; border-radius:20px; background:#27ae60; color:#fff; border:none; cursor:pointer;" onclick="screenshotTable('reportTable')">截图</button>
+                <button class="btn-copy-nums" style="padding:2px 8px; font-size:12px; min-height:auto; border-radius:20px; background:#8e44ad; color:#fff; border:none; cursor:pointer;" onclick="copySelectedNumbers('reportTable')">复制</button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="reportTable"><thead><tr><th>号码</th><th>下注</th><th>风险</th><th>ID</th><th>排名</th></tr></thead><tbody id="reportTableBody" onclick="handleTableRowClick(event)"></tbody></table>
+            </div>
+          </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- 右侧存储抽屉面板 -->
+  <div class="storage-drawer" id="storageDrawer">
+    <div class="storage-tab" id="storageTab" onclick="toggleStorageDrawer()">存储</div>
+    <div class="storage-panel" id="storagePanel">
+      <button class="close-drawer" onclick="toggleStorageDrawer()">×</button>
+      <p><span class="label">数据库状态：</span><span class="value" id="dbStatus" style="color:#27ae60;">正常</span></p>
+      <p><span class="label">今日数量：</span><span class="value" id="todayOrderCount">0</span></p>
+      <p><span class="label">订单数量：</span><span class="value" id="orderCount">0</span></p>
+      <p><span class="label">已用空间：</span><span class="value" id="usedSpace">0 MB</span></p>
+      <p><span class="label">剩余空间：</span><span class="value" id="freeSpace">50 MB</span></p>
+      <hr style="margin:8px 0;border-color:#eee;">
+      <p style="cursor:pointer;" onclick="showOperationLog()"><span class="label">📋 操作日志：</span><span class="value" id="logCount">0</span></p>
+      <p style="cursor:pointer;color:#e74c3c;" onclick="clearOperationLog()"><span class="label">🧹 清除日志</span></p>
+    </div>
+  </div>
+</div>
+        <!-- 右侧风险报告区域 -->
     <div class="risk-report-area">
         <div class="card" id="riskReportCard">
           <div class="card-title">
@@ -1180,7 +1250,7 @@ function zodiacToNums(zStr) { const ns = []; for (const z of zStr) { if (D[z]) D
 function extractNums(txt) { return (txt.match(/\d+/g) || []).map(n => parseInt(n)).filter(n => n >= 1 && n <= 49).map(n => String(n).padStart(2, '0')); }
 function extractZodiacs(txt) { return (txt.match(new RegExp(`[${ZODIAC}]`, 'g')) || []); }
 function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(/\d+/g) || []).map(n => parseInt(n)); return allNums.filter(n => n > 49); }
-   function preprocess(txt) {
+    function preprocess(txt) {
   let c = txt;
   c = c.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
   c = c.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -1309,8 +1379,8 @@ function parseTeMaSegment(content) {
   const cnt = allNumsArr.length;
   const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
   return { displayItems, totalCount: cnt, warnings, allNumsArr: allNumsArr };
-} 
-   function collectSpecialMatches(text) {
+}
+    function collectSpecialMatches(text) {
   const Z = ZODIAC;
   const allMatches = [];
 
@@ -1650,6 +1720,55 @@ function parseTeMaSegment(content) {
     return { cat: '平码', nums, amt, cnt: nums.length, total: amt * nums.length, kw, warnings: invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [] };
   });
 
+  // ===== 新增：特肖简写格式（修改二） =====
+  addMatch(new RegExp(`特肖${SEP}([${Z}])${SEP}(\\d+)(?!${SEP}*\\d)`, 'g'), m => {
+    const zodiac = m[1];
+    const amt = parseInt(m[2]) || 0;
+    if (!amt || amt <= 0) return null;
+    return {
+      cat: '特肖',
+      nums: [zodiac],
+      amt,
+      cnt: 1,
+      total: amt,
+      kw: ''
+    };
+  });
+
+  // ===== 新增：包玩法声明（修改三） =====
+  const PACK_ATTRS = [
+    '红波','蓝波','绿波','兰波',
+    '红单','红双','红大','红小',
+    '蓝单','蓝双','蓝大','蓝小','兰单','兰双','兰大','兰小',
+    '绿单','绿双','绿大','绿小',
+    '单','双','大','小',
+    '家禽','野兽'
+  ];
+  const PACK_ATTRS_SORTED = PACK_ATTRS.sort((a, b) => b.length - a.length);
+  const packAttrPattern = PACK_ATTRS_SORTED.map(a => a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  addMatch(new RegExp(`包${SEP}(${packAttrPattern})${SEP}(\\d+)(?!${SEP}*\\d)`, 'g'), m => {
+    const attr = m[1];
+    const amt = parseInt(m[2]) || 0;
+    if (!amt || amt <= 0) return null;
+    // 标准化属性词（兰→蓝）
+    let normalizedAttr = attr;
+    if (normalizedAttr === '兰波') normalizedAttr = '蓝波';
+    if (normalizedAttr === '兰单') normalizedAttr = '蓝单';
+    if (normalizedAttr === '兰双') normalizedAttr = '蓝双';
+    if (normalizedAttr === '兰大') normalizedAttr = '蓝大';
+    if (normalizedAttr === '兰小') normalizedAttr = '蓝小';
+    // 确定玩法名
+    let playName = '包' + normalizedAttr;
+    return {
+      cat: playName,
+      nums: [normalizedAttr],
+      amt,
+      cnt: 1,
+      total: amt,
+      kw: ''
+    };
+  });
+
   allMatches.push(...multiMatches);
 
   allMatches.sort((a, b) => a.start - b.start);
@@ -1663,7 +1782,32 @@ function parseTeMaSegment(content) {
   }
   return deduped;
 }
-   function processOneLine(line) {
+    function tryMatchTeXiao(content) {
+    if (!content || !content.trim()) return null;
+    const trimmed = content.trim();
+    const ZODIAC_SET = new Set('鼠牛虎兔龙蛇马羊猴鸡狗猪'.split(''));
+    // 修改：去掉 ^ 行首锚定，改为在文本中搜索，前面允许有非生肖修饰词
+    const shxMatch = trimmed.match(
+      new RegExp(`(?:^|[\\s,，.。、+\\-*＊\\/\\\\|])([鼠牛虎兔龙蛇马羊猴鸡狗猪\\s,，.。、+\\-*＊\\/\\\\|]+?)(各肖|各(?!数|号|组|码|注|下|买))\\s*(\\d+)`)
+    );
+    if (!shxMatch) return null;
+    const rawContent = shxMatch[1];
+    const amtRaw = parseInt(shxMatch[3]) || 0;
+    if (amtRaw <= 0) return null;
+    const zodiacChars = [];
+    for (const ch of rawContent) {
+      if (ZODIAC_SET.has(ch)) zodiacChars.push(ch);
+    }
+    // 修改：去掉 nonZodiacChars 检查，因为正则已限制捕获内容只能是生肖字和分隔符
+    if (zodiacChars.length > 0) {
+      const cnt = zodiacChars.length;
+      const total = amtRaw * cnt;
+      return { cat: '特肖', nums: zodiacChars, amt: amtRaw, cnt: cnt, total: total, kw: '各', warnings: [] };
+    }
+    return null;
+  }
+  
+  function processOneLine(line) {
   if (!line.trim()) return [];
 
   // ===== 号码-金额对识别（优先处理） =====
@@ -1690,28 +1834,6 @@ function parseTeMaSegment(content) {
     }
   }
   // ===== 号码-金额对识别结束 =====
-
-  const ZODIAC_SET = new Set('鼠牛虎兔龙蛇马羊猴鸡狗猪'.split(''));
-
-  function tryMatchTeXiao(content) {
-    if (!content || !content.trim()) return null;
-    const trimmed = content.trim();
-    const shxMatch = trimmed.match(new RegExp(`^(.+?)(各肖|各(?!数|号|组|码|注|下|买))\\s*(\\d+)`));
-    if (!shxMatch) return null;
-    const rawContent = shxMatch[1];
-    const amtRaw = parseInt(shxMatch[3]) || 0;
-    const zodiacChars = [];
-    for (const ch of rawContent) {
-      if (ZODIAC_SET.has(ch)) zodiacChars.push(ch);
-    }
-    const nonZodiacChars = rawContent.replace(/[鼠牛虎兔龙蛇马羊猴鸡狗猪\s,，.。、+\-*＊\/\\|]+/g, '');
-    if (zodiacChars.length > 0 && nonZodiacChars.length === 0) {
-      const cnt = zodiacChars.length;
-      const total = amtRaw * cnt;
-      return { cat: '特肖', nums: zodiacChars, amt: amtRaw, cnt: cnt, total: total, kw: '各', warnings: [] };
-    }
-    return null;
-  }
 
   const specialMatches = collectSpecialMatches(line);
   const results = [];
@@ -2546,6 +2668,88 @@ function processTexiaoLineDuijiangReport(stats, content, amt, drawTeMaZodiac, dr
   }
 }
 
+// ===== 包玩法兑奖处理函数（下单） =====
+function processPackLineDuijiang(stats, playName, attr, amt, drawNumbers, drawZodiacs, drawTeMaZodiac, hasValidDraw) {
+  const totalAmt = amt;
+  const rebate = 4;
+  stats.orderTotal += totalAmt;
+  stats.orderRebate += totalAmt * (rebate / 100);
+  if (hasValidDraw) {
+    let hit = false;
+    const drawTeMa = drawNumbers[6] || '';
+    if (['包红波','包蓝波','包绿波','包兰波'].includes(playName)) {
+      const normalizedAttr = attr === '兰波' ? '蓝波' : attr;
+      const boseNums = D[normalizedAttr] ? D[normalizedAttr].split(/[\s,，]+/) : [];
+      hit = boseNums.includes(drawTeMa);
+    } else if (['包红单','包红双','包红大','包红小','包蓝单','包蓝双','包蓝大','包蓝小','包兰单','包兰双','包兰大','包兰小','包绿单','包绿双','包绿大','包绿小'].includes(playName)) {
+      let normalizedAttr2 = attr;
+      if (normalizedAttr2 === '兰单') normalizedAttr2 = '蓝单';
+      if (normalizedAttr2 === '兰双') normalizedAttr2 = '蓝双';
+      if (normalizedAttr2 === '兰大') normalizedAttr2 = '蓝大';
+      if (normalizedAttr2 === '兰小') normalizedAttr2 = '蓝小';
+      const halfNums = D[normalizedAttr2] ? D[normalizedAttr2].split(/[\s,，]+/) : [];
+      hit = halfNums.includes(drawTeMa);
+    } else if (['包单','包双'].includes(playName)) {
+      const dsNums = D[attr] ? D[attr].split(/[\s,，]+/) : [];
+      hit = dsNums.includes(drawTeMa);
+    } else if (['包大','包小'].includes(playName)) {
+      const dxNums = D[attr] ? D[attr].split(/[\s,，]+/) : [];
+      hit = dxNums.includes(drawTeMa);
+    } else if (['包家禽','包野兽'].includes(playName)) {
+      const zodiacs = (ATTR_TO_ZODIACS[attr] || '').split('');
+      hit = zodiacs.includes(drawTeMaZodiac);
+    }
+    if (hit) {
+      const { odds } = getOddsForType(playName, getOddsData());
+      stats.orderHitByType[playName] = (stats.orderHitByType[playName] || 0) + amt;
+      stats.orderPL += totalAmt - totalAmt * (rebate / 100) - amt * odds;
+    } else {
+      stats.orderPL += totalAmt - totalAmt * (rebate / 100);
+    }
+  }
+}
+
+// ===== 包玩法兑奖处理函数（上报） =====
+function processPackLineDuijiangReport(stats, playName, attr, amt, drawNumbers, drawZodiacs, drawTeMaZodiac, hasValidDraw) {
+  const totalAmt = amt;
+  const rebate = 4;
+  stats.reportTotal += totalAmt;
+  stats.reportRebate += totalAmt * (rebate / 100);
+  if (hasValidDraw) {
+    let hit = false;
+    const drawTeMa = drawNumbers[6] || '';
+    if (['包红波','包蓝波','包绿波','包兰波'].includes(playName)) {
+      const normalizedAttr = attr === '兰波' ? '蓝波' : attr;
+      const boseNums = D[normalizedAttr] ? D[normalizedAttr].split(/[\s,，]+/) : [];
+      hit = boseNums.includes(drawTeMa);
+    } else if (['包红单','包红双','包红大','包红小','包蓝单','包蓝双','包蓝大','包蓝小','包兰单','包兰双','包兰大','包兰小','包绿单','包绿双','包绿大','包绿小'].includes(playName)) {
+      let normalizedAttr2 = attr;
+      if (normalizedAttr2 === '兰单') normalizedAttr2 = '蓝单';
+      if (normalizedAttr2 === '兰双') normalizedAttr2 = '蓝双';
+      if (normalizedAttr2 === '兰大') normalizedAttr2 = '蓝大';
+      if (normalizedAttr2 === '兰小') normalizedAttr2 = '蓝小';
+      const halfNums = D[normalizedAttr2] ? D[normalizedAttr2].split(/[\s,，]+/) : [];
+      hit = halfNums.includes(drawTeMa);
+    } else if (['包单','包双'].includes(playName)) {
+      const dsNums = D[attr] ? D[attr].split(/[\s,，]+/) : [];
+      hit = dsNums.includes(drawTeMa);
+    } else if (['包大','包小'].includes(playName)) {
+      const dxNums = D[attr] ? D[attr].split(/[\s,，]+/) : [];
+      hit = dxNums.includes(drawTeMa);
+    } else if (['包家禽','包野兽'].includes(playName)) {
+      const zodiacs = (ATTR_TO_ZODIACS[attr] || '').split('');
+      hit = zodiacs.includes(drawTeMaZodiac);
+    }
+    if (hit) {
+      const { odds } = getOddsForType(playName, getOddsData());
+      stats.reportHitByType[playName] = (stats.reportHitByType[playName] || 0) + amt;
+      stats.reportPL += totalAmt - totalAmt * (rebate / 100) - amt * odds;
+    } else {
+      stats.reportPL += totalAmt - totalAmt * (rebate / 100);
+    }
+  }
+}
+
 // ===== 新版兑奖处理函数 =====
 function processNormalLineDuijiangNew(stats, content, amt, drawTeMa, hasValidDraw) {
   const items = content.split('-').map(i => i.trim()).filter(i => i);
@@ -2930,7 +3134,14 @@ function getOddsForType(type, oddsData) {
     '四连尾':{odds:14,rebate:4},'四连尾零尾':{odds:15,rebate:4},'五连尾':{odds:28,rebate:4},'五连尾零尾':{odds:30,rebate:4},
     '五不中':{odds:2,rebate:4},'六不中':{odds:2.5,rebate:4},'七不中':{odds:3,rebate:4},'八不中':{odds:3.5,rebate:4},
     '九不中':{odds:4,rebate:4},'十不中':{odds:5,rebate:4},'十一不中':{odds:6,rebate:4},'十二不中':{odds:7,rebate:4},
-    '二中二':{odds:60,rebate:4},'三中三':{odds:600,rebate:4},'平码':{odds:7,rebate:4}
+    '二中二':{odds:60,rebate:4},'三中三':{odds:600,rebate:4},'平码':{odds:7,rebate:4},
+    '包红波':{odds:2.6,rebate:4},'包蓝波':{odds:2.7,rebate:4},'包绿波':{odds:2.7,rebate:4},
+    '包红单':{odds:5,rebate:4},'包红双':{odds:4.7,rebate:4},'包红大':{odds:6,rebate:4},'包红小':{odds:4,rebate:4},
+    '包蓝单':{odds:5,rebate:4},'包蓝双':{odds:5,rebate:4},'包蓝大':{odds:4.7,rebate:4},'包蓝小':{odds:6,rebate:4},
+    '包绿单':{odds:5,rebate:4},'包绿双':{odds:5,rebate:4},'包绿大':{odds:5,rebate:4},'包绿小':{odds:6,rebate:4},
+    '包单':{odds:1.8,rebate:4},'包双':{odds:1.8,rebate:4},
+    '包大':{odds:1.8,rebate:4},'包小':{odds:1.8,rebate:4},
+    '包家禽':{odds:1.8,rebate:4},'包野兽':{odds:1.8,rebate:4}
   };
   const saved = oddsData[type] || {};
   return {
@@ -3001,7 +3212,7 @@ async function screenshotRiskCard() {
   } catch(e) { showToast('截图失败'); }
 }
 
-// ===== 连肖统计函数（改为从 STORE_NAME 读取，筛选非特码玩法，增加特肖展示） =====
+// ===== 连肖统计函数（改为从 STORE_NAME 读取，筛选非特码玩法，增加特肖展示，增加包玩法展示） =====
 async function refreshLianxiaoStats() {
   const container = document.getElementById('lianxiaoStatsContainer');
   if (!container) return;
@@ -3023,6 +3234,7 @@ async function refreshLianxiaoStats() {
       const newMatch = line.match(/^(.+?):(.+?)\s+各(?:数|组|)\s*(\d+)$/);
       if (newMatch) {
         const playType = normalizePlayType(newMatch[1]);
+        // 包玩法也纳入其他订单
         if (playType !== '特码') {
           records.push({ content: line, user: order.user, date: order.date });
         }
@@ -3087,6 +3299,15 @@ async function refreshLianxiaoStats() {
       const playType = normalizePlayType(newMatch[1]);
       const content = newMatch[2];
       const amount = parseInt(newMatch[4]) || 0;
+      
+      // 包玩法处理
+      if (playType.startsWith('包')) {
+        if (!stats[playType]) stats[playType] = { items: new Map() };
+        const attr = content;
+        stats[playType].items.set(attr, (stats[playType].items.get(attr) || 0) + amount);
+        grandTotal += amount;
+        return;
+      }
       
       if (playType === '特肖') {
         const zodiacs = content.split('-').filter(z => z.trim());
@@ -3216,6 +3437,7 @@ async function refreshLianxiaoStats() {
   const cardsArray = [];
   const order = ['特肖', 'pingtexiao', 'lianxiao2', 'lianxiao3', 'lianxiao4', 'lianxiao5', 'buzhong5', 'buzhong6', 'buzhong7', 'buzhong8', 'buzhong9', 'buzhong10', 'buzhong11', 'buzhong12', 'pingma', 'pingtewei', 'lianwei2', 'lianwei3', 'lianwei4', 'lianwei5', 'zhong2', 'zhong3'];
 
+  // 先处理非包玩法的已有逻辑
   order.forEach((type) => {
     if (!stats[type]) return;
     const data = stats[type];
@@ -3300,6 +3522,76 @@ async function refreshLianxiaoStats() {
     cardsArray.push({ html: cardHtml, groups: totalGroups });
   });
 
+  // 处理包玩法卡片
+  const PACK_PLAY_NAMES = [
+    '包红波','包蓝波','包绿波',
+    '包红单','包红双','包红大','包红小',
+    '包蓝单','包蓝双','包蓝大','包蓝小',
+    '包绿单','包绿双','包绿大','包绿小',
+    '包单','包双','包大','包小',
+    '包家禽','包野兽'
+  ];
+  PACK_PLAY_NAMES.forEach(packPlayName => {
+    if (!stats[packPlayName]) return;
+    const data = stats[packPlayName];
+    const cardId = `comboCard_${packPlayName}`;
+    let totalAmount = 0, cardPL = 0, totalHitAmount = 0;
+    const { odds, rebate } = getOddsForType(packPlayName, getOddsData());
+    
+    let tablesHtml = '<table style="width:100%;"><tr><th style="text-align:center;">属性</th><th style="text-align:center;">金额</th><th style="text-align:center;">中奖</th><th style="text-align:center;">盈亏</th></tr>';
+    data.items.forEach((v, k) => {
+      let hit = false;
+      const drawTeMa = drawNumbers.length > 0 ? drawNumbers[6] : '';
+      const drawTeMaZodiac = drawTeMa ? (currentZodiacMap[drawTeMa] || '') : '';
+      if (['包红波','包蓝波','包绿波'].includes(packPlayName)) {
+        const boseNums = D[k] ? D[k].split(/[\s,，]+/) : [];
+        hit = boseNums.includes(drawTeMa);
+      } else if (['包红单','包红双','包红大','包红小','包蓝单','包蓝双','包蓝大','包蓝小','包绿单','包绿双','包绿大','包绿小'].includes(packPlayName)) {
+        const halfNums = D[k] ? D[k].split(/[\s,，]+/) : [];
+        hit = halfNums.includes(drawTeMa);
+      } else if (['包单','包双'].includes(packPlayName)) {
+        const dsNums = D[k] ? D[k].split(/[\s,，]+/) : [];
+        hit = dsNums.includes(drawTeMa);
+      } else if (['包大','包小'].includes(packPlayName)) {
+        const dxNums = D[k] ? D[k].split(/[\s,，]+/) : [];
+        hit = dxNums.includes(drawTeMa);
+      } else if (['包家禽','包野兽'].includes(packPlayName)) {
+        const zodiacs = (ATTR_TO_ZODIACS[k] || '').split('');
+        hit = zodiacs.includes(drawTeMaZodiac);
+      }
+      let pl = 0;
+      if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
+        pl = hit ? (v - v * (rebate / 100) - v * odds) : (v - v * (rebate / 100));
+      }
+      cardPL += pl;
+      if (hit) totalHitAmount += v;
+      totalAmount += v;
+      tablesHtml += `<tr><td style="text-align:center;">${k}</td><td style="text-align:center;">${v}</td><td style="text-align:center;">${hit ? `<span class="amount-red-text">${v}</span>` : ''}</td><td style="text-align:center;${pl > 0 ? 'color:#27ae60;' : (pl < 0 ? 'color:#e74c3c;' : '')}">${pl !== 0 ? Math.round(pl) : ''}</td></tr>`;
+    });
+    tablesHtml += '</table>';
+    
+    grandPL += cardPL;
+    const roundedCardPL = Math.round(cardPL);
+    let cardBgStyle = '';
+    if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
+      if (cardPL <= -500) cardBgStyle = 'background:#fff0f0;';
+      else if (cardPL < 0) cardBgStyle = 'background:#fff8f8;';
+      else if (cardPL > 500) cardBgStyle = 'background:#f0fff0;';
+      else if (cardPL > 0) cardBgStyle = 'background:#f8fff8;';
+    }
+    
+    let cardHtml = `<div class="freq-card" id="${cardId}" style="break-inside:avoid; margin-bottom:10px; min-width:180px;${cardBgStyle}">`;
+    cardHtml += `<div class="freq-title" style="display:flex; align-items:center; justify-content:space-between;"><span>${packPlayName}</span><button class="btn" style="background:#27ae60;color:#fff;padding:2px 8px;font-size:11px;min-height:auto;border-radius:20px;" onclick="screenshotSingleComboCard('${cardId}')">截图</button></div>`;
+    cardHtml += `<div style="max-height:400px;overflow-y:auto;">${tablesHtml}</div>`;
+    cardHtml += `<div style="border-top:1px solid #ddd;margin-top:4px;padding-top:4px;font-size:11px;text-align:center;">小计：${data.items.size}组 金额：${totalAmount}`;
+    if (drawZodiacs.length > 0 || drawNumbers.length > 0) {
+      cardHtml += ` 中：${totalHitAmount}`;
+      cardHtml += ` 盈亏：<span style="color:${roundedCardPL > 0 ? '#27ae60' : (roundedCardPL < 0 ? '#e74c3c' : '')};">${roundedCardPL > 0 ? roundedCardPL : (roundedCardPL < 0 ? roundedCardPL : '')}</span>`;
+    }
+    cardHtml += '</div></div>';
+    cardsArray.push({ html: cardHtml, groups: data.items.size });
+  });
+
   cardsArray.sort((a, b) => a.groups - b.groups);
   container.innerHTML = cardsArray.map(c => c.html).join('') || '<div style="color:#666;text-align:center;padding:10px;">暂无其他订单数据</div>';
   const roundedGrandPL = Math.round(grandPL);
@@ -3313,7 +3605,9 @@ async function refreshLianxiaoStats() {
 
 function getComboTypeLabel(type) {
   const map = { '特肖': '特肖', pingtexiao: '平特肖', pingtewei: '平特尾', lianxiao2: '二连肖', lianxiao3: '三连肖', lianxiao4: '四连肖', lianxiao5: '五连肖', zhong2: '二中二', zhong3: '三中三', pingma: '平码', lianwei2: '二连尾', lianwei3: '三连尾', lianwei4: '四连尾', lianwei5: '五连尾', buzhong5: '五不中', buzhong6: '六不中', buzhong7: '七不中', buzhong8: '八不中', buzhong9: '九不中', buzhong10: '十不中', buzhong11: '十一不中', buzhong12: '十二不中' };
-  return map[type] || type;
+  if (map[type]) return map[type];
+  if (type.startsWith('包')) return type;
+  return type;
 }
 
 async function clearAllComboOrders() {
@@ -3877,7 +4171,6 @@ async function updateTableFromRecords(){
     fRecsFiltered.forEach(rec=>{ try{
       if(!userBetData[rec.user])userBetData[rec.user]={};
       rec.content.split('\n').filter(l=>l.trim()).forEach(line=>{
-        // 特肖行处理
         const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
         if (teXiaoMatch) {
           const zodiacsStr = teXiaoMatch[1];
@@ -3907,14 +4200,12 @@ async function updateTableFromRecords(){
           return;
         }
         
-        // 特码行处理（支持 "特码:内容 各数 金额" 和 "内容 各数 金额" 两种格式）
         let content, amt;
         const teMaMatch = line.match(/^特码:(.+?)\s+各(?:数|)\s*(\d+)$/);
         if (teMaMatch) {
           content = teMaMatch[1];
           amt = parseInt(teMaMatch[2]) || 0;
         } else {
-          // 兼容旧格式：内容 各数 金额（不含 "特码:" 前缀）
           const oldMatch = line.match(/^(.+?)\s+各(?:数|)\s*(\d+)$/);
           if (oldMatch && !/^特肖:/.test(line) && !/[:：]/.test(line)) {
             content = oldMatch[1];
@@ -3928,7 +4219,6 @@ async function updateTableFromRecords(){
         const items = content.split('-').map(i => i.trim()).filter(i => i);
 
         items.forEach(item => {
-          // 1. 单个数字号码
           if (/^\d{1,2}$/.test(item) && parseInt(item) >= 1 && parseInt(item) <= 49) {
             const num = item.padStart(2, '0');
             numberCount[num] = (numberCount[num] || 0) + 1;
@@ -3942,7 +4232,6 @@ async function updateTableFromRecords(){
             return;
           }
 
-          // 2. 单个生肖字符（不统计号码合计）
           if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(item)) {
             zodiacCount[item] = (zodiacCount[item] || 0) + 1;
             const zNumCount = (ZODIAC_NUMS[item] || '').split(/[\s,，]+/).length || 0;
@@ -3961,7 +4250,6 @@ async function updateTableFromRecords(){
             return;
           }
 
-          // 3. 字典属性词
           if (D[item]) {
             const zodiacList = expandKeyToZodiacs(item);
             if (zodiacList.length > 0) {
@@ -4093,9 +4381,8 @@ function updateOrderTotalDisplay(){
       const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
       if(match){
         const playType = match[1]; const content = match[2]; const amt = parseInt(match[3])||0;
-        if(playType==='平特肖'||playType==='平特尾'||playType==='平码'){
-          const items = content.split('-').filter(i=>i.trim());
-          total += items.length * amt;
+        if(playType.startsWith('包') || playType==='平特肖'||playType==='平特尾'||playType==='平码'){
+          total += amt;
         } else {
           const cleaned = content.replace(/[()]/g, '');
           const groups = cleaned.split(/\s+/).filter(c=>c.trim());
@@ -4127,9 +4414,8 @@ function computeCurrentOrderTotal(){
       const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
       if(match){
         const playType = match[1]; const content = match[2]; const amt = parseInt(match[3])||0;
-        if(playType==='平特肖'||playType==='平特尾'||playType==='平码'){
-          const items = content.split('-').filter(i=>i.trim());
-          total += items.length * amt;
+        if(playType.startsWith('包') || playType==='平特肖'||playType==='平特尾'||playType==='平码'){
+          total += amt;
         } else {
           const cleaned = content.replace(/[()]/g, '');
           const groups = cleaned.split(/\s+/).filter(c=>c.trim());
@@ -4148,7 +4434,6 @@ function updateAmountDisplays(){
     document.getElementById('numberTotalAmount').textContent=numberOrderTotal;
     nb.style.display='inline-flex';
   } else { nb.style.display='none'; } 
-  // 用 zodiacDirectAmount 的总和作为生肖合计
   let zodiacTotal = 0;
   for (let z in zodiacDirectAmount) { zodiacTotal += zodiacDirectAmount[z] || 0; }
   if(zodiacTotal > 0){
