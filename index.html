@@ -2132,7 +2132,7 @@ function displayResults(rs, container) {
 }
 
 function formatNums(cat, numsArr) {
-  const simpleCats = ['特码', '特肖', '平特肖', '平码', '平特尾', '特碰'];
+  const simpleCats = ['特码', '特肖', '平特肖', '平码', '平特尾'];
   if (simpleCats.includes(cat)) return numsArr.join('-');
   if (cat.startsWith('包')) return numsArr.join('-');
   if (cat.includes('连肖')) return numsArr.map(g => '(' + g.split('').join('-') + ')').join(' ');
