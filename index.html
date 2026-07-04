@@ -1180,7 +1180,7 @@ function zodiacToNums(zStr) { const ns = []; for (const z of zStr) { if (D[z]) D
 function extractNums(txt) { return (txt.match(/\d+/g) || []).map(n => parseInt(n)).filter(n => n >= 1 && n <= 49).map(n => String(n).padStart(2, '0')); }
 function extractZodiacs(txt) { return (txt.match(new RegExp(`[${ZODIAC}]`, 'g')) || []); }
 function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(/\d+/g) || []).map(n => parseInt(n)); return allNums.filter(n => n > 49); }
-    function preprocess(txt) {
+   function preprocess(txt) {
   let c = txt;
   c = c.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
   c = c.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -1309,7 +1309,7 @@ function parseTeMaSegment(content) {
   const cnt = allNumsArr.length;
   const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
   return { displayItems, totalCount: cnt, warnings, allNumsArr: allNumsArr };
-}
+} 
    function collectSpecialMatches(text) {
   const Z = ZODIAC;
   const allMatches = [];
@@ -1663,7 +1663,7 @@ function parseTeMaSegment(content) {
   }
   return deduped;
 }
-    function processOneLine(line) {
+   function processOneLine(line) {
   if (!line.trim()) return [];
 
   // ===== 号码-金额对识别（优先处理） =====
@@ -1765,22 +1765,17 @@ function parseTeMaSegment(content) {
       }
       subLast = subMatch.index + subMatch[0].length;
     }
+    // 关键修复：残留内容不拆分，直接作为整体报警
     if (subLast < content.length) {
       const remaining = content.substring(subLast).trim();
       if (remaining && containsDictElement(remaining)) {
-        const parts = remaining.split(/[\s,，.。、+]+/).filter(p => p.trim());
-        for (const part of parts) {
-          const p = part.trim();
-          if (containsDictElement(p) && /\d+|[一二三四五六七八九十百千两]+/.test(p)) {
-            results.push({
-              cat: '__unrecognized__',
-              nums: [],
-              amt: 0, cnt: 0, total: 0, kw: '',
-              warnings: ['缺少金额关键字或有效玩法'],
-              rawLine: p
-            });
-          }
-        }
+        results.push({
+          cat: '__unrecognized__',
+          nums: [],
+          amt: 0, cnt: 0, total: 0, kw: '',
+          warnings: ['缺少金额关键字或有效玩法'],
+          rawLine: remaining
+        });
       }
     }
   }
@@ -1804,22 +1799,17 @@ function parseTeMaSegment(content) {
       }
       subLast = subMatch.index + subMatch[0].length;
     }
+    // 关键修复：残留内容不拆分，直接作为整体报警
     if (subLast < line.length) {
       const remaining = line.substring(subLast).trim();
       if (remaining && containsDictElement(remaining)) {
-        const parts = remaining.split(/[\s,，.。、+]+/).filter(p => p.trim());
-        for (const part of parts) {
-          const p = part.trim();
-          if (containsDictElement(p) && /\d+|[一二三四五六七八九十百千两]+/.test(p)) {
-            results.push({
-              cat: '__unrecognized__',
-              nums: [],
-              amt: 0, cnt: 0, total: 0, kw: '',
-              warnings: ['缺少金额关键字或有效玩法'],
-              rawLine: p
-            });
-          }
-        }
+        results.push({
+          cat: '__unrecognized__',
+          nums: [],
+          amt: 0, cnt: 0, total: 0, kw: '',
+          warnings: ['缺少金额关键字或有效玩法'],
+          rawLine: remaining
+        });
       }
     }
   }
@@ -3887,6 +3877,7 @@ async function updateTableFromRecords(){
     fRecsFiltered.forEach(rec=>{ try{
       if(!userBetData[rec.user])userBetData[rec.user]={};
       rec.content.split('\n').filter(l=>l.trim()).forEach(line=>{
+        // 特肖行处理
         const teXiaoMatch = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
         if (teXiaoMatch) {
           const zodiacsStr = teXiaoMatch[1];
@@ -3905,7 +3896,6 @@ async function updateTableFromRecords(){
               tableBetData[numPadded] = (tableBetData[numPadded] || 0) + perNumAmt;
               reportBetData[numPadded] = (reportBetData[numPadded] || 0) + perNumAmt;
               originalOrderAmount[numPadded] = (originalOrderAmount[numPadded] || 0) + perNumAmt;
-              // 特肖行不计入号码合计
             });
             zodiacCount[z] = (zodiacCount[z] || 0) + 1;
             zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amtRaw;
@@ -3917,125 +3907,98 @@ async function updateTableFromRecords(){
           return;
         }
         
+        // 特码行处理（支持 "特码:内容 各数 金额" 和 "内容 各数 金额" 两种格式）
+        let content, amt;
         const teMaMatch = line.match(/^特码:(.+?)\s+各(?:数|)\s*(\d+)$/);
         if (teMaMatch) {
-          const content = teMaMatch[1];
-          const amt = parseInt(teMaMatch[2]) || 0;
-          if (amt <= 0) return;
-          orderCountAll++;
-          const items = content.split('-').map(i => i.trim()).filter(i => i);
+          content = teMaMatch[1];
+          amt = parseInt(teMaMatch[2]) || 0;
+        } else {
+          // 兼容旧格式：内容 各数 金额（不含 "特码:" 前缀）
+          const oldMatch = line.match(/^(.+?)\s+各(?:数|)\s*(\d+)$/);
+          if (oldMatch && !/^特肖:/.test(line) && !/[:：]/.test(line)) {
+            content = oldMatch[1];
+            amt = parseInt(oldMatch[2]) || 0;
+          } else {
+            return;
+          }
+        }
+        if (amt <= 0) return;
+        orderCountAll++;
+        const items = content.split('-').map(i => i.trim()).filter(i => i);
 
-          items.forEach(item => {
-            // 1. 单个数字号码
-            if (/^\d{1,2}$/.test(item) && parseInt(item) >= 1 && parseInt(item) <= 49) {
-              const num = item.padStart(2, '0');
-              numberCount[num] = (numberCount[num] || 0) + 1;
-              if (amt >= nMin && amt <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+        items.forEach(item => {
+          // 1. 单个数字号码
+          if (/^\d{1,2}$/.test(item) && parseInt(item) >= 1 && parseInt(item) <= 49) {
+            const num = item.padStart(2, '0');
+            numberCount[num] = (numberCount[num] || 0) + 1;
+            if (amt >= nMin && amt <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+            userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
+            tableBetData[num] = (tableBetData[num] || 0) + amt;
+            reportBetData[num] = (reportBetData[num] || 0) + amt;
+            originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
+            directOrderAmount[num] = (directOrderAmount[num] || 0) + amt;
+            numberOrderTotal += amt;
+            return;
+          }
+
+          // 2. 单个生肖字符（不统计号码合计）
+          if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(item)) {
+            zodiacCount[item] = (zodiacCount[item] || 0) + 1;
+            const zNumCount = (ZODIAC_NUMS[item] || '').split(/[\s,，]+/).length || 0;
+            zodiacDirectAmount[item] = (zodiacDirectAmount[item] || 0) + amt * zNumCount;
+            if (amt >= zMin && amt <= zMax) {
+              zodiacAmountCount[item] = (zodiacAmountCount[item] || 0) + 1;
+              zodiacFilteredAmount[item] = (zodiacFilteredAmount[item] || 0) + amt * zNumCount;
+            }
+            (ZODIAC_NUMS[item] || '').split(/[\s,，]+/).forEach(n => {
+              const num = n.padStart(2, '0');
               userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
               tableBetData[num] = (tableBetData[num] || 0) + amt;
               reportBetData[num] = (reportBetData[num] || 0) + amt;
               originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
-              directOrderAmount[num] = (directOrderAmount[num] || 0) + amt;
-              numberOrderTotal += amt;
-              return;
-            }
+            });
+            return;
+          }
 
-            // 2. 单个生肖字符（不统计号码合计）
-            if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(item)) {
-              zodiacCount[item] = (zodiacCount[item] || 0) + 1;
-              const zNumCount = (ZODIAC_NUMS[item] || '').split(/[\s,，]+/).length || 0;
-              zodiacDirectAmount[item] = (zodiacDirectAmount[item] || 0) + amt * zNumCount;
-              if (amt >= zMin && amt <= zMax) {
-                zodiacAmountCount[item] = (zodiacAmountCount[item] || 0) + 1;
-                zodiacFilteredAmount[item] = (zodiacFilteredAmount[item] || 0) + amt * zNumCount;
-              }
-              (ZODIAC_NUMS[item] || '').split(/[\s,，]+/).forEach(n => {
-                const num = n.padStart(2, '0');
-                userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
-                tableBetData[num] = (tableBetData[num] || 0) + amt;
-                reportBetData[num] = (reportBetData[num] || 0) + amt;
-                originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
-              });
-              return;
-            }
-
-            // 3. 字典属性词
-            if (D[item]) {
-              const zodiacList = expandKeyToZodiacs(item);
-              if (zodiacList.length > 0) {
-                zodiacList.forEach(z => {
-                  zodiacCount[z] = (zodiacCount[z] || 0) + 1;
-                  const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
-                  zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amt * zNumCount;
-                  if (amt >= zMin && amt <= zMax) {
-                    zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
-                    zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amt * zNumCount;
-                  }
-                  (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
-                    const num = n.padStart(2, '0');
-                    userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
-                    tableBetData[num] = (tableBetData[num] || 0) + amt;
-                    reportBetData[num] = (reportBetData[num] || 0) + amt;
-                    originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
-                  });
-                });
-                return;
-              }
-              const numList = expandKeyToNums(item);
-              if (numList.length > 0) {
-                numList.forEach(n => {
+          // 3. 字典属性词
+          if (D[item]) {
+            const zodiacList = expandKeyToZodiacs(item);
+            if (zodiacList.length > 0) {
+              zodiacList.forEach(z => {
+                zodiacCount[z] = (zodiacCount[z] || 0) + 1;
+                const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
+                zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amt * zNumCount;
+                if (amt >= zMin && amt <= zMax) {
+                  zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
+                  zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amt * zNumCount;
+                }
+                (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
                   const num = n.padStart(2, '0');
-                  numberCount[num] = (numberCount[num] || 0) + 1;
-                  if (amt >= nMin && amt <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
                   userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
                   tableBetData[num] = (tableBetData[num] || 0) + amt;
                   reportBetData[num] = (reportBetData[num] || 0) + amt;
                   originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
-                  directOrderAmount[num] = (directOrderAmount[num] || 0) + amt;
-                  numberOrderTotal += amt;
                 });
-              }
+              });
+              return;
             }
-          });
-          return;
-        }
-
-        const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
-        if (!amount || amount <= 0) return;
-        if (playType && playType !== '特码') return;
-        orderCountAll++;
-        if (zodiacs.length > 0) {
-          zodiacs.forEach(z => { const w = z === curZod ? 5 : 4; zodiacWeightedTotal += amount * w; });
-        } else if (numbers.length > 0) {
-          numberOrderTotal += numbers.length * amount;
-        }
-        numbers.forEach(num => {
-          userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amount;
-          tableBetData[num] = (tableBetData[num] || 0) + amount;
-          reportBetData[num] = (reportBetData[num] || 0) + amount;
-          originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amount;
-          if (zodiacs.length === 0) {
-            numberCount[num] = (numberCount[num] || 0) + 1;
-            if (amount >= nMin && amount <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
-            directOrderAmount[num] = (directOrderAmount[num] || 0) + amount;
+            const numList = expandKeyToNums(item);
+            if (numList.length > 0) {
+              numList.forEach(n => {
+                const num = n.padStart(2, '0');
+                numberCount[num] = (numberCount[num] || 0) + 1;
+                if (amt >= nMin && amt <= nMax) numberAmountCount[num] = (numberAmountCount[num] || 0) + 1;
+                userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amt;
+                tableBetData[num] = (tableBetData[num] || 0) + amt;
+                reportBetData[num] = (reportBetData[num] || 0) + amt;
+                originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amt;
+                directOrderAmount[num] = (directOrderAmount[num] || 0) + amt;
+                numberOrderTotal += amt;
+              });
+            }
           }
         });
-        if (zodiacs.length > 0) {
-          zodiacs.forEach(z => {
-            zodiacCount[z] = (zodiacCount[z] || 0) + 1;
-            if (amount >= zMin && amount <= zMax) zodiacAmountCount[z] = (zodiacAmountCount[z] || 0) + 1;
-            const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
-            zodiacDirectAmount[z] = (zodiacDirectAmount[z] || 0) + amount * zNumCount;
-            zodiacFilteredAmount[z] = (zodiacFilteredAmount[z] || 0) + amount * zNumCount;
-            (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
-              const num = n.padStart(2, '0');
-              userBetData[rec.user][num] = (userBetData[rec.user][num] || 0) + amount;
-              tableBetData[num] = (tableBetData[num] || 0) + amount;
-              reportBetData[num] = (reportBetData[num] || 0) + amount;
-              originalOrderAmount[num] = (originalOrderAmount[num] || 0) + amount;
-            });
-          });
-        }
       });
     } catch(e) {} });
 
