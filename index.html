@@ -4233,8 +4233,6 @@ function semanticReplace() {
     const beforeText = parts[0] || '';
     const afterText = parts.slice(1).join('不要') || '';
     
-    // 提取金额关键字后面的内容中"不要"前的部分
-    // 实际上整个选中文本格式为：属性词 不要 排除号码
     const includeNums = expandToNums(beforeText);
     const excludeNums = extractExcludeNums(afterText);
     
@@ -4314,6 +4312,7 @@ function semanticReplace() {
   showToast('语义转换完成：' + str);
 }
 
+// ===== 修复：saveOrder 取消时 return =====
 async function saveOrder(){ 
   const user=document.getElementById('orderUserSelect')?.value; 
   if(!user){showToast('请选择用户');return;} 
@@ -4393,11 +4392,10 @@ async function saveOrder(){
   const existingOrders = (await getOrderRecords()).filter(r => r.date === date && r.user === user);
   if (existingOrders.some(o => o.content === content)) {
     const confirmed = await confirm('该用户今天已保存过相同的订单，确定再次保存吗？');
-    if (!confirmed) { } else {
-      await saveOrderRecordToIDB(content,user,date,totalAmount);
-      clearStatsCache();
-      addOperationLog('save_order', content, currentRegion, user, totalAmount);
-    }
+    if (!confirmed) { return; }
+    await saveOrderRecordToIDB(content,user,date,totalAmount);
+    clearStatsCache();
+    addOperationLog('save_order', content, currentRegion, user, totalAmount);
   } else {
     await saveOrderRecordToIDB(content,user,date,totalAmount);
     clearStatsCache();
@@ -4416,6 +4414,7 @@ async function saveOrder(){
   showToast('已保存下单');
 }
 
+// ===== 修复：saveReportOrder 取消时 return =====
 async function saveReportOrder(){ 
   const user=document.getElementById('orderUserSelect')?.value; 
   if(!user){showToast('请选择用户');return;} 
@@ -4496,11 +4495,10 @@ async function saveReportOrder(){
   const existingReports = (await getReportOrderRecords()).filter(r => r.date === date && r.user === user);
   if (existingReports.some(o => o.content === content)) {
     const confirmed = await confirm('该用户今天已上报过相同的内容，确定再次上报吗？');
-    if (!confirmed) { } else {
-      await saveReportOrderRecordToIDB(content,user,date,totalAmount);
-      clearStatsCache();
-      addOperationLog('save_report', content, currentRegion, user, totalAmount);
-    }
+    if (!confirmed) { return; }
+    await saveReportOrderRecordToIDB(content,user,date,totalAmount);
+    clearStatsCache();
+    addOperationLog('save_report', content, currentRegion, user, totalAmount);
   } else {
     await saveReportOrderRecordToIDB(content,user,date,totalAmount);
     clearStatsCache();
