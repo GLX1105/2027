@@ -5411,6 +5411,34 @@ function deductPingtexiaoFromContent(content) {
   if (changed) { savePingtexiaoData(pingtexiaoData); renderPingtexiaoTable(); updatePingtexiaoTotal(); }
 }
 
+// ===== 新增：删除上报时同步扣除平特肖上报金额 =====
+function deductPingtexiaoFromReportContent(content) {
+  const pingtexiaoData = getPingtexiaoData();
+  let changed = false;
+  const lines = content.split('\n');
+  lines.forEach(line => {
+    const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
+    if (!match) return;
+    const playType = normalizePlayType(match[1]);
+    if (playType !== '平特肖') return;
+    const combosStr = match[2];
+    const amt = parseInt(match[3]) || 0;
+    const cleaned = combosStr.replace(/[()]/g, '');
+    const items = cleaned.split('-').filter(i => i.trim());
+    items.forEach(item => {
+      if (/^[\u4e00-\u9fa5]$/.test(item) && ZODIAC_NUMS[item]) {
+        if (pingtexiaoData[item]) {
+          const oldReport = parseFloat(pingtexiaoData[item].report) || 0;
+          const newReport = Math.max(0, oldReport - amt);
+          pingtexiaoData[item].report = newReport.toString();
+          changed = true;
+        }
+      }
+    });
+  });
+  if (changed) { savePingtexiaoData(pingtexiaoData); renderPingtexiaoTable(); updatePingtexiaoTotal(); }
+}
+
 async function showReportOrderRecord(filter='all'){ try{ const recs=await getReportOrderRecords(),users=getUsers(); if(document.getElementById('reportWin'))document.getElementById('reportWin').remove(); const fd=document.getElementById('filterDate')?.value; const df=fd?recs.filter(r=>r.date===fd):recs; const fin=(filter==='all')?df:df.filter(r=>r.user===filter); window._reportListAllData = fin; window._reportListPage = 0; const w=document.createElement('div'); w.className='floating-window'; w.id='reportWin'; w.style.width='700px'; w.style.height='500px'; w.style.left='50%'; w.style.top='50%'; w.style.transform='translate(-50%,-50%)'; let html=`<div class="modal-header"><h3>上报数据 <span style="font-size:12px;font-weight:normal;">(共${fin.length}单)</span></h3><div class="window-controls"><button onclick="maximizeWindow('reportWin')">🗖</button><button onclick="document.getElementById('reportWin').remove()">×</button></div></div><div class="modal-body" style="display:flex; flex-direction:column; height: calc(100% - 120px);">`; html+=`<div style="margin-bottom:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:rgba(255,255,255,0.9);z-index:2;padding:5px 0;"><select id="reportRecordUserFilter" onchange="showReportOrderRecord(this.value)" style="padding:4px 8px;border-radius:4px;border:1px solid #ccc;"><option value="all" ${filter==='all'?'selected':''}>全部用户</option>`; users.forEach(u=>html+=`<option value="${u}" ${u===filter?'selected':''}>${u}</option>`); html+=`</select><button onclick="checkAllReport()" style="padding:6px 12px;background:#007bff;color:#fff;border:none;border-radius:4px;">全选</button><button onclick="uncheckAllReport()" style="padding:6px 12px;background:#6c757d;color:#fff;border:none;border-radius:4px;">取消全选</button><button onclick="deleteCheckedReport()" style="padding:6px 12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;">批量删除</button></div>`; html+=`<div id="reportOrderListContainer" style="flex:1; overflow-y:auto;">`; if(fin.length===0)html+=`<div style="padding:20px;text-align:center;color:#666;">暂无上报记录</div>`; else{ const pageSize = window._orderListPageSize || 50; const pageData = fin.slice(0, pageSize); pageData.forEach(it=>{ const ts=formatTimestampToCST(it.timestamp),ud=it.user||'未知',ta=it.totalAmount||0; html+=`<div class="order-item"><input type="checkbox" class="report-order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${it.content.replace(/\n/g,'<br>')}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:red;">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteReportOrderRecord('${it.id}')">删除</button></div>`; }); if (fin.length > pageSize) { html += `<div style="text-align:center;padding:10px;" id="loadMoreReportsBtn"><button onclick="loadMoreReports()" style="padding:6px 20px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer;">加载更多（${pageSize}/${fin.length}）</button></div>`; } } html+=`</div></div><div class="modal-footer"><button onclick="batchCopyOrders('.report-order-check')" style="padding:8px 16px;background:#8e44ad;color:#fff;border:none;border-radius:4px;">批量复制</button><button onclick="document.getElementById('reportWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`; w.innerHTML=html; document.body.appendChild(w); makeWindowDraggable('reportWin'); highestZ+=1; w.style.zIndex=highestZ; }catch(e){showToast('加载失败');} }
 
 function loadMoreReports() {
@@ -5434,14 +5462,70 @@ function loadMoreReports() {
   }
 }
 
-async function deleteReportOrderRecord(id) { if (!(await confirm('确定删除？（可到回收站恢复）'))) return; try { const record = await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readonly'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); const result = await deleteReportOrderRecordFromIDB(id); if (result) { if (record) addOperationLog('delete_report', record.content, currentRegion, record.user, record.totalAmount || 0); await updateTableFromRecords(); calculateStorageUsage(); const userFilter = document.getElementById('reportRecordUserFilter')?.value || 'all'; await showReportOrderRecord(userFilter); updateRecycleCount(); showToast('已移入回收站'); } else { showToast('删除失败，记录可能已不存在'); } } catch(e) { console.error('删除上报异常', e); showToast('删除异常'); } }
+async function deleteReportOrderRecord(id) {
+  if (!(await confirm('确定删除？（可到回收站恢复）'))) return;
+  try {
+    const record = await new Promise((resolve) => {
+      const tx = db.transaction([REPORT_STORE_NAME], 'readonly');
+      const store = tx.objectStore(REPORT_STORE_NAME);
+      const req = store.get(id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    });
+    const result = await deleteReportOrderRecordFromIDB(id);
+    if (result) {
+      if (record) {
+        addOperationLog('delete_report', record.content, currentRegion, record.user, record.totalAmount || 0);
+        deductPingtexiaoFromReportContent(record.content); // 新增
+      }
+      await updateTableFromRecords(); calculateStorageUsage();
+      const userFilter = document.getElementById('reportRecordUserFilter')?.value || 'all';
+      await showReportOrderRecord(userFilter);
+      updateRecycleCount();
+      showToast('已移入回收站');
+    } else {
+      showToast('删除失败，记录可能已不存在');
+    }
+  } catch(e) {
+    console.error('删除上报异常', e);
+    showToast('删除异常');
+  }
+}
+
+async function deleteCheckedReport(){
+  const ids=[]; document.querySelectorAll('.report-order-check:checked').forEach(cb=>ids.push(String(cb.dataset.id)));
+  if(ids.length===0){showToast('请选择');return;}
+  if(!(await confirm(`确定要删除选中的 ${ids.length} 条上报记录吗？（可到回收站恢复）`))) return;
+  try {
+    const details = [];
+    for (const id of ids) {
+      const record = await new Promise((resolve) => {
+        const tx = db.transaction([REPORT_STORE_NAME], 'readonly');
+        const store = tx.objectStore(REPORT_STORE_NAME);
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+      });
+      if (record) details.push(record);
+    }
+    await batchDeleteReportOrderRecordFromIDB(ids);
+    details.forEach(rec => {
+      addOperationLog('delete_report', rec.content, currentRegion, rec.user, rec.totalAmount || 0);
+      deductPingtexiaoFromReportContent(rec.content); // 新增
+    });
+    await updateTableFromRecords();
+    calculateStorageUsage();
+    const userFilter = document.getElementById('reportRecordUserFilter')?.value || 'all';
+    await showReportOrderRecord(userFilter);
+    updateRecycleCount();
+    showToast(`已将 ${ids.length} 条移入回收站`);
+  } catch(e) { console.error('批量删除异常', e); showToast('批量删除异常'); }
+}
 
 function checkAll(){ document.querySelectorAll('.order-check').forEach(cb=>cb.checked=true); }
 function uncheckAll(){ document.querySelectorAll('.order-check').forEach(cb=>cb.checked=false); }
 function checkAllReport(){ document.querySelectorAll('.report-order-check').forEach(cb=>cb.checked=true); }
 function uncheckAllReport(){ document.querySelectorAll('.report-order-check').forEach(cb=>cb.checked=false); }
-
-async function deleteCheckedReport(){ const ids=[]; document.querySelectorAll('.report-order-check:checked').forEach(cb=>ids.push(String(cb.dataset.id))); if(ids.length===0){showToast('请选择');return;} if(!(await confirm(`确定要删除选中的 ${ids.length} 条上报记录吗？（可到回收站恢复）`))) return; try { const details = []; for (const id of ids) { const record = await new Promise((resolve) => { const tx = db.transaction([REPORT_STORE_NAME], 'readonly'); const store = tx.objectStore(REPORT_STORE_NAME); const req = store.get(id); req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); if (record) details.push(record); } await batchDeleteReportOrderRecordFromIDB(ids); details.forEach(rec => addOperationLog('delete_report', rec.content, currentRegion, rec.user, rec.totalAmount || 0)); await updateTableFromRecords(); calculateStorageUsage(); const userFilter = document.getElementById('reportRecordUserFilter')?.value || 'all'; await showReportOrderRecord(userFilter); updateRecycleCount(); showToast(`已将 ${ids.length} 条移入回收站`); } catch(e) { console.error('批量删除异常', e); showToast('批量删除异常'); } }
 
 let resetLock = false; let resetLongPressTimer = null;
 const resetBtn = document.getElementById('resetBtn');
