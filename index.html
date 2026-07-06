@@ -913,7 +913,7 @@ function setDotRegion(region) {
   }
 }
 
-// ===== 标记地区函数（新增） =====
+// ===== 标记地区函数 =====
 function markRegion(region) {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
@@ -925,7 +925,6 @@ function markRegion(region) {
   const prefixMap = { 'macau': '澳', 'hongkong': '港', 'yuegang': '粤' };
   const prefix = prefixMap[region] || '';
   
-  // 所有地区关键字，用于移除已有前缀
   const allPrefixes = ['澳', '奥', '澳门', '奥门', '门', '港', '香', '香港', '粤', '粤港'];
   const allPrefixesSorted = [...allPrefixes].sort((a, b) => b.length - a.length);
   
@@ -934,7 +933,6 @@ function markRegion(region) {
     let trimmed = line.trim();
     if (!trimmed) return line;
     
-    // 先移除已有的地区前缀
     for (const p of allPrefixesSorted) {
       if (trimmed.startsWith(p)) {
         trimmed = trimmed.substring(p.length).trim();
@@ -942,7 +940,6 @@ function markRegion(region) {
       }
     }
     
-    // 再加上新前缀
     const leadingSpace = line.match(/^(\s*)/)[1];
     return leadingSpace + prefix + trimmed;
   });
@@ -1000,9 +997,9 @@ function showRecognizeModal() {
           <button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button>
           <button class="btn btn-mark" onclick="markSelection()">标记</button>
           <button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button>
-          <button class="btn" onclick="markRegion('macau')" style="background:#e74c3c;color:#fff;padding:6px 10px;font-size:12px;min-height:30px;border-radius:4px;">标澳</button>
-          <button class="btn" onclick="markRegion('hongkong')" style="background:#3498db;color:#fff;padding:6px 10px;font-size:12px;min-height:30px;border-radius:4px;">标香</button>
-          <button class="btn" onclick="markRegion('yuegang')" style="background:#27ae60;color:#fff;padding:6px 10px;font-size:12px;min-height:30px;border-radius:4px;">标粤</button>
+          <button class="btn" onclick="markRegion('macau')" style="background:#e74c3c;color:#fff;">标澳</button>
+          <button class="btn" onclick="markRegion('hongkong')" style="background:#3498db;color:#fff;">标香</button>
+          <button class="btn" onclick="markRegion('yuegang')" style="background:#27ae60;color:#fff;">标粤</button>
           <span id="invalidTokensDisplay" style="color:red; font-size:12px; display:none; white-space:pre-line; margin-left:auto;"></span>
         </div>
         <div class="cat-shortcuts-container" id="catShortcutsContainer" style="font-size:12px;line-height:1.6;margin-top:6px;">${catSpans}</div>
