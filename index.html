@@ -44,6 +44,7 @@ body {background:#f5f7fa;font-size:14px;line-height:1.4;overflow-x:hidden;positi
     .navbar-actions {width:100%!important;justify-content:center!important;flex-wrap:wrap!important;gap:5px!important;}
     .btn {padding:6px 8px!important;font-size:12px!important;min-height:32px!important;flex:1!important;min-width:60px!important;}
     .btn-macau, .btn-hongkong, .btn-yuegang {padding:4px 10px!important;font-size:12px!important;min-height:28px!important;flex:none!important;min-width:auto!important;}
+    .btn-sm {padding:3px 8px!important;font-size:11px!important;min-height:26px!important;flex:none!important;min-width:auto!important;}
     .floating-window {width:95%!important;min-width:300px!important;}
     .modal-header {padding:8px 10px!important;}
     .modal-body {padding:8px!important;}
@@ -147,6 +148,31 @@ body[data-region="yuegang"] .navbar::after {
 .btn-hongkong.region-active{background:#2e86c1!important;box-shadow:0 0 12px rgba(46,134,193,0.7);border-color:#7fb3d8!important;}
 .btn-yuegang{background:#27ae60!important;border-color:#2ecc71!important;color:#fff!important;font-weight:600;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(39,174,96,0.4);}
 .btn-yuegang.region-active{background:#2ecc71!important;box-shadow:0 0 12px rgba(46,204,113,0.7);border-color:#58d68d!important;}
+
+/* 小按钮样式（标澳、标港、标粤、继承、前缀、金额前缀、金额后缀） */
+.btn-sm {
+    display:inline-flex;
+    align-items:center;
+    gap:3px;
+    cursor:pointer;
+    padding:2px 7px;
+    border-radius:10px;
+    font-size:11px;
+    font-weight:bold;
+    transition:all 0.2s;
+    background:transparent;
+    color:#666;
+    border:1px solid #bbb;
+    white-space:nowrap;
+}
+.btn-sm:hover {
+    background:#f0f0f0;
+    border-color:#999;
+}
+.btn-sm:active {
+    background:#ddd;
+    border-color:#888;
+}
 
 @keyframes breathe {
     from { opacity: 0.15; }
@@ -951,6 +977,43 @@ function markRegion(region) {
   showToast('已标记为' + (regionLabels[region] || region));
 }
 
+// ===== 继承玩法函数 =====
+function inheritPlayType() {
+  const ta = document.querySelector('.source-order-input');
+  if (!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  if (start === end) { showToast('请先选择文本'); return; }
+  const selectedText = ta.value.substring(start, end);
+  if (!selectedText.trim()) { showToast('请先选择文本'); return; }
+
+  // 获取光标位置之前的文本，找到上一行的玩法
+  const textBefore = ta.value.substring(0, start);
+  const lines = textBefore.split('\n').filter(l => l.trim());
+  let playType = null;
+  if (lines.length > 0) {
+    const lastLine = lines[lines.length - 1].trim();
+    // 匹配已识别的玩法行：玩法:内容 各 金额
+    const match = lastLine.match(/^(\S+?):/);
+    if (match) {
+      playType = match[1]; // 如 '三连肖', '特码', '特肖', '二中二' 等
+    }
+  }
+  if (!playType) { showToast('未找到上一行的玩法前缀'); return; }
+
+  // 给选中的每一行加上玩法前缀
+  const selLines = selectedText.split('\n');
+  const prefixedLines = selLines.map(line => {
+    if (line.trim()) {
+      return playType + ':' + line.trim();
+    }
+    return line;
+  });
+  const newText = prefixedLines.join('\n');
+  ta.value = ta.value.substring(0, start) + newText + ta.value.substring(end);
+  performRecognition(ta.value);
+  showToast('已继承玩法：' + playType);
+}
+
 // ===== 识别弹窗 =====
 function showRecognizeModal() {
   if (document.getElementById('recognizeWin')) return;
@@ -983,9 +1046,9 @@ function showRecognizeModal() {
               <span style="width:7px;height:7px;border-radius:50%;"></span>粤
             </span>
           </div>
-          <button class="btn btn-prefix" onclick="showPrefixManager()">前缀</button>
-          <button class="btn btn-amount-prefix" onclick="showAmountPrefixManager()">金额前缀</button>
-          <button class="btn btn-amount-prefix2" onclick="showAmountSuffixManager()">金额后缀</button>
+          <button class="btn btn-sm" onclick="showPrefixManager()">前缀</button>
+          <button class="btn btn-sm" onclick="showAmountPrefixManager()">金额前缀</button>
+          <button class="btn btn-sm" onclick="showAmountSuffixManager()">金额后缀</button>
         </div>
         <div class="order-input-container" style="flex:1;"><div class="input-column"><div class="box-label">订单输入框</div><textarea class="source-order-input" oninput="performRecognition(this.value)"></textarea></div><div class="result-column"><div class="box-label">识别结果</div><div class="result-area-new"><div class="result-content" id="orderResult" contenteditable="false"></div></div></div></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -997,9 +1060,10 @@ function showRecognizeModal() {
           <button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button>
           <button class="btn btn-mark" onclick="markSelection()">标记</button>
           <button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button>
-          <button class="btn" onclick="markRegion('macau')" style="background:#e74c3c;color:#fff;">标澳</button>
-          <button class="btn" onclick="markRegion('hongkong')" style="background:#3498db;color:#fff;">标香</button>
-          <button class="btn" onclick="markRegion('yuegang')" style="background:#27ae60;color:#fff;">标粤</button>
+          <button class="btn btn-sm" onclick="markRegion('macau')">标澳</button>
+          <button class="btn btn-sm" onclick="markRegion('hongkong')">标港</button>
+          <button class="btn btn-sm" onclick="markRegion('yuegang')">标粤</button>
+          <button class="btn btn-sm" onclick="inheritPlayType()">继承</button>
           <span id="invalidTokensDisplay" style="color:red; font-size:12px; display:none; white-space:pre-line; margin-left:auto;"></span>
         </div>
         <div class="cat-shortcuts-container" id="catShortcutsContainer" style="font-size:12px;line-height:1.6;margin-top:6px;">${catSpans}</div>
@@ -1022,7 +1086,7 @@ function showRecognizeModal() {
 function closeRecognizeModal() { const textarea = document.querySelector('.source-order-input'); if (textarea) { const draftKey = `recognizeDraft_${currentRegion}`; localStorage.setItem(draftKey, textarea.value); } const win = document.getElementById('recognizeWin'); if (win) win.remove(); }
 
 function markSelection() { const ta = document.querySelector('.source-order-input'); if (!ta) return; const start = ta.selectionStart, end = ta.selectionEnd; if (start === end) { showToast('请先选择文本'); return; } const selectedText = ta.value.substring(start, end); const tokens = selectedText.split(/[\s,，.。、+\-*＊\/\\|]+/).filter(t => t.trim()); if (tokens.length === 0) { showToast('所选内容无有效文字'); return; } const merged = tokens.join('-'); ta.value = ta.value.substring(0, start) + merged + ta.value.substring(end); performRecognition(ta.value); }
-// ===== 订单变量与基础函数 =====
+    // ===== 订单变量与基础函数 =====
 let tableBetData = {}, userBetData = {}, reportBetData = {}, reportAmountData = {}, reportRiskData = {};
 let numberCount = {}, zodiacCount = {}, numberAmountCount = {}, zodiacAmountCount = {};
 let zodiacDirectAmount = {}, zodiacFilteredAmount = {};
@@ -2365,31 +2429,47 @@ const REGION_KEYWORDS = {
 };
 const REGION_LABELS = { 'macau': '澳门', 'hongkong': '香港', 'yuegang': '粤港' };
 
-// ===== 提取地区关键字 =====
+// ===== 提取地区关键字（新版：纯包含匹配，不删文本，支持多地区） =====
 function extractRegion(line) {
-  const allKeywords = [];
+  // 收集所有匹配的地区
+  const matchedRegions = [];
   for (const [region, keywords] of Object.entries(REGION_KEYWORDS)) {
     for (const kw of keywords) {
-      allKeywords.push({ region, keyword: kw, len: kw.length });
+      if (line.includes(kw)) {
+        if (!matchedRegions.includes(region)) {
+          matchedRegions.push(region);
+        }
+        break; // 同一地区只保留一次
+      }
     }
   }
-  allKeywords.sort((a, b) => b.len - a.len);
+  if (matchedRegions.length === 0) return null;
+  // 返回地区数组，remaining 保持原样
+  return { regions: matchedRegions, remaining: line };
+}
 
-  for (const { region, keyword } of allKeywords) {
-    const idx = line.indexOf(keyword);
-    if (idx !== -1) {
-      if (idx > 0 && /[\u4e00-\u9fa5]/.test(line.charAt(idx - 1))) {
-        continue;
-      }
-      const afterIdx = idx + keyword.length;
-      if (afterIdx < line.length && /[\u4e00-\u9fa5]/.test(line.charAt(afterIdx))) {
-        continue;
-      }
-      const remaining = (line.substring(0, idx) + line.substring(afterIdx)).trim();
-      return { region, remaining };
-    }
-  }
-  return null;
+// ===== 判断是否为玩法声明行（仅包含玩法名，无具体内容） =====
+function isPlayDeclaration(line) {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  // 如果包含冒号，说明可能已经有内容了，不是纯声明
+  if (trimmed.includes(':')) return false;
+  // 如果包含金额关键字、数字、生肖等，说明有实际内容
+  if (/\d/.test(trimmed)) return false;
+  if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(trimmed)) return false;
+  if (/各/.test(trimmed)) return false;
+  // 检查是否为合法玩法名
+  const knownPlays = [
+    '特码','特肖','特碰','平特肖','平特尾','平码',
+    '二连肖','三连肖','四连肖','五连肖',
+    '二连尾','三连尾','四连尾','五连尾',
+    '二中二','三中三',
+    '五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中',
+    '包红波','包蓝波','包绿波','包红单','包红双','包蓝单','包蓝双','包绿单','包绿双',
+    '包红大','包红小','包蓝大','包蓝小','包绿大','包绿小',
+    '包单','包双','包大','包小','包家禽','包野兽'
+  ];
+  return knownPlays.includes(normalizePlayType(trimmed));
 }
 
 function performRecognition(text) {
@@ -2411,31 +2491,71 @@ function performRecognition(text) {
   
   // 圆点强制地区模式
   const dotRegion = window._dotRegion || 'auto';
+  
+  // 玩法自继承状态
+  let inheritedPlay = null;
 
   for (const line of lines) {
-    if (!line.trim()) continue;
+    if (!line.trim()) {
+      // 空行中断继承
+      inheritedPlay = null;
+      lineRegions.push([currentLineRegion]);
+      allResults.push({ cat: '__empty__', nums: [], amt: 0, cnt: 0, total: 0, kw: '', warnings: [], rawLine: '', regions: [currentLineRegion] });
+      continue;
+    }
 
     let orderLine = line;
+    let effectiveRegions = [currentLineRegion];
     
     if (dotRegion !== 'auto') {
-      // 强制用圆点地区，不看文本
+      // 强制用圆点地区
+      effectiveRegions = [dotRegion];
       currentLineRegion = dotRegion;
     } else {
       // 从文本中提取地区
       const extracted = extractRegion(line);
-      if (extracted) {
-        currentLineRegion = extracted.region;
-        orderLine = extracted.remaining;
+      if (extracted && extracted.regions.length > 0) {
+        effectiveRegions = extracted.regions;
+        currentLineRegion = effectiveRegions[0]; // 继承时使用第一个地区
+        orderLine = extracted.remaining; // 行内容不删不改
       }
     }
-    lineRegions.push(currentLineRegion);
+    lineRegions.push(effectiveRegions);
 
-    if (!orderLine.trim()) continue;
+    if (!orderLine.trim()) {
+      inheritedPlay = null;
+      allResults.push({ cat: '__empty__', nums: [], amt: 0, cnt: 0, total: 0, kw: '', warnings: [], rawLine: '', regions: effectiveRegions });
+      continue;
+    }
 
-    const parsed = processOneLine(orderLine);
+    // 检查是否为玩法声明行
+    if (isPlayDeclaration(orderLine)) {
+      inheritedPlay = normalizePlayType(orderLine.trim());
+      // 声明行本身不生成订单，只作为提示
+      allResults.push({ cat: '__play_decl__', nums: [], amt: 0, cnt: 0, total: 0, kw: '', warnings: [], rawLine: orderLine.trim(), regions: effectiveRegions, declaredPlay: inheritedPlay });
+      continue;
+    }
+
+    let parsed = processOneLine(orderLine);
     let lineResults = [];
     if (parsed.length === 0) {
-      if (containsDictElement(orderLine)) {
+      // 解析失败，尝试继承上一行的玩法
+      if (inheritedPlay && containsDictElement(orderLine)) {
+        // 尝试给当前行加上继承的玩法前缀重新解析
+        const inheritedLine = inheritedPlay + ':' + orderLine.trim();
+        parsed = processOneLine(inheritedLine);
+        if (parsed.length > 0) {
+          lineResults.push(...parsed.map(r => ({ ...r, _inherited: true })));
+        } else {
+          lineResults.push({
+            cat: '__unrecognized__',
+            nums: [],
+            amt: 0, cnt: 0, total: 0, kw: '',
+            warnings: ['缺少金额关键字或有效玩法'],
+            rawLine: orderLine.trim()
+          });
+        }
+      } else if (containsDictElement(orderLine)) {
         lineResults.push({
           cat: '__unrecognized__',
           nums: [],
@@ -2449,7 +2569,11 @@ function performRecognition(text) {
     }
     if (lineResults.length > 0) {
       lineResults = applyInlineInheritance(lineResults);
-      lineResults.forEach(r => { r.region = currentLineRegion; });
+      lineResults.forEach(r => { r.regions = effectiveRegions; });
+      // 更新继承玩法：如果当前行有有效的玩法前缀（非继承且成功识别），更新继承状态
+      if (!lineResults[0]._inherited && lineResults[0].cat !== '__unrecognized__') {
+        inheritedPlay = lineResults[0].cat;
+      }
       allResults.push(...lineResults);
     }
   }
@@ -2458,7 +2582,9 @@ function performRecognition(text) {
     category: r.cat, numbers: r.nums, unitAmount: r.amt,
     totalCount: r.cnt, totalAmount: r.total, kw: r.kw || '', warnings: r.warnings || [],
     rawLine: r.rawLine || '',
-    region: r.region || currentRegion
+    regions: r.regions || [currentRegion],
+    _inherited: r._inherited || false,
+    declaredPlay: r.declaredPlay || null
   }));
 
   if (resultDiv) {
@@ -2488,30 +2614,47 @@ function displayResults(rs, container) {
   const regionColorMap = { 'macau': '#e74c3c', 'hongkong': '#3498db', 'yuegang': '#27ae60' };
 
   for (const r of rs) {
+    if (r.category === '__empty__') {
+      html += '<div class="result-line" style="height:8px;"></div>';
+      continue;
+    }
+    if (r.category === '__play_decl__') {
+      // 玩法声明行，显示灰色提示
+      html += `<div class="result-line" style="color:#999;font-size:11px;">▸ 以下继承玩法：${r.declaredPlay || ''}</div>`;
+      continue;
+    }
     if (r.category === '__unrecognized__') {
-      const regionLabel = REGION_LABELS[r.region] || '';
-      const warnText = (r.warnings && r.warnings.length) ? r.warnings.join('；') : '缺少金额关键字或有效玩法';
-      if (r.region && r.region !== currentRegion && !r.warnings.length) {
-        html += `<div class="result-line"><span style="color:${regionColorMap[r.region] || '#333'};">${regionLabel}·</span>${r.rawLine} <span style="color:red;">[已提取地区${regionLabel}，但内容无法识别]</span></div>`;
-      } else {
-        html += `<div class="result-line"><span style="color:${r.region !== currentRegion ? (regionColorMap[r.region] || '#e74c3c') : '#000'};">${regionLabel}·</span>${r.rawLine} <span style="color:red;">[${warnText}]</span></div>`;
-      }
+      // 多地区时每个地区都显示一行警告
+      const displayRegions = (r.regions && r.regions.length > 0) ? r.regions : [currentRegion];
+      displayRegions.forEach(region => {
+        const regionLabel = REGION_LABELS[region] || '';
+        const warnText = (r.warnings && r.warnings.length) ? r.warnings.join('；') : '缺少金额关键字或有效玩法';
+        html += `<div class="result-line"><span style="color:${regionColorMap[region] || '#333'};">${regionLabel}·</span>${r.rawLine} <span style="color:red;">[${warnText}]</span></div>`;
+      });
       continue;
     }
     total += r.totalAmount;
-    const regionLabel = REGION_LABELS[r.region] || '';
-    const isCurrentRegion = r.region === currentRegion;
-    const regionColor = isCurrentRegion ? 'color:#000;' : `color:${regionColorMap[r.region] || '#333'};`;
-    const kwDisplay = (r.category === '特码') ? '各数' : '各';
-    const amountStr = `${kwDisplay}${Math.round(r.unitAmount)}`;
-    const info = r.totalCount > 1 ? `(${r.totalCount}注, 共${Math.round(r.totalAmount)})` : `(共${Math.round(r.totalAmount)})`;
+    const displayRegions = (r.regions && r.regions.length > 0) ? r.regions : [currentRegion];
     const numStr = formatNums(r.category, r.numbers);
-    let line = `<span style="${regionColor}">${regionLabel}·</span>${r.category}:${numStr}${amountStr} ${info}`;
-    if (r.warnings && r.warnings.length) { line += ` <span style="color:red;">[${r.warnings.join('；')}]</span>`; }
-    html += `<div class="result-line">${line}</div>`;
-    const pureNumStr = formatNums(r.category, r.numbers);
-    pureLines.push(`${r.category}:${pureNumStr} ${kwDisplay} ${Math.round(r.unitAmount)}`);
-    pureRegions.push(r.region);
+    
+    // 每个地区单独显示一行
+    displayRegions.forEach((region, idx) => {
+      const regionLabel = REGION_LABELS[region] || '';
+      const isCurrentRegion = region === currentRegion;
+      const regionColor = isCurrentRegion ? 'color:#000;' : `color:${regionColorMap[region] || '#333'};`;
+      const kwDisplay = (r.category === '特码') ? '各数' : '各';
+      const amountStr = `${kwDisplay}${Math.round(r.unitAmount)}`;
+      const info = r.totalCount > 1 ? `(${r.totalCount}注, 共${Math.round(r.totalAmount)})` : `(共${Math.round(r.totalAmount)})`;
+      let line = `<span style="${regionColor}">${regionLabel}·</span>${r.category}:${numStr}${amountStr} ${info}`;
+      if (r.warnings && r.warnings.length) { line += ` <span style="color:red;">[${r.warnings.join('；')}]</span>`; }
+      if (r._inherited) { line += ` <span style="color:#aaa;font-size:10px;">[继承]</span>`; }
+      html += `<div class="result-line">${line}</div>`;
+      // 只有第一个地区时记录纯文本行（避免重复）
+      if (idx === 0) {
+        pureLines.push(`${r.category}:${numStr} ${kwDisplay} ${Math.round(r.unitAmount)}`);
+        pureRegions.push(region);
+      }
+    });
 
     if (r.category === '特码' || r.category === '特肖') {
       maxLossData.push({
