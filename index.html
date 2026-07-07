@@ -983,9 +983,9 @@ function showRecognizeModal() {
               <span style="width:7px;height:7px;border-radius:50%;"></span>粤
             </span>
           </div>
-          <button class="btn btn-prefix" onclick="showPrefixManager()" style="font-size:10px;">前缀</button>
-          <button class="btn btn-amount-prefix" onclick="showAmountPrefixManager()" style="font-size:10px;">金额前缀</button>
-          <button class="btn btn-amount-prefix2" onclick="showAmountSuffixManager()" style="font-size:10px;">金额后缀</button>
+          <button class="btn btn-prefix" onclick="showPrefixManager()" style="font-size:10px;padding:4px 6px;min-height:24px;">前缀</button>
+          <button class="btn btn-amount-prefix" onclick="showAmountPrefixManager()" style="font-size:10px;padding:4px 6px;min-height:24px;">金额前缀</button>
+          <button class="btn btn-amount-prefix2" onclick="showAmountSuffixManager()" style="font-size:10px;padding:4px 6px;min-height:24px;">金额后缀</button>
         </div>
         <div class="order-input-container" style="flex:1;"><div class="input-column"><div class="box-label">订单输入框</div><textarea class="source-order-input" oninput="performRecognition(this.value)"></textarea></div><div class="result-column"><div class="box-label">识别结果</div><div class="result-area-new"><div class="result-content" id="orderResult" contenteditable="false"></div></div></div></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -997,9 +997,9 @@ function showRecognizeModal() {
           <button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button>
           <button class="btn btn-mark" onclick="markSelection()">标记</button>
           <button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button>
-          <button class="btn" onclick="markRegion('macau')" style="background:#e74c3c;color:#fff;font-size:10px;">标澳</button>
-          <button class="btn" onclick="markRegion('hongkong')" style="background:#3498db;color:#fff;font-size:10px;">标港</button>
-          <button class="btn" onclick="markRegion('yuegang')" style="background:#27ae60;color:#fff;font-size:10px;">标粤</button>
+          <button class="btn" onclick="markRegion('macau')" style="background:#e74c3c;color:#fff;font-size:10px;padding:4px 6px;min-height:24px;">标澳</button>
+          <button class="btn" onclick="markRegion('hongkong')" style="background:#3498db;color:#fff;font-size:10px;padding:4px 6px;min-height:24px;">标港</button>
+          <button class="btn" onclick="markRegion('yuegang')" style="background:#27ae60;color:#fff;font-size:10px;padding:4px 6px;min-height:24px;">标粤</button>
           <span id="invalidTokensDisplay" style="color:red; font-size:12px; display:none; white-space:pre-line; margin-left:auto;"></span>
         </div>
         <div class="cat-shortcuts-container" id="catShortcutsContainer" style="font-size:12px;line-height:1.6;margin-top:6px;">${catSpans}</div>
@@ -1910,7 +1910,7 @@ function parseTeMaSegment(content) {
   }
   return deduped;
 }
-    function processOneLine(line) {
+   function processOneLine(line) {
   if (!line.trim()) return [];
 
   // ===== 号码-金额对识别（优先处理） =====
@@ -2279,7 +2279,7 @@ function containsDictElement(str) {
   return false;
 }
 
-// ===== 增强版继承函数（支持无分隔符生肖串拆分 + 特肖覆盖） =====
+// ===== 增强版继承函数（支持无分隔符生肖串拆分 + 特肖覆盖 + 继承标记） =====
 function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
   if (!lineResults || lineResults.length === 0) return { results: lineResults, lastPlay: lastInheritablePlay };
 
@@ -2304,7 +2304,7 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
   // 2. 遍历处理
   const processed = [];
   for (const r of lineResults) {
-    // ----- 新增：特肖结果覆盖为连肖 -----
+    // ----- 特肖结果覆盖为连肖 -----
     if (inheritedPlay && inheritedPlay.type === 'zodiac' && inheritedPlay.count >= 2 && r.cat === '特肖') {
       const zodiacs = r.nums || [];
       if (zodiacs.length === inheritedPlay.count && (r.kw || '') === (inheritedPlay.kw || '')) {
@@ -2317,7 +2317,8 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
           total: r.amt,
           kw: inheritedPlay.kw || '各组',
           warnings: [],
-          rawLine: r.rawLine || ''
+          rawLine: r.rawLine || '',
+          _inherited: true
         });
         continue;
       }
@@ -2405,7 +2406,8 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
           processed.push({
             cat: inheritedPlay.cat, nums: [items[0].trim()], amt: amt,
             cnt: 1, total: amt, kw: inheritedPlay.kw || '各', warnings: [],
-            rawLine: raw
+            rawLine: raw,
+            _inherited: true
           });
           matched = true;
         }
@@ -2416,7 +2418,8 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
           processed.push({
             cat: inheritedPlay.cat, nums: [comboStr], amt: amt,
             cnt: 1, total: amt, kw: inheritedPlay.kw || '各组', warnings: [],
-            rawLine: raw
+            rawLine: raw,
+            _inherited: true
           });
           matched = true;
         }
@@ -2439,7 +2442,8 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
           processed.push({
             cat: inheritedPlay.cat, nums: [items[0].trim()], amt: amt,
             cnt: 1, total: amt, kw: inheritedPlay.kw || '各', warnings: [],
-            rawLine: raw
+            rawLine: raw,
+            _inherited: true
           });
           matched = true;
         }
@@ -2450,7 +2454,8 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
           processed.push({
             cat: inheritedPlay.cat, nums: [comboStr], amt: amt,
             cnt: 1, total: amt, kw: inheritedPlay.kw || '各组', warnings: [],
-            rawLine: raw
+            rawLine: raw,
+            _inherited: true
           });
           matched = true;
         }
@@ -2497,14 +2502,12 @@ function extractRegion(line) {
   for (const { region, keyword } of allKeywords) {
     const idx = line.indexOf(keyword);
     if (idx !== -1) {
+      // 只检查前面是否紧挨汉字（防止匹配到非独立的关键字，如“澳”匹配到“澳门”中间的“澳”）
       if (idx > 0 && /[\u4e00-\u9fa5]/.test(line.charAt(idx - 1))) {
         continue;
       }
-      const afterIdx = idx + keyword.length;
-      if (afterIdx < line.length && /[\u4e00-\u9fa5]/.test(line.charAt(afterIdx))) {
-        continue;
-      }
-      const remaining = (line.substring(0, idx) + line.substring(afterIdx)).trim();
+      // 不再检查后面是否紧挨汉字，只要包含关键字就提取
+      const remaining = (line.substring(0, idx) + line.substring(idx + keyword.length)).trim();
       return { region, remaining };
     }
   }
@@ -2582,7 +2585,8 @@ function performRecognition(text) {
     category: r.cat, numbers: r.nums, unitAmount: r.amt,
     totalCount: r.cnt, totalAmount: r.total, kw: r.kw || '', warnings: r.warnings || [],
     rawLine: r.rawLine || '',
-    region: r.region || currentRegion
+    region: r.region || currentRegion,
+    _inherited: r._inherited || false
   }));
 
   if (resultDiv) {
@@ -2631,6 +2635,9 @@ function displayResults(rs, container) {
     const info = r.totalCount > 1 ? `(${r.totalCount}注, 共${Math.round(r.totalAmount)})` : `(共${Math.round(r.totalAmount)})`;
     const numStr = formatNums(r.category, r.numbers);
     let line = `<span style="${regionColor}">${regionLabel}·</span>${r.category}:${numStr}${amountStr} ${info}`;
+    if (r._inherited) {
+      line += ` <span style="color:#27ae60;">[继承]</span>`;
+    }
     if (r.warnings && r.warnings.length) { line += ` <span style="color:red;">[${r.warnings.join('；')}]</span>`; }
     html += `<div class="result-line">${line}</div>`;
     const pureNumStr = formatNums(r.category, r.numbers);
@@ -2656,7 +2663,10 @@ function formatNums(cat, numsArr) {
   const simpleCats = ['特码', '特肖', '平特肖', '平码', '平特尾'];
   if (simpleCats.includes(cat)) return numsArr.join('-');
   if (cat.startsWith('包')) return numsArr.join('-');
-  if (cat.includes('连肖')) return numsArr.map(g => '(' + g.split('').join('-') + ')').join(' ');
+  if (cat.includes('连肖')) return numsArr.map(g => {
+    if (g.includes('-')) return '(' + g + ')';
+    return '(' + g.split('').join('-') + ')';
+  }).join(' ');
   return numsArr.map(g => `(` + g + `)`).join(' ');
 }
 
@@ -4825,7 +4835,7 @@ async function saveReportOrder(){
   showToast('已上报成功（' + savedCount + '个地区）'); 
   setTimeout(() => { const toast = document.querySelector('.toast-message.show'); if (toast) toast.style.color = '#ff0000'; }, 10); 
 }
-    function updateOrderCountDisplay() {
+   function updateOrderCountDisplay() {
   const fd = document.getElementById('filterDate')?.value || getTodayCST();
   getOrderRecords().then(orders => {
     const todayOrders = orders.filter(r => r.date === fd);
@@ -5084,7 +5094,6 @@ async function updateTableFromRecords(){
               reportAmountData[numPadded] = (reportAmountData[numPadded] || 0) + perNumAmt;
               if (user && userBetData[user]) userBetData[user][numPadded] = (userBetData[user][numPadded] || 0) - perNumAmt;
             });
-            // 修复：上报生肖金额直接累加amtRaw，不用perNumAmt*nums.length避免翻倍
             zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + amtRaw;
             if (perNumAmt >= zMin && perNumAmt <= zMax) zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + amtRaw;
           });
@@ -5146,10 +5155,12 @@ async function updateTableFromRecords(){
           return;
         }
 
+        // 修改点：处理普通特码/生肖上报，避免重复累加号码金额
         const { numbers, zodiacs, amount, playType } = countItemsInLine(line);
         if (!amount || amount <= 0) return;
         if (playType && playType !== '特码') return;
 
+        // 号码金额只在这里累加一次
         numbers.forEach(num => {
           reportBetData[num] = (reportBetData[num] || 0) - amount;
           reportAmountData[num] = (reportAmountData[num] || 0) + amount;
@@ -5157,16 +5168,12 @@ async function updateTableFromRecords(){
           if (zodiacs.length === 0) directReportAmount[num] = (directReportAmount[num] || 0) + amount;
         });
 
+        // 生肖层面统计，不再重复累加号码金额
         zodiacs.forEach(z => {
           const zNumCount = (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).length || 0;
           zodiacReportAmount[z] = (zodiacReportAmount[z] || 0) + amount * zNumCount;
           if (amount >= zMin && amount <= zMax) zodiacFilteredReportAmount[z] = (zodiacFilteredReportAmount[z] || 0) + amount * zNumCount;
-          (ZODIAC_NUMS[z] || '').split(/[\s,，]+/).forEach(n => {
-            const num = n.padStart(2, '0');
-            reportBetData[num] = (reportBetData[num] || 0) - amount;
-            reportAmountData[num] = (reportAmountData[num] || 0) + amount;
-            if (user && userBetData[user]) userBetData[user][num] = (userBetData[user][num] || 0) - amount;
-          });
+          // 删除了原本在生肖内部对 reportBetData 和 reportAmountData 的重复累加
         });
       });
     } catch(e) {} });
