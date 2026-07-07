@@ -2279,7 +2279,7 @@ function containsDictElement(str) {
   return false;
 }
 
-// ===== 增强版继承函数 =====
+// ===== 增强版继承函数（支持无分隔符生肖串拆分） =====
 function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
   if (!lineResults || lineResults.length === 0) return { results: lineResults, lastPlay: lastInheritablePlay };
 
@@ -2360,7 +2360,6 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
     // 清理内容中的关键字
     let cleanContent = content;
     if (contentKw) {
-      // 去掉关键字，保留纯内容
       cleanContent = content.replace(new RegExp(contentKw), '').trim();
     }
     // 清理分隔符
@@ -2369,21 +2368,32 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
     // 格式匹配检查
     let matched = false;
     if (inheritedPlay.type === 'zodiac') {
-      const zs = cleanContent.replace(/[^鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, '');
-      const items = cleanContent.split('-').filter(i => /^[鼠牛虎兔龙蛇马羊猴鸡狗猪]+$/.test(i.trim()));
-      if (items.length === 1 && inheritedPlay.count === 1) {
+      // 先尝试按分隔符拆分
+      let items = cleanContent.split('-').filter(i => i.trim());
+      
+      // 如果拆分后数量不匹配，尝试把整串当纯生肖逐字符拆分
+      if (items.length !== inheritedPlay.count) {
+        const pureZodiacStr = cleanContent.replace(/[^鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, '');
+        if (pureZodiacStr.length === inheritedPlay.count) {
+          // 拆成单个生肖数组
+          items = pureZodiacStr.split('');
+        }
+      }
+
+      if (inheritedPlay.count === 1) {
         // 平特肖：单个生肖
-        processed.push({
-          cat: inheritedPlay.cat, nums: [items[0].trim()], amt: amt,
-          cnt: 1, total: amt, kw: inheritedPlay.kw || '各', warnings: [],
-          rawLine: raw
-        });
-        matched = true;
-      } else if (items.length >= 2 && items.every(i => i.trim().length === 1) && cleanContent.split('-').filter(i => i.trim()).length === inheritedPlay.count) {
-        // 连肖：N个单生肖用-连
-        const comboItems = cleanContent.split('-').map(i => i.trim()).filter(i => i);
-        if (comboItems.length === inheritedPlay.count && comboItems.every(i => /^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(i))) {
-          const comboStr = comboItems.join('-');
+        if (items.length === 1 && /^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(items[0].trim())) {
+          processed.push({
+            cat: inheritedPlay.cat, nums: [items[0].trim()], amt: amt,
+            cnt: 1, total: amt, kw: inheritedPlay.kw || '各', warnings: [],
+            rawLine: raw
+          });
+          matched = true;
+        }
+      } else {
+        // 连肖：N个生肖
+        if (items.length === inheritedPlay.count && items.every(i => /^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(i.trim()))) {
+          const comboStr = items.map(i => i.trim()).join('-');
           processed.push({
             cat: inheritedPlay.cat, nums: [comboStr], amt: amt,
             cnt: 1, total: amt, kw: inheritedPlay.kw || '各组', warnings: [],
@@ -2393,25 +2403,38 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
         }
       }
     } else if (inheritedPlay.type === 'tail') {
-      const items = cleanContent.split('-').filter(i => /\d+尾/.test(i.trim()));
-      if (items.length === 1 && inheritedPlay.count === 1) {
+      // 先尝试按分隔符拆分
+      let items = cleanContent.split('-').filter(i => /\d+尾/.test(i.trim()));
+      
+      // 如果拆分后数量不匹配，尝试把整串当纯数字尾数逐字符拆分
+      if (items.length !== inheritedPlay.count) {
+        const pureDigits = cleanContent.replace(/[^0-9]/g, '');
+        if (pureDigits.length === inheritedPlay.count) {
+          items = pureDigits.split('').map(d => d + '尾');
+        }
+      }
+
+      if (inheritedPlay.count === 1) {
         // 平特尾：单个尾数
-        processed.push({
-          cat: inheritedPlay.cat, nums: [items[0].trim()], amt: amt,
-          cnt: 1, total: amt, kw: inheritedPlay.kw || '各', warnings: [],
-          rawLine: raw
-        });
-        matched = true;
-      } else if (items.length === inheritedPlay.count && items.every(i => /\d+尾$/.test(i.trim()))) {
-        // 连尾：N个尾数用-连
-        const comboItems = items.map(i => i.trim());
-        const comboStr = comboItems.join('-');
-        processed.push({
-          cat: inheritedPlay.cat, nums: [comboStr], amt: amt,
-          cnt: 1, total: amt, kw: inheritedPlay.kw || '各组', warnings: [],
-          rawLine: raw
-        });
-        matched = true;
+        if (items.length === 1 && /\d+尾$/.test(items[0].trim())) {
+          processed.push({
+            cat: inheritedPlay.cat, nums: [items[0].trim()], amt: amt,
+            cnt: 1, total: amt, kw: inheritedPlay.kw || '各', warnings: [],
+            rawLine: raw
+          });
+          matched = true;
+        }
+      } else {
+        // 连尾：N个尾数
+        if (items.length === inheritedPlay.count && items.every(i => /\d+尾$/.test(i.trim()))) {
+          const comboStr = items.map(i => i.trim()).join('-');
+          processed.push({
+            cat: inheritedPlay.cat, nums: [comboStr], amt: amt,
+            cnt: 1, total: amt, kw: inheritedPlay.kw || '各组', warnings: [],
+            rawLine: raw
+          });
+          matched = true;
+        }
       }
     }
 
@@ -2494,7 +2517,6 @@ function performRecognition(text) {
 
   for (const line of lines) {
     if (!line.trim()) {
-      // 空行：保留继承上下文（不打断）
       continue;
     }
 
