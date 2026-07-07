@@ -1508,10 +1508,8 @@ function parseTeMaSegment(content) {
   const multiMatches = [];
   const lockedIntervals = [];
 
-  // 修复：END_AMT_RE 后加 (?!\s*[\d\u4e00-\u9fa5]) 防止贪吃后续内容
-  const END_AMT_RE_NO_GREED = END_AMT_RE + '(?!\\s*[\\d\\u4e00-\\u9fa5])';
-
-  const reMultiLX = new RegExp(`([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)${SEP}((?:[${Z}]+${SEP_CHARS}+)+[${Z}]+)[\\s]*(?=${KW_GROUP})${KW_GROUP}${SEP}${AMT_GROUP}${NO_GREED_LOOKAHEAD}`, 'g');
+  // ===== 修改点：END_AMT_RE 后加 (?!\s*[\d\u4e00-\u9fa5]) 防止贪吃后续内容 =====
+  const reMultiLX = new RegExp(`([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)${SEP}((?:[${Z}]+${SEP_CHARS}+)+[${Z}]+)[\\s]*(?=${KW_GROUP})${KW_GROUP}${SEP}${AMT_GROUP}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g');
   let m;
   while ((m = reMultiLX.exec(text)) !== null) {
     const full = m[0];
@@ -1540,7 +1538,7 @@ function parseTeMaSegment(content) {
     lockedIntervals.push({ start: m.index, end: m.index + m[0].length });
   }
 
-  const reMultiLW = new RegExp(`([二三四五2345])(?:连尾|尾连)${SEP}((?:\\d+尾${SEP_CHARS}+)+\\d+尾)[\\s]*(?=${KW_GROUP})${KW_GROUP}${SEP}${AMT_GROUP}${NO_GREED_LOOKAHEAD}`, 'g');
+  const reMultiLW = new RegExp(`([二三四五2345])(?:连尾|尾连)${SEP}((?:\\d+尾${SEP_CHARS}+)+\\d+尾)[\\s]*(?=${KW_GROUP})${KW_GROUP}${SEP}${AMT_GROUP}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g');
   while ((m = reMultiLW.exec(text)) !== null) {
     const full = m[0];
     const { amt, kw } = extractAmtAndKw(full);
@@ -1580,7 +1578,7 @@ function parseTeMaSegment(content) {
   };
 
   // ===== 特肖前缀识别 =====
-  addMatch(new RegExp(`特肖${SEP}((?:[${Z}]+${SEP_CHARS}*)+?)[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`特肖${SEP}((?:[${Z}]+${SEP_CHARS}*)+?)[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full);
     if (!amt || amt <= 0) return null;
     const zPart = m[1]; const zodiacs = (zPart.match(new RegExp(`[${Z}]`, 'g')) || []);
@@ -1600,22 +1598,22 @@ function parseTeMaSegment(content) {
     return { cat: '包' + attr, nums: [attr], amt, cnt: 1, total: amt, kw: '各' };
   });
 
-  // ===== 特碰：碰法（和二中二拖法逻辑一样） =====
-  addMatch(new RegExp(`特碰${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*)${SEP_CHARS}*(?:碰)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*?)[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  // ===== 特碰：碰法 =====
+  addMatch(new RegExp(`特碰${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*)${SEP_CHARS}*(?:碰)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*?)[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const leftPart = m[1], rightPart = m[2];
     return handleDragMatch(leftPart, rightPart, amt, kw, '特碰');
   });
 
   // 二中二拖法
-  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*)${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*?)[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*)${SEP_CHARS}*(?:拖|托)${SEP_CHARS}*((?:[${Z}]+|\\d+尾|\\d{1,2})(?:${SEP_CHARS}+(?:[${Z}]+|\\d+尾|\\d{1,2}))*?)[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const leftPart = m[1], rightPart = m[2];
     return handleDragMatch(leftPart, rightPart, amt, kw, '二中二');
   });
 
   // 复式二中二
-  addMatch(new RegExp(`复[式试]?[二2]中[二2]${SEP}((?:\\d+${SEP_CHARS}+)+\\d+)(?!${SEP_CHARS}*[拖托碰])[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`复[式试]?[二2]中[二2]${SEP}((?:\\d+${SEP_CHARS}+)+\\d+)(?!${SEP_CHARS}*[拖托碰])[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const nums = extractNums(m[1]); const invalidNums = findInvalidNums(m[1]);
     const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
@@ -1625,7 +1623,7 @@ function parseTeMaSegment(content) {
   });
 
   // 非复式二中二
-  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:\\d{1,2}${SEP_CHARS}+\\d{1,2}${SEP_CHARS}*)+)(?!${SEP_CHARS}*[拖托碰])[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`[二2]中[二2]${SEP}((?:\\d{1,2}${SEP_CHARS}+\\d{1,2}${SEP_CHARS}*)+)(?!${SEP_CHARS}*[拖托碰])[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const numPart = m[1]; const invalidNums = findInvalidNums(numPart);
     const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
@@ -1648,8 +1646,8 @@ function parseTeMaSegment(content) {
     return { cat: '二中二', nums: pairs, amt, cnt: pairs.length, total: amt * pairs.length, kw, warnings };
   });
 
-  // ===== 特碰：复式（和二中二一样） =====
-  addMatch(new RegExp(`复[式试]?特碰${SEP}((?:\\d+${SEP_CHARS}+)+\\d+)(?!${SEP_CHARS}*[拖托碰])[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  // ===== 特碰：复式 =====
+  addMatch(new RegExp(`复[式试]?特碰${SEP}((?:\\d+${SEP_CHARS}+)+\\d+)(?!${SEP_CHARS}*[拖托碰])[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const nums = extractNums(m[1]); const invalidNums = findInvalidNums(m[1]);
     const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
@@ -1658,8 +1656,8 @@ function parseTeMaSegment(content) {
     return { cat: '特碰', nums: pairs, amt, cnt: pairs.length, total: amt * pairs.length, kw, warnings };
   });
 
-  // ===== 特碰：数字直接配对（和二中二一样） =====
-  addMatch(new RegExp(`特碰${SEP}((?:\\d{1,2}${SEP_CHARS}+\\d{1,2}${SEP_CHARS}*)+)(?!${SEP_CHARS}*[拖托碰])[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  // ===== 特碰：数字直接配对 =====
+  addMatch(new RegExp(`特碰${SEP}((?:\\d{1,2}${SEP_CHARS}+\\d{1,2}${SEP_CHARS}*)+)(?!${SEP_CHARS}*[拖托碰])[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const numPart = m[1]; const invalidNums = findInvalidNums(numPart);
     const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
@@ -1683,7 +1681,7 @@ function parseTeMaSegment(content) {
   });
 
   // 复式三中三
-  addMatch(new RegExp(`复[式试]?[三3]中[三3]${SEP}((?:\\d+${SEP_CHARS}+)+\\d+)[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`复[式试]?[三3]中[三3]${SEP}((?:\\d+${SEP_CHARS}+)+\\d+)[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const nums = extractNums(m[1]); const invalidNums = findInvalidNums(m[1]);
     const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
@@ -1693,7 +1691,7 @@ function parseTeMaSegment(content) {
   });
 
   // 非复式三中三
-  addMatch(new RegExp(`[三3]中[三3]${SEP}((?:\\d{1,2}${SEP_CHARS}+\\d{1,2}${SEP_CHARS}+\\d{1,2}${SEP_CHARS}*)+)[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`[三3]中[三3]${SEP}((?:\\d{1,2}${SEP_CHARS}+\\d{1,2}${SEP_CHARS}+\\d{1,2}${SEP_CHARS}*)+)[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const numPart = m[1]; const invalidNums = findInvalidNums(numPart);
     const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
@@ -1717,7 +1715,7 @@ function parseTeMaSegment(content) {
   });
 
   // 复式连肖
-  addMatch(new RegExp(`([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)${SEP}复[式试]?${SEP}((?:[${Z}]+))\\s*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)${SEP}复[式试]?${SEP}((?:[${Z}]+))\\s*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const k = toNum(m[1].replace(/[^0-9二三四五两]/g, '')); if (!k || k < 2 || k > 5) return null;
     const zPart = m[2].trim(); const zChars = (zPart.match(new RegExp(`[${Z}]`, 'g')) || []).join('');
@@ -1729,7 +1727,7 @@ function parseTeMaSegment(content) {
   });
 
   // 非复式连肖（生肖串 + 连肖 + N）
-  addMatch(new RegExp(`((?:[${Z}]+))[\\s]*(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)${SEP}([二三四五2345两])\\s*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`((?:[${Z}]+))[\\s]*(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)${SEP}([二三四五2345两])\\s*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const zPart = m[1]; const zChars = (zPart.match(new RegExp(`[${Z}]`, 'g')) || []).join('');
     const k = toNum(m[2].replace(/[^0-9二三四五两]/g, '')); if (!k || k < 2 || k > 5) return null;
@@ -1749,7 +1747,7 @@ function parseTeMaSegment(content) {
   });
 
   // 复式连尾
-  addMatch(new RegExp(`([二三四五2345])(?:连尾|尾连)${SEP}复[式试]?${SEP}((?:\\d+尾${SEP_CHARS}+)+\\d+尾)\\s*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`([二三四五2345])(?:连尾|尾连)${SEP}复[式试]?${SEP}((?:\\d+尾${SEP_CHARS}+)+\\d+尾)\\s*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const k = toNum(m[1]); if (!k || k < 2 || k > 5) return null;
     const tailPart = m[2]; const digits = (tailPart.match(/\d/g) || []);
@@ -1761,7 +1759,7 @@ function parseTeMaSegment(content) {
   });
 
   // 非复式连尾（尾数串 + 连尾 + N）
-  addMatch(new RegExp(`((?:\\d+尾${SEP_CHARS}+)+\\d+尾)[\\s]*(?:连尾|尾连)${SEP}([二三四五2345])\\s*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`((?:\\d+尾${SEP_CHARS}+)+\\d+尾)[\\s]*(?:连尾|尾连)${SEP}([二三四五2345])\\s*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const tailPart = m[1]; const digits = (tailPart.match(/\d/g) || []);
     const k = toNum(m[2]); if (!k || k < 2 || k > 5) return null;
@@ -1778,7 +1776,7 @@ function parseTeMaSegment(content) {
   });
 
   // 宽松复式连肖
-  addMatch(new RegExp(`复[式试]?([二三四五2345两])?(?:连肖|平连|连)${SEP}((?:[${Z}]+${SEP_CHARS}*)+)[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`复[式试]?([二三四五2345两])?(?:连肖|平连|连)${SEP}((?:[${Z}]+${SEP_CHARS}*)+)[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const kDigit = m[1] ? toNum(m[1].replace(/[^0-9二三四五两]/g, '')) : null;
     const zPart = m[2].trim(); const zChars = (zPart.match(new RegExp(`[${Z}]`, 'g')) || []).join('');
@@ -1792,7 +1790,7 @@ function parseTeMaSegment(content) {
   });
 
   // 宽松复式连尾
-  addMatch(new RegExp(`复[式试]?([二三四五2345])?(?:连尾|尾连)${SEP}((?:\\d+${SEP_CHARS}*尾${SEP_CHARS}*)+)[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`复[式试]?([二三四五2345])?(?:连尾|尾连)${SEP}((?:\\d+${SEP_CHARS}*尾${SEP_CHARS}*)+)[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const kDigit = m[1] ? toNum(m[1]) : null;
     const tailPart = m[2]; const digits = (tailPart.match(/\d/g) || []);
@@ -1821,7 +1819,7 @@ function parseTeMaSegment(content) {
   });
 
   // 非复式连肖（N连肖 + 生肖串，多组匹配）
-  addMatch(new RegExp(`([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)[\\s]*((?:[${Z}]+(?:${SEP_CHARS}+[${Z}]+)*))${SEP}(?:(?=${KW_GROUP})${KW_GROUP}${SEP}${AMT_GROUP}|${END_AMT_RE_NO_GREED})`, 'g'), m => {
+  addMatch(new RegExp(`([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)[\\s]*((?:[${Z}]+(?:${SEP_CHARS}+[${Z}]+)*))${SEP}(?:(?=${KW_GROUP})${KW_GROUP}${SEP}${AMT_GROUP}|${END_AMT_RE})(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const k = toNum(m[1].replace(/[^0-9二三四五两]/g, '')); if (!k || k < 2 || k > 5) return null;
     const zPart = m[2]; const warnings = [];
@@ -1854,7 +1852,7 @@ function parseTeMaSegment(content) {
   });
 
   // 非复式连尾（N连尾 + 尾数串，多组匹配）
-  addMatch(new RegExp(`([二三四五2345])(?:连尾|尾连)[\\s]*((?:\\d+${SEP_CHARS}*尾(?:${SEP_CHARS}+\\d+${SEP_CHARS}*尾)*)+)${SEP}(?:(?=${KW_GROUP})${KW_GROUP}${SEP}${AMT_GROUP}|${END_AMT_RE_NO_GREED})`, 'g'), m => {
+  addMatch(new RegExp(`([二三四五2345])(?:连尾|尾连)[\\s]*((?:\\d+${SEP_CHARS}*尾(?:${SEP_CHARS}+\\d+${SEP_CHARS}*尾)*)+)${SEP}(?:(?=${KW_GROUP})${KW_GROUP}${SEP}${AMT_GROUP}|${END_AMT_RE})(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const k = toNum(m[1]); if (!k || k < 2 || k > 5) return null;
     const tailPart = m[2]; const digits = (tailPart.match(/\d/g) || []);
@@ -1871,7 +1869,7 @@ function parseTeMaSegment(content) {
   });
 
   // 平特肖
-  addMatch(new RegExp(`(?:平特(?:一肖|肖)?|[1一]肖中|平肖|平码[肖]?|一肖|独肖)${SEP}((?:[${Z}]+${SEP_CHARS}*)+)\\s*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`(?:平特(?:一肖|肖)?|[1一]肖中|平肖|平码[肖]?|一肖|独肖)${SEP}((?:[${Z}]+${SEP_CHARS}*)+)\\s*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const zs = extractZodiacs(m[1]);
     const warnings = [];
@@ -1882,7 +1880,7 @@ function parseTeMaSegment(content) {
   });
 
   // 平特尾
-  addMatch(new RegExp(`(?:平特(?:一尾|尾)?|平尾|尾中)${SEP}((?:\\d+尾${SEP_CHARS}*)+)\\s*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`(?:平特(?:一尾|尾)?|平尾|尾中)${SEP}((?:\\d+尾${SEP_CHARS}*)+)\\s*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const tails = (m[1].match(/\d/g) || []).map(d => d + '尾');
     const warnings = [];
@@ -1893,7 +1891,7 @@ function parseTeMaSegment(content) {
   });
 
   // 平码
-  addMatch(new RegExp(`(?:平码|独平)${SEP}((?:\\d+${SEP_CHARS}*)+)[\\s]*${END_AMT_RE_NO_GREED}`, 'g'), m => {
+  addMatch(new RegExp(`(?:平码|独平)${SEP}((?:\\d+${SEP_CHARS}*)+)[\\s]*${END_AMT_RE}(?!\\s*[\\d\\u4e00-\\u9fa5])`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
     const nums = extractNums(m[1]); const invalidNums = findInvalidNums(m[1]);
     const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
