@@ -2279,7 +2279,7 @@ function containsDictElement(str) {
   return false;
 }
 
-// ===== 增强版继承函数（支持无分隔符生肖串拆分） =====
+// ===== 增强版继承函数（支持无分隔符生肖串拆分 + 特肖覆盖） =====
 function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
   if (!lineResults || lineResults.length === 0) return { results: lineResults, lastPlay: lastInheritablePlay };
 
@@ -2304,6 +2304,25 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
   // 2. 遍历处理
   const processed = [];
   for (const r of lineResults) {
+    // ----- 新增：特肖结果覆盖为连肖 -----
+    if (inheritedPlay && inheritedPlay.type === 'zodiac' && inheritedPlay.count >= 2 && r.cat === '特肖') {
+      const zodiacs = r.nums || [];
+      if (zodiacs.length === inheritedPlay.count && (r.kw || '') === (inheritedPlay.kw || '')) {
+        const comboStr = zodiacs.join('-');
+        processed.push({
+          cat: inheritedPlay.cat,
+          nums: [comboStr],
+          amt: r.amt,
+          cnt: 1,
+          total: r.amt,
+          kw: inheritedPlay.kw || '各组',
+          warnings: [],
+          rawLine: r.rawLine || ''
+        });
+        continue;
+      }
+    }
+
     if (r.cat !== '__unrecognized__') {
       processed.push(r);
       continue;
