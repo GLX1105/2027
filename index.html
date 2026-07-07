@@ -44,7 +44,6 @@ body {background:#f5f7fa;font-size:14px;line-height:1.4;overflow-x:hidden;positi
     .navbar-actions {width:100%!important;justify-content:center!important;flex-wrap:wrap!important;gap:5px!important;}
     .btn {padding:6px 8px!important;font-size:12px!important;min-height:32px!important;flex:1!important;min-width:60px!important;}
     .btn-macau, .btn-hongkong, .btn-yuegang {padding:4px 10px!important;font-size:12px!important;min-height:28px!important;flex:none!important;min-width:auto!important;}
-    .btn-sm {padding:3px 8px!important;font-size:11px!important;min-height:26px!important;flex:none!important;min-width:auto!important;}
     .floating-window {width:95%!important;min-width:300px!important;}
     .modal-header {padding:8px 10px!important;}
     .modal-body {padding:8px!important;}
@@ -148,31 +147,6 @@ body[data-region="yuegang"] .navbar::after {
 .btn-hongkong.region-active{background:#2e86c1!important;box-shadow:0 0 12px rgba(46,134,193,0.7);border-color:#7fb3d8!important;}
 .btn-yuegang{background:#27ae60!important;border-color:#2ecc71!important;color:#fff!important;font-weight:600;letter-spacing:0.5px;box-shadow:0 2px 8px rgba(39,174,96,0.4);}
 .btn-yuegang.region-active{background:#2ecc71!important;box-shadow:0 0 12px rgba(46,204,113,0.7);border-color:#58d68d!important;}
-
-/* 小按钮样式（标澳、标港、标粤、继承、前缀、金额前缀、金额后缀） */
-.btn-sm {
-    display:inline-flex;
-    align-items:center;
-    gap:3px;
-    cursor:pointer;
-    padding:2px 7px;
-    border-radius:10px;
-    font-size:11px;
-    font-weight:bold;
-    transition:all 0.2s;
-    background:transparent;
-    color:#666;
-    border:1px solid #bbb;
-    white-space:nowrap;
-}
-.btn-sm:hover {
-    background:#f0f0f0;
-    border-color:#999;
-}
-.btn-sm:active {
-    background:#ddd;
-    border-color:#888;
-}
 
 @keyframes breathe {
     from { opacity: 0.15; }
@@ -604,7 +578,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
         </div>
       </div>
     </div>
-<!-- 右侧风险报告区域 -->
+    <!-- 右侧风险报告区域 -->
     <div class="risk-report-area">
         <div class="card" id="riskReportCard">
           <div class="card-title">
@@ -977,43 +951,6 @@ function markRegion(region) {
   showToast('已标记为' + (regionLabels[region] || region));
 }
 
-// ===== 继承玩法函数 =====
-function inheritPlayType() {
-  const ta = document.querySelector('.source-order-input');
-  if (!ta) return;
-  const start = ta.selectionStart, end = ta.selectionEnd;
-  if (start === end) { showToast('请先选择文本'); return; }
-  const selectedText = ta.value.substring(start, end);
-  if (!selectedText.trim()) { showToast('请先选择文本'); return; }
-
-  // 获取光标位置之前的文本，找到上一行的玩法
-  const textBefore = ta.value.substring(0, start);
-  const lines = textBefore.split('\n').filter(l => l.trim());
-  let playType = null;
-  if (lines.length > 0) {
-    const lastLine = lines[lines.length - 1].trim();
-    // 匹配已识别的玩法行：玩法:内容 各 金额
-    const match = lastLine.match(/^(\S+?):/);
-    if (match) {
-      playType = match[1]; // 如 '三连肖', '特码', '特肖', '二中二' 等
-    }
-  }
-  if (!playType) { showToast('未找到上一行的玩法前缀'); return; }
-
-  // 给选中的每一行加上玩法前缀
-  const selLines = selectedText.split('\n');
-  const prefixedLines = selLines.map(line => {
-    if (line.trim()) {
-      return playType + ':' + line.trim();
-    }
-    return line;
-  });
-  const newText = prefixedLines.join('\n');
-  ta.value = ta.value.substring(0, start) + newText + ta.value.substring(end);
-  performRecognition(ta.value);
-  showToast('已继承玩法：' + playType);
-}
-
 // ===== 识别弹窗 =====
 function showRecognizeModal() {
   if (document.getElementById('recognizeWin')) return;
@@ -1046,9 +983,9 @@ function showRecognizeModal() {
               <span style="width:7px;height:7px;border-radius:50%;"></span>粤
             </span>
           </div>
-          <button class="btn btn-sm" onclick="showPrefixManager()">前缀</button>
-          <button class="btn btn-sm" onclick="showAmountPrefixManager()">金额前缀</button>
-          <button class="btn btn-sm" onclick="showAmountSuffixManager()">金额后缀</button>
+          <button class="btn btn-prefix" onclick="showPrefixManager()" style="font-size:10px;">前缀</button>
+          <button class="btn btn-amount-prefix" onclick="showAmountPrefixManager()" style="font-size:10px;">金额前缀</button>
+          <button class="btn btn-amount-prefix2" onclick="showAmountSuffixManager()" style="font-size:10px;">金额后缀</button>
         </div>
         <div class="order-input-container" style="flex:1;"><div class="input-column"><div class="box-label">订单输入框</div><textarea class="source-order-input" oninput="performRecognition(this.value)"></textarea></div><div class="result-column"><div class="box-label">识别结果</div><div class="result-area-new"><div class="result-content" id="orderResult" contenteditable="false"></div></div></div></div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -1060,10 +997,9 @@ function showRecognizeModal() {
           <button class="btn btn-remove-sep" onclick="removeSeparators()">去分隔</button>
           <button class="btn btn-mark" onclick="markSelection()">标记</button>
           <button class="btn btn-cancel" onclick="semanticReplace()">语义转换</button>
-          <button class="btn btn-sm" onclick="markRegion('macau')">标澳</button>
-          <button class="btn btn-sm" onclick="markRegion('hongkong')">标港</button>
-          <button class="btn btn-sm" onclick="markRegion('yuegang')">标粤</button>
-          <button class="btn btn-sm" onclick="inheritPlayType()">继承</button>
+          <button class="btn" onclick="markRegion('macau')" style="background:#e74c3c;color:#fff;font-size:10px;">标澳</button>
+          <button class="btn" onclick="markRegion('hongkong')" style="background:#3498db;color:#fff;font-size:10px;">标港</button>
+          <button class="btn" onclick="markRegion('yuegang')" style="background:#27ae60;color:#fff;font-size:10px;">标粤</button>
           <span id="invalidTokensDisplay" style="color:red; font-size:12px; display:none; white-space:pre-line; margin-left:auto;"></span>
         </div>
         <div class="cat-shortcuts-container" id="catShortcutsContainer" style="font-size:12px;line-height:1.6;margin-top:6px;">${catSpans}</div>
@@ -1299,7 +1235,7 @@ function saveOddsData() {
   document.querySelectorAll('.odds-input').forEach(inp => { inp.disabled = true; inp.style.border = 'none'; inp.style.background = 'transparent'; });
   showToast('赔率已保存'); if (document.getElementById('lianxiaoStatsWin')) refreshLianxiaoStats();
 }
-// ===== 新版字典与识别核心 =====
+    // ===== 新版字典与识别核心 =====
 const ZODIAC = '鼠牛虎兔龙蛇马羊猴鸡狗猪';
 const ZODIAC_NUMS = { '鼠': '07 19 31 43', '牛': '06 18 30 42', '虎': '05 17 29 41', '兔': '04 16 28 40', '龙': '03 15 27 39', '蛇': '02 14 26 38', '马': '01 13 25 37 49', '羊': '12 24 36 48', '猴': '11 23 35 47', '鸡': '10 22 34 46', '狗': '09 21 33 45', '猪': '08 20 32 44' };
 const NUM_TO_ZODIAC = {};
@@ -1389,7 +1325,7 @@ function zodiacToNums(zStr) { const ns = []; for (const z of zStr) { if (D[z]) D
 function extractNums(txt) { return (txt.match(/\d+/g) || []).map(n => parseInt(n)).filter(n => n >= 1 && n <= 49).map(n => String(n).padStart(2, '0')); }
 function extractZodiacs(txt) { return (txt.match(new RegExp(`[${ZODIAC}]`, 'g')) || []); }
 function findInvalidNums(txt) { if (!txt) return []; const allNums = (txt.match(/\d+/g) || []).map(n => parseInt(n)); return allNums.filter(n => n > 49); }
-function preprocess(txt) {
+    function preprocess(txt) {
   let c = txt;
   c = c.replace(/[\uFF01-\uFF5E]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
   c = c.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -1524,7 +1460,7 @@ function parseTeMaSegment(content) {
   const warnings = invalidNums.length ? ['无效号码: ' + invalidNums.join(', ')] : [];
   return { displayItems, totalCount: cnt, warnings, allNumsArr: allNumsArr };
 }
-function collectSpecialMatches(text) {
+    function collectSpecialMatches(text) {
   const Z = ZODIAC;
   const allMatches = [];
 
@@ -1974,7 +1910,7 @@ function collectSpecialMatches(text) {
   }
   return deduped;
 }
-function processOneLine(line) {
+    function processOneLine(line) {
   if (!line.trim()) return [];
 
   // ===== 号码-金额对识别（优先处理） =====
@@ -2343,8 +2279,9 @@ function containsDictElement(str) {
   return false;
 }
 
-function applyInlineInheritance(lineResults) {
-  if (!lineResults || lineResults.length === 0) return lineResults;
+// ===== 增强版继承函数 =====
+function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
+  if (!lineResults || lineResults.length === 0) return { results: lineResults, lastPlay: lastInheritablePlay };
 
   const inheritableCats = {
     '平特肖': { type: 'zodiac', count: 1 },
@@ -2355,16 +2292,16 @@ function applyInlineInheritance(lineResults) {
     inheritableCats[i + '连尾'] = { type: 'tail', count: i };
   }
 
-  let inheritedPlay = null;
+  // 1. 确定本行的继承源
+  let inheritedPlay = lastInheritablePlay;
   for (const r of lineResults) {
     if (r.cat !== '__unrecognized__' && inheritableCats[r.cat]) {
-      inheritedPlay = { cat: r.cat, ...inheritableCats[r.cat] };
+      inheritedPlay = { cat: r.cat, kw: r.kw || '', ...inheritableCats[r.cat] };
       break;
     }
   }
 
-  if (!inheritedPlay) return lineResults;
-
+  // 2. 遍历处理
   const processed = [];
   for (const r of lineResults) {
     if (r.cat !== '__unrecognized__') {
@@ -2372,53 +2309,129 @@ function applyInlineInheritance(lineResults) {
       continue;
     }
 
-    const amtMatch = r.rawLine.match(new RegExp(`(.+?)\\s*(${AMT_RE_STR})\\s*$`));
+    if (!inheritedPlay) {
+      processed.push(r);
+      continue;
+    }
+
+    // 提取内容和金额
+    const raw = (r.rawLine || '').trim();
+    if (!raw) {
+      processed.push(r);
+      continue;
+    }
+
+    // 提取金额数字（最后一个数字）
+    const amtMatch = raw.match(/(\d+)\s*$/);
     if (!amtMatch) {
       processed.push(r);
       continue;
     }
-
-    const content = amtMatch[1].trim();
-    const amt = toNum(amtMatch[2]);
-    if (!amt || amt <= 0) {
+    const amt = parseInt(amtMatch[1]) || 0;
+    if (amt <= 0) {
       processed.push(r);
       continue;
     }
 
+    // 提取内容（去掉金额部分）
+    let content = raw.substring(0, amtMatch.index).trim();
+    if (!content) {
+      processed.push(r);
+      continue;
+    }
+
+    // 提取内容中的关键字
+    let contentKw = '';
+    for (const kw of KW_LIST) {
+      if (content.includes(kw)) {
+        contentKw = kw;
+        break;
+      }
+    }
+
+    // 关键字一致性检查
+    const inheritedKw = inheritedPlay.kw || '';
+    if (contentKw !== inheritedKw) {
+      r.warnings = [`关键字不一致（需要"${inheritedKw || '无关键字'}"，实际"${contentKw || '无关键字'}"）`];
+      processed.push(r);
+      continue;
+    }
+
+    // 清理内容中的关键字
+    let cleanContent = content;
+    if (contentKw) {
+      // 去掉关键字，保留纯内容
+      cleanContent = content.replace(new RegExp(contentKw), '').trim();
+    }
+    // 清理分隔符
+    cleanContent = cleanContent.replace(/[\s,，.。、+\-*＊\/\\|]+/g, '-');
+
+    // 格式匹配检查
     let matched = false;
     if (inheritedPlay.type === 'zodiac') {
-      const zs = content.replace(/[^鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, '');
-      if (zs.length === inheritedPlay.count) {
-        const combos = zCombosKeepOrder(zs, inheritedPlay.count);
+      const zs = cleanContent.replace(/[^鼠牛虎兔龙蛇马羊猴鸡狗猪]/g, '');
+      const items = cleanContent.split('-').filter(i => /^[鼠牛虎兔龙蛇马羊猴鸡狗猪]+$/.test(i.trim()));
+      if (items.length === 1 && inheritedPlay.count === 1) {
+        // 平特肖：单个生肖
         processed.push({
-          category: inheritedPlay.cat, numbers: combos, unitAmount: amt,
-          totalCount: combos.length, totalAmount: amt * combos.length, kw: '各', warnings: [],
-          _inherited: true
+          cat: inheritedPlay.cat, nums: [items[0].trim()], amt: amt,
+          cnt: 1, total: amt, kw: inheritedPlay.kw || '各', warnings: [],
+          rawLine: raw
         });
         matched = true;
+      } else if (items.length >= 2 && items.every(i => i.trim().length === 1) && cleanContent.split('-').filter(i => i.trim()).length === inheritedPlay.count) {
+        // 连肖：N个单生肖用-连
+        const comboItems = cleanContent.split('-').map(i => i.trim()).filter(i => i);
+        if (comboItems.length === inheritedPlay.count && comboItems.every(i => /^[鼠牛虎兔龙蛇马羊猴鸡狗猪]$/.test(i))) {
+          const comboStr = comboItems.join('-');
+          processed.push({
+            cat: inheritedPlay.cat, nums: [comboStr], amt: amt,
+            cnt: 1, total: amt, kw: inheritedPlay.kw || '各组', warnings: [],
+            rawLine: raw
+          });
+          matched = true;
+        }
       }
     } else if (inheritedPlay.type === 'tail') {
-      const tails = (content.match(/\d+尾/g) || []).map(t => t.trim());
-      const digits = tails.map(t => t.replace('尾', ''));
-      if (digits.length === inheritedPlay.count) {
-        const combos = tailCKeepOrder(digits.join(','), inheritedPlay.count);
+      const items = cleanContent.split('-').filter(i => /\d+尾/.test(i.trim()));
+      if (items.length === 1 && inheritedPlay.count === 1) {
+        // 平特尾：单个尾数
         processed.push({
-          category: inheritedPlay.cat, numbers: combos, unitAmount: amt,
-          totalCount: combos.length, totalAmount: amt * combos.length, kw: '各', warnings: [],
-          _inherited: true
+          cat: inheritedPlay.cat, nums: [items[0].trim()], amt: amt,
+          cnt: 1, total: amt, kw: inheritedPlay.kw || '各', warnings: [],
+          rawLine: raw
+        });
+        matched = true;
+      } else if (items.length === inheritedPlay.count && items.every(i => /\d+尾$/.test(i.trim()))) {
+        // 连尾：N个尾数用-连
+        const comboItems = items.map(i => i.trim());
+        const comboStr = comboItems.join('-');
+        processed.push({
+          cat: inheritedPlay.cat, nums: [comboStr], amt: amt,
+          cnt: 1, total: amt, kw: inheritedPlay.kw || '各组', warnings: [],
+          rawLine: raw
         });
         matched = true;
       }
     }
 
     if (!matched) {
-      const expectedDesc = inheritedPlay.type === 'zodiac' ? `${inheritedPlay.count}个生肖` : `${inheritedPlay.count}个尾数`;
-      r.warnings = [`格式不匹配，无法继承：需要${expectedDesc}`];
+      r.warnings = [`格式不匹配（需要${inheritedPlay.count}个${inheritedPlay.type === 'zodiac' ? '生肖' : '尾数'}）`];
       processed.push(r);
     }
   }
 
-  return processed;
+  // 3. 确定传递给下一行的继承源
+  let outgoingPlay = lastInheritablePlay;
+  for (let i = lineResults.length - 1; i >= 0; i--) {
+    const r = lineResults[i];
+    if (r.cat !== '__unrecognized__' && inheritableCats[r.cat]) {
+      outgoingPlay = { cat: r.cat, kw: r.kw || '', ...inheritableCats[r.cat] };
+      break;
+    }
+  }
+
+  return { results: processed, lastPlay: outgoingPlay };
 }
 
 // ===== 地区关键字列表 =====
@@ -2429,47 +2442,31 @@ const REGION_KEYWORDS = {
 };
 const REGION_LABELS = { 'macau': '澳门', 'hongkong': '香港', 'yuegang': '粤港' };
 
-// ===== 提取地区关键字（新版：纯包含匹配，不删文本，支持多地区） =====
+// ===== 提取地区关键字 =====
 function extractRegion(line) {
-  // 收集所有匹配的地区
-  const matchedRegions = [];
+  const allKeywords = [];
   for (const [region, keywords] of Object.entries(REGION_KEYWORDS)) {
     for (const kw of keywords) {
-      if (line.includes(kw)) {
-        if (!matchedRegions.includes(region)) {
-          matchedRegions.push(region);
-        }
-        break; // 同一地区只保留一次
-      }
+      allKeywords.push({ region, keyword: kw, len: kw.length });
     }
   }
-  if (matchedRegions.length === 0) return null;
-  // 返回地区数组，remaining 保持原样
-  return { regions: matchedRegions, remaining: line };
-}
+  allKeywords.sort((a, b) => b.len - a.len);
 
-// ===== 判断是否为玩法声明行（仅包含玩法名，无具体内容） =====
-function isPlayDeclaration(line) {
-  const trimmed = line.trim();
-  if (!trimmed) return false;
-  // 如果包含冒号，说明可能已经有内容了，不是纯声明
-  if (trimmed.includes(':')) return false;
-  // 如果包含金额关键字、数字、生肖等，说明有实际内容
-  if (/\d/.test(trimmed)) return false;
-  if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(trimmed)) return false;
-  if (/各/.test(trimmed)) return false;
-  // 检查是否为合法玩法名
-  const knownPlays = [
-    '特码','特肖','特碰','平特肖','平特尾','平码',
-    '二连肖','三连肖','四连肖','五连肖',
-    '二连尾','三连尾','四连尾','五连尾',
-    '二中二','三中三',
-    '五不中','六不中','七不中','八不中','九不中','十不中','十一不中','十二不中',
-    '包红波','包蓝波','包绿波','包红单','包红双','包蓝单','包蓝双','包绿单','包绿双',
-    '包红大','包红小','包蓝大','包蓝小','包绿大','包绿小',
-    '包单','包双','包大','包小','包家禽','包野兽'
-  ];
-  return knownPlays.includes(normalizePlayType(trimmed));
+  for (const { region, keyword } of allKeywords) {
+    const idx = line.indexOf(keyword);
+    if (idx !== -1) {
+      if (idx > 0 && /[\u4e00-\u9fa5]/.test(line.charAt(idx - 1))) {
+        continue;
+      }
+      const afterIdx = idx + keyword.length;
+      if (afterIdx < line.length && /[\u4e00-\u9fa5]/.test(line.charAt(afterIdx))) {
+        continue;
+      }
+      const remaining = (line.substring(0, idx) + line.substring(afterIdx)).trim();
+      return { region, remaining };
+    }
+  }
+  return null;
 }
 
 function performRecognition(text) {
@@ -2491,71 +2488,35 @@ function performRecognition(text) {
   
   // 圆点强制地区模式
   const dotRegion = window._dotRegion || 'auto';
-  
-  // 玩法自继承状态
-  let inheritedPlay = null;
+
+  // 跨行继承上下文
+  let lastInheritablePlay = null;
 
   for (const line of lines) {
     if (!line.trim()) {
-      // 空行中断继承
-      inheritedPlay = null;
-      lineRegions.push([currentLineRegion]);
-      allResults.push({ cat: '__empty__', nums: [], amt: 0, cnt: 0, total: 0, kw: '', warnings: [], rawLine: '', regions: [currentLineRegion] });
+      // 空行：保留继承上下文（不打断）
       continue;
     }
 
     let orderLine = line;
-    let effectiveRegions = [currentLineRegion];
     
     if (dotRegion !== 'auto') {
-      // 强制用圆点地区
-      effectiveRegions = [dotRegion];
       currentLineRegion = dotRegion;
     } else {
-      // 从文本中提取地区
       const extracted = extractRegion(line);
-      if (extracted && extracted.regions.length > 0) {
-        effectiveRegions = extracted.regions;
-        currentLineRegion = effectiveRegions[0]; // 继承时使用第一个地区
-        orderLine = extracted.remaining; // 行内容不删不改
+      if (extracted) {
+        currentLineRegion = extracted.region;
+        orderLine = extracted.remaining;
       }
     }
-    lineRegions.push(effectiveRegions);
+    lineRegions.push(currentLineRegion);
 
-    if (!orderLine.trim()) {
-      inheritedPlay = null;
-      allResults.push({ cat: '__empty__', nums: [], amt: 0, cnt: 0, total: 0, kw: '', warnings: [], rawLine: '', regions: effectiveRegions });
-      continue;
-    }
+    if (!orderLine.trim()) continue;
 
-    // 检查是否为玩法声明行
-    if (isPlayDeclaration(orderLine)) {
-      inheritedPlay = normalizePlayType(orderLine.trim());
-      // 声明行本身不生成订单，只作为提示
-      allResults.push({ cat: '__play_decl__', nums: [], amt: 0, cnt: 0, total: 0, kw: '', warnings: [], rawLine: orderLine.trim(), regions: effectiveRegions, declaredPlay: inheritedPlay });
-      continue;
-    }
-
-    let parsed = processOneLine(orderLine);
+    const parsed = processOneLine(orderLine);
     let lineResults = [];
     if (parsed.length === 0) {
-      // 解析失败，尝试继承上一行的玩法
-      if (inheritedPlay && containsDictElement(orderLine)) {
-        // 尝试给当前行加上继承的玩法前缀重新解析
-        const inheritedLine = inheritedPlay + ':' + orderLine.trim();
-        parsed = processOneLine(inheritedLine);
-        if (parsed.length > 0) {
-          lineResults.push(...parsed.map(r => ({ ...r, _inherited: true })));
-        } else {
-          lineResults.push({
-            cat: '__unrecognized__',
-            nums: [],
-            amt: 0, cnt: 0, total: 0, kw: '',
-            warnings: ['缺少金额关键字或有效玩法'],
-            rawLine: orderLine.trim()
-          });
-        }
-      } else if (containsDictElement(orderLine)) {
+      if (containsDictElement(orderLine)) {
         lineResults.push({
           cat: '__unrecognized__',
           nums: [],
@@ -2568,12 +2529,10 @@ function performRecognition(text) {
       lineResults.push(...parsed);
     }
     if (lineResults.length > 0) {
-      lineResults = applyInlineInheritance(lineResults);
-      lineResults.forEach(r => { r.regions = effectiveRegions; });
-      // 更新继承玩法：如果当前行有有效的玩法前缀（非继承且成功识别），更新继承状态
-      if (!lineResults[0]._inherited && lineResults[0].cat !== '__unrecognized__') {
-        inheritedPlay = lineResults[0].cat;
-      }
+      const inheritResult = applyInlineInheritance(lineResults, lastInheritablePlay);
+      lineResults = inheritResult.results;
+      lastInheritablePlay = inheritResult.lastPlay;
+      lineResults.forEach(r => { r.region = currentLineRegion; });
       allResults.push(...lineResults);
     }
   }
@@ -2582,9 +2541,7 @@ function performRecognition(text) {
     category: r.cat, numbers: r.nums, unitAmount: r.amt,
     totalCount: r.cnt, totalAmount: r.total, kw: r.kw || '', warnings: r.warnings || [],
     rawLine: r.rawLine || '',
-    regions: r.regions || [currentRegion],
-    _inherited: r._inherited || false,
-    declaredPlay: r.declaredPlay || null
+    region: r.region || currentRegion
   }));
 
   if (resultDiv) {
@@ -2614,47 +2571,30 @@ function displayResults(rs, container) {
   const regionColorMap = { 'macau': '#e74c3c', 'hongkong': '#3498db', 'yuegang': '#27ae60' };
 
   for (const r of rs) {
-    if (r.category === '__empty__') {
-      html += '<div class="result-line" style="height:8px;"></div>';
-      continue;
-    }
-    if (r.category === '__play_decl__') {
-      // 玩法声明行，显示灰色提示
-      html += `<div class="result-line" style="color:#999;font-size:11px;">▸ 以下继承玩法：${r.declaredPlay || ''}</div>`;
-      continue;
-    }
     if (r.category === '__unrecognized__') {
-      // 多地区时每个地区都显示一行警告
-      const displayRegions = (r.regions && r.regions.length > 0) ? r.regions : [currentRegion];
-      displayRegions.forEach(region => {
-        const regionLabel = REGION_LABELS[region] || '';
-        const warnText = (r.warnings && r.warnings.length) ? r.warnings.join('；') : '缺少金额关键字或有效玩法';
-        html += `<div class="result-line"><span style="color:${regionColorMap[region] || '#333'};">${regionLabel}·</span>${r.rawLine} <span style="color:red;">[${warnText}]</span></div>`;
-      });
+      const regionLabel = REGION_LABELS[r.region] || '';
+      const warnText = (r.warnings && r.warnings.length) ? r.warnings.join('；') : '缺少金额关键字或有效玩法';
+      if (r.region && r.region !== currentRegion && !r.warnings.length) {
+        html += `<div class="result-line"><span style="color:${regionColorMap[r.region] || '#333'};">${regionLabel}·</span>${r.rawLine} <span style="color:red;">[已提取地区${regionLabel}，但内容无法识别]</span></div>`;
+      } else {
+        html += `<div class="result-line"><span style="color:${r.region !== currentRegion ? (regionColorMap[r.region] || '#e74c3c') : '#000'};">${regionLabel}·</span>${r.rawLine} <span style="color:red;">[${warnText}]</span></div>`;
+      }
       continue;
     }
     total += r.totalAmount;
-    const displayRegions = (r.regions && r.regions.length > 0) ? r.regions : [currentRegion];
+    const regionLabel = REGION_LABELS[r.region] || '';
+    const isCurrentRegion = r.region === currentRegion;
+    const regionColor = isCurrentRegion ? 'color:#000;' : `color:${regionColorMap[r.region] || '#333'};`;
+    const kwDisplay = (r.category === '特码') ? '各数' : '各';
+    const amountStr = `${kwDisplay}${Math.round(r.unitAmount)}`;
+    const info = r.totalCount > 1 ? `(${r.totalCount}注, 共${Math.round(r.totalAmount)})` : `(共${Math.round(r.totalAmount)})`;
     const numStr = formatNums(r.category, r.numbers);
-    
-    // 每个地区单独显示一行
-    displayRegions.forEach((region, idx) => {
-      const regionLabel = REGION_LABELS[region] || '';
-      const isCurrentRegion = region === currentRegion;
-      const regionColor = isCurrentRegion ? 'color:#000;' : `color:${regionColorMap[region] || '#333'};`;
-      const kwDisplay = (r.category === '特码') ? '各数' : '各';
-      const amountStr = `${kwDisplay}${Math.round(r.unitAmount)}`;
-      const info = r.totalCount > 1 ? `(${r.totalCount}注, 共${Math.round(r.totalAmount)})` : `(共${Math.round(r.totalAmount)})`;
-      let line = `<span style="${regionColor}">${regionLabel}·</span>${r.category}:${numStr}${amountStr} ${info}`;
-      if (r.warnings && r.warnings.length) { line += ` <span style="color:red;">[${r.warnings.join('；')}]</span>`; }
-      if (r._inherited) { line += ` <span style="color:#aaa;font-size:10px;">[继承]</span>`; }
-      html += `<div class="result-line">${line}</div>`;
-      // 只有第一个地区时记录纯文本行（避免重复）
-      if (idx === 0) {
-        pureLines.push(`${r.category}:${numStr} ${kwDisplay} ${Math.round(r.unitAmount)}`);
-        pureRegions.push(region);
-      }
-    });
+    let line = `<span style="${regionColor}">${regionLabel}·</span>${r.category}:${numStr}${amountStr} ${info}`;
+    if (r.warnings && r.warnings.length) { line += ` <span style="color:red;">[${r.warnings.join('；')}]</span>`; }
+    html += `<div class="result-line">${line}</div>`;
+    const pureNumStr = formatNums(r.category, r.numbers);
+    pureLines.push(`${r.category}:${pureNumStr} ${kwDisplay} ${Math.round(r.unitAmount)}`);
+    pureRegions.push(r.region);
 
     if (r.category === '特码' || r.category === '特肖') {
       maxLossData.push({
@@ -2806,7 +2746,7 @@ function processCurrentOrder(input, user, isNormal, date = null) {
   });
   updateTableFromRecords();
 }
-// ===== 连肖统计弹窗 =====
+    // ===== 连肖统计弹窗 =====
 function showLianxiaoStatsWin() {
   if (document.getElementById('lianxiaoStatsWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'lianxiaoStatsWin';
@@ -3030,7 +2970,7 @@ function normalizePlayType(playType) {
   };
   return map[playType] || playType;
 }
-// ===== 兑奖统计核心函数 =====
+    // ===== 兑奖统计核心函数 =====
 function refreshDuiJiangStats() {
   const orderBody = document.getElementById('duiJiangOrderBody');
   const reportBody = document.getElementById('duiJiangReportBody');
@@ -3190,7 +3130,7 @@ function buildHitDetail(hitByType) {
   }
   return parts.length > 0 ? parts.join('，') : '';
 }
-// ===== 特肖兑奖处理函数（下单） =====
+    // ===== 特肖兑奖处理函数（下单） =====
 function processTexiaoLineDuijiang(stats, content, amt, drawTeMaZodiac, drawTeMa, hasValidDraw) {
   const zodiacs = content.split('-').map(z => z.trim()).filter(z => z);
   if (zodiacs.length === 0) return;
@@ -3435,7 +3375,7 @@ function processComboLineDuijiangNew(stats, playType, content, amt, drawZodiacsS
     }
   });
 }
-// ===== 上报兑奖处理函数 =====
+    // ===== 上报兑奖处理函数 =====
 function processComboLineDuijiangNewReport(stats, playType, content, amt, drawZodiacsSet, drawNumbersSet, drawNumbersZhengma, hasValidDraw) {
   playType = normalizePlayType(playType);
   const cleaned = content.replace(/[()]/g, '');
@@ -3746,7 +3686,7 @@ function getOddsForType(type, oddsData) {
     rebate: parseFloat(saved.rebate) || defaults[type]?.rebate || 4
   };
 }
-// ===== 连肖识别输入处理（旧版保持不变） =====
+    // ===== 连肖识别输入处理（旧版保持不变） =====
 function comboRemoveSeparators() { const ta = document.getElementById('comboInput'); if (!ta) return; const s = ta.selectionStart, e = ta.selectionEnd; if (s === e) { showToast('请先选择文本'); return; } const sel = ta.value.substring(s, e); const cleaned = sel.replace(/[\s,，.。、+\-*＊\/\\|]+/g, ''); ta.value = ta.value.substring(0, s) + cleaned + ta.value.substring(e); }
 async function pasteComboOrder() { try { const text = await navigator.clipboard.readText(); if (text) { const ta = document.getElementById('comboInput'); if (ta) { ta.value = text; } } } catch(err) { showToast('无法访问剪贴板'); } }
 
@@ -4844,7 +4784,7 @@ async function saveReportOrder(){
   showToast('已上报成功（' + savedCount + '个地区）'); 
   setTimeout(() => { const toast = document.querySelector('.toast-message.show'); if (toast) toast.style.color = '#ff0000'; }, 10); 
 }
-function updateOrderCountDisplay() {
+    function updateOrderCountDisplay() {
   const fd = document.getElementById('filterDate')?.value || getTodayCST();
   getOrderRecords().then(orders => {
     const todayOrders = orders.filter(r => r.date === fd);
@@ -5370,7 +5310,7 @@ function renderAmountFrequencyCards(){
   } 
   ztb+='</tbody>'; zt.innerHTML=zth+ztb; 
 }
-function isTokenMatching(token,targetNum){ const t=targetNum.padStart(2,'0'); if(/^\d{1,2}$/.test(token))return token.padStart(2,'0')===t; if(D[token]){const nums=keyToAllNums(token);return nums.includes(t);} return false; }
+    function isTokenMatching(token,targetNum){ const t=targetNum.padStart(2,'0'); if(/^\d{1,2}$/.test(token))return token.padStart(2,'0')===t; if(D[token]){const nums=keyToAllNums(token);return nums.includes(t);} return false; }
 function highlightContent(content,targetNum){ if(!targetNum)return content; const t=targetNum.padStart(2,'0'); const parts=[];let tmp=''; for(const ch of content){if(ch==='-'||ch===' '){if(tmp)parts.push(tmp);parts.push(ch);tmp='';}else{tmp+=ch;}} if(tmp)parts.push(tmp); return parts.map(p=>{if(p==='-'||p===' ')return p;if(isTokenMatching(p,targetNum))return`<span class="highlight-number">${p}</span>`;return p;}).join(''); }
 function orderContainsTarget(content,targetNum){ if(!targetNum)return true; const t=targetNum.padStart(2,'0'); const lines=content.split('\n'); for(const line of lines){ if(!line.startsWith('特码:')) continue; const m=line.match(/^特码:(.+?)\s+各(?:数|)\s*(\d+)$/); if(!m)continue; const cont=m[1]; const parts=[];let tmp=''; for(const ch of cont){if(ch==='-'||ch===' '){if(tmp)parts.push(tmp);tmp='';}else{tmp+=ch;}} if(tmp)parts.push(tmp); for(const p of parts){if(p!=='-'&&p!==' '&&isTokenMatching(p,targetNum))return true;} } return false; }
 function getSpecialAmountFromOrder(content, prizeNum) { if (!prizeNum) return 0; const targetNum = prizeNum.padStart(2, '0'); const lines = content.split('\n'); let total = 0; for (const line of lines) { const match = line.match(/^(.+?):(.+?)\s+各(?:数|)\s*(\d+)$/); if (!match) continue; const tokensPart = match[2]; const amount = parseInt(match[3]) || 0; const tokens = tokensPart.split('-').map(t => t.trim()).filter(t => t); for (const token of tokens) { if (isTokenMatching(token, targetNum)) { total += amount; } } } return total; }
