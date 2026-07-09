@@ -4,18 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>surewin 订单管理系统</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
     <style>
         :root { --bg: #f3f4f6; --white: #fff; --border: #d1d5db; --text: #333; --cyan-bg: #e0f7fa; }
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family: "Microsoft YaHei","微软雅黑","PingFang SC",sans-serif; font-size:13px; color:#333; background:#f3f4f6; user-select:none; }
+        body { font-family:"Microsoft YaHei","微软雅黑","PingFang SC",sans-serif; font-size:13px; color:#333; background:#f3f4f6; user-select:none; }
         ::-webkit-scrollbar { width:5px; height:5px; } ::-webkit-scrollbar-thumb { background:#c1c1c1; border-radius:4px; }
-        .menu-item.active { color:#10b981; background:#f0fdf4; border-left:3px solid #10b981; font-weight:600; }
+        .menu-item.active { color:#10b981; background-color:#f0fdf4; border-left:3px solid #10b981; font-weight:600; }
         .sub-menu-item.active { color:#10b981; font-weight:600; background:#f0fdf420; }
         .menu-item { transition:all .15s; border-left:3px solid transparent; }
+        /* 侧边栏折叠时隐藏文字 */
+        .collapsed .menu-text { display: none; }
         table { border-collapse:collapse; width:100%; font-size:12px; }
         th,td { border:1px solid #d1d5db; padding:3px 6px; text-align:center; white-space:nowrap; }
-        th { background:#e0f7fa; font-weight:600; font-size:11px; position:sticky; top:0; z-index:2; }
+        th { background-color:#e0f7fa; font-weight:600; font-size:11px; position:sticky; top:0; z-index:2; }
         td { font-size:11px; } tr:hover td { background:#fefce8; }
         .num-red { color:#dc2626; font-weight:600; } .num-blue { color:#2563eb; font-weight:600; } .num-green { color:#059669; font-weight:600; }
         .chart-grid { background-image:repeating-linear-gradient(to bottom,#e5e7eb 0px,#e5e7eb 1px,transparent 1px,transparent 20%); background-size:100% 25%; }
@@ -29,150 +32,166 @@
         .stat-card { background:#fff; border:1px solid #d1d5db; border-radius:8px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
         .stat-card:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); transform:translateY(-1px); }
 
-        /* 弹窗公共 */
-        #configModal,#orderEntryModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; }
-        #configModal .modal-mask,#orderEntryModal .modal-mask { width:100%; height:100%; background:rgba(0,0,0,0.3); display:flex; justify-content:center; align-items:center; }
+        /* 弹窗通用 */
+        #configModal, #orderEntryModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; }
+        #configModal .modal-mask, #orderEntryModal .modal-mask { width:100%; height:100%; background:rgba(0,0,0,0.3); display:flex; justify-content:center; align-items:center; }
         #configModal .modal { width:920px; height:620px; background:#fff; border:1px solid #999; box-shadow:0 0 10px rgba(0,0,0,0.2); display:flex; flex-direction:column; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); transition:none!important; }
         #orderEntryModal .modal { width:1100px; height:750px; background:#fff; border:1px solid #999; box-shadow:0 0 20px rgba(0,0,0,0.3); display:flex; flex-direction:column; border-radius:6px; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); transition:none!important; }
         .modal-header { background:linear-gradient(to bottom,#f9f9f9,#e9e9e9); border-bottom:1px solid #a0a0a0; display:flex; align-items:center; padding:0 8px; cursor:move; }
         #configModal .modal-header { height:32px; } #orderEntryModal .modal-header { height:36px; padding:0 12px; }
-        .modal-header .title { font-weight:bold; flex-grow:1; color:#333; } #configModal .modal-header .title{font-size:13px;} #orderEntryModal .modal-header .title{font-size:14px;}
+        .modal-header .title { font-weight:bold; flex-grow:1; } #configModal .modal-header .title{font-size:13px;} #orderEntryModal .modal-header .title{font-size:14px;}
         .modal-header .controls button { width:26px; height:22px; background:transparent; border:1px solid transparent; margin-left:2px; cursor:pointer; font-size:14px; color:#555; }
         .modal-header .controls button:hover { background:#f0f0f0; border-color:#ccc; }
         .modal-header .controls .close-btn:hover { background:#e81123; color:white; border-color:#e81123; }
         .modal.maximized { left:0!important; top:0!important; width:100%!important; height:100%!important; transform:none!important; }
         .modal-resizer { position:absolute; z-index:10; }
-        .resizer-n{top:-5px;left:0;right:0;height:10px;cursor:n-resize;}.resizer-s{bottom:-5px;left:0;right:0;height:10px;cursor:s-resize;}.resizer-e{right:-5px;top:0;bottom:0;width:10px;cursor:e-resize;}.resizer-w{left:-5px;top:0;bottom:0;width:10px;cursor:w-resize;}.resizer-ne{top:-5px;right:-5px;width:15px;height:15px;cursor:ne-resize;}.resizer-nw{top:-5px;left:-5px;width:15px;height:15px;cursor:nw-resize;}.resizer-se{bottom:-5px;right:-5px;width:15px;height:15px;cursor:se-resize;}.resizer-sw{bottom:-5px;left:-5px;width:15px;height:15px;cursor:sw-resize;}
+        .resizer-n{top:-5px;left:0;right:0;height:10px;cursor:n-resize;} .resizer-s{bottom:-5px;left:0;right:0;height:10px;cursor:s-resize;}
+        .resizer-e{right:-5px;top:0;bottom:0;width:10px;cursor:e-resize;} .resizer-w{left:-5px;top:0;bottom:0;width:10px;cursor:w-resize;}
+        .resizer-ne{top:-5px;right:-5px;width:15px;height:15px;cursor:ne-resize;} .resizer-nw{top:-5px;left:-5px;width:15px;height:15px;cursor:nw-resize;}
+        .resizer-se{bottom:-5px;right:-5px;width:15px;height:15px;cursor:se-resize;} .resizer-sw{bottom:-5px;left:-5px;width:15px;height:15px;cursor:sw-resize;}
         .minimized-icon { position:fixed; bottom:20px; right:20px; width:40px; height:40px; background:#409eff; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:99999; box-shadow:0 4px 10px rgba(0,0,0,0.3); }
-        .minimized-icon:hover { background:#337ab7; }
 
-        /* 配置弹窗内部样式 */
-        #configModal .tabs{height:32px;background:#f0f0f0;border-bottom:1px solid #a0a0a0;display:flex;align-items:flex-end;padding-left:10px;}
-        #configModal .tab{padding:6px 20px;border:1px solid #a0a0a0;border-bottom:none;background:linear-gradient(to bottom,#f9f9f9,#e0e0e0);margin-right:4px;cursor:pointer;position:relative;top:1px;font-size:12px;color:#333;}
-        #configModal .tab.active{background:#fff;border-bottom:1px solid #fff;font-weight:bold;color:#c00;}
-        #configModal .content{flex:1;padding:10px;overflow:hidden;display:none;flex-direction:column;}.content.active{display:flex;}
-        #configModal .toolbar{display:flex;align-items:center;margin-bottom:8px;gap:5px;}
-        #configModal .toolbar button,#configModal .toolbar select,#configModal .toolbar input{height:24px;border:1px solid #a0a0a0;background:linear-gradient(to bottom,#f9f9f9,#e9e9e9);padding:0 8px;font-size:12px;color:#333;}
-        #configModal .toolbar input{width:180px;background:#fff;}
-        #configModal .table-wrapper{flex:1;border:1px solid #a0a0a0;overflow:auto;min-height:200px;}
-        #configModal table{width:100%;border-collapse:collapse;}#configModal thead{background:linear-gradient(to bottom,#f9f9f9,#e0e0e0);position:sticky;top:0;z-index:1;}
-        #configModal th,#configModal td{border:1px solid #d0d0d0;padding:6px 10px;text-align:left;white-space:nowrap;color:#333;}
-        #configModal tbody tr:hover{background-color:#e8f4ff;}
-        #configModal tbody tr:nth-child(even){background-color:#f9f9f9;}
-        #configModal tbody tr.selected{background-color:#b8daff!important;outline:1px solid #4a90e2;outline-offset:-1px;}
-        #configModal tbody tr.selected:nth-child(even){background-color:#a8caf0!important;}
-        #configModal tbody tr.selected:hover{background-color:#9dc5f0!important;}
-        #configModal #odds-content .footer{margin-top:10px;border-top:1px solid #a0a0a0;padding-top:8px;display:flex;justify-content:space-between;align-items:center;}
-        #configModal #odds-content .footer label{display:flex;align-items:center;gap:4px;color:#333;}
-        #configModal #odds-content .footer input[type="text"]{height:22px;border:1px solid #a0a0a0;width:140px;padding:0 4px;}
-        #configModal #odds-content .footer button{height:24px;padding:0 15px;border:1px solid #a0a0a0;background:linear-gradient(to bottom,#f9f9f9,#e9e9e9);cursor:pointer;color:#333;}
-        #configModal #odds-content .footer button.confirm{background:linear-gradient(to bottom,#337ab7,#286090);color:white;border-color:#204d74;margin-left:20px;}
-        #configModal #odds-content .instructions{margin-top:10px;padding:8px;background:#fff8e1;border:1px solid #ffe082;line-height:1.6;color:#555;}
-        #configModal .red{color:#d32f2f;font-weight:bold;}
-        #configModal .cell-text{display:inline-block;width:100%;padding:2px 4px;cursor:default;}
-        #configModal .cell-input{width:100%;border:1px solid #4a90e2;display:none;padding:2px 4px;}
-        #configModal .cell-input.editing{display:inline-block;}
-        #configModal .cell-text.editing{display:none;}
-        #configModal .name-text{display:inline-block;width:100%;padding:2px 4px;cursor:default;}
-        #configModal .name-input{width:100%;border:1px solid #4a90e2;display:none;padding:2px 4px;}
-        #configModal .name-input.editing{display:inline-block;}
-        #configModal .name-text.editing{display:none;}
-        #configModal .applicant-body{flex:1;display:flex;gap:10px;overflow:hidden;}
-        #configModal .applicant-list{flex:3;border:1px solid #a0a0a0;overflow:auto;}
-        #configModal .applicant-list table th:nth-child(1){width:40%;}#configModal .applicant-list table th:nth-child(2){width:60%;}
-        #configModal .applicant-list select{border:1px solid #a0a0a0;height:22px;background:linear-gradient(to bottom,#f9f9f9,#e9e9e9);padding:0 4px;width:100%;}
-        #configModal .applicant-note{flex:1;border:1px solid #a0a0a0;padding:10px;background:#f9f9f9;overflow:auto;line-height:1.6;color:#555;}
-        #configModal .applicant-footer{margin-top:10px;display:flex;justify-content:flex-end;}
-        #configModal .applicant-footer button{height:24px;padding:0 20px;border:1px solid #a0a0a0;background:linear-gradient(to bottom,#4a90e2,#2a70c2);color:white;cursor:pointer;font-weight:bold;}
-        #configModal #btn-delete-applicant{color:#c00;}
-        #configModal #btn-delete-applicant:hover{background:linear-gradient(to bottom,#fdd,#fcc);border-color:#c00;}
+        /* 配置弹窗内部样式 (作用域限制) */
+        #configModal .tabs { height:32px; background:#f0f0f0; border-bottom:1px solid #a0a0a0; display:flex; align-items:flex-end; padding-left:10px; }
+        #configModal .tab { padding:6px 20px; border:1px solid #a0a0a0; border-bottom:none; background:linear-gradient(to bottom,#f9f9f9,#e0e0e0); margin-right:4px; cursor:pointer; position:relative; top:1px; font-size:12px; }
+        #configModal .tab.active { background:#fff; border-bottom:1px solid #fff; font-weight:bold; color:#c00; }
+        #configModal .content { flex:1; padding:10px; overflow:hidden; display:none; flex-direction:column; }
+        #configModal .content.active { display:flex; }
+        #configModal .toolbar { display:flex; align-items:center; margin-bottom:8px; gap:5px; }
+        #configModal .toolbar button, #configModal .toolbar select, #configModal .toolbar input { height:24px; border:1px solid #a0a0a0; background:linear-gradient(to bottom,#f9f9f9,#e9e9e9); padding:0 8px; font-size:12px; }
+        #configModal .toolbar input { width:180px; background:#fff; }
+        #configModal .toolbar button:hover { background:linear-gradient(to bottom,#ffffff,#f0f0f0); }
+        #configModal .table-wrapper { flex:1; border:1px solid #a0a0a0; overflow:auto; }
+        #configModal table { width:100%; border-collapse:collapse; }
+        #configModal thead { background:linear-gradient(to bottom,#f9f9f9,#e0e0e0); position:sticky; top:0; z-index:1; }
+        #configModal th, #configModal td { border:1px solid #d0d0d0; padding:6px 10px; text-align:left; white-space:nowrap; }
+        #configModal tbody tr:hover { background-color:#e8f4ff; } #configModal tbody tr:nth-child(even) { background-color:#f9f9f9; }
+        #configModal tbody tr.selected { background-color:#b8daff!important; outline:1px solid #4a90e2; outline-offset:-1px; }
+        #configModal #odds-content .footer { margin-top:10px; border-top:1px solid #a0a0a0; padding-top:8px; display:flex; justify-content:space-between; align-items:center; }
+        #configModal #odds-content .footer label { display:flex; align-items:center; gap:4px; cursor:pointer; }
+        #configModal #odds-content .footer input[type="text"] { height:22px; border:1px solid #a0a0a0; width:140px; padding:0 4px; }
+        #configModal #odds-content .footer button { height:24px; padding:0 15px; border:1px solid #a0a0a0; background:linear-gradient(to bottom,#f9f9f9,#e9e9e9); cursor:pointer; }
+        #configModal #odds-content .footer button.confirm { background:linear-gradient(to bottom,#337ab7,#286090); color:white; border-color:#204d74; margin-left:20px; }
+        #configModal #odds-content .instructions { margin-top:10px; padding:8px; background:#fff8e1; border:1px solid #ffe082; line-height:1.6; color:#555; }
+        #configModal .red { color:#d32f2f; font-weight:bold; }
+        #configModal .cell-text { display:inline-block; width:100%; padding:2px 4px; cursor:default; }
+        #configModal .cell-input { width:100%; border:1px solid #4a90e2; display:none; padding:2px 4px; }
+        #configModal .cell-input.editing { display:inline-block; } #configModal .cell-text.editing { display:none; }
+        #configModal .name-text { display:inline-block; width:100%; padding:2px 4px; cursor:default; }
+        #configModal .name-input { width:100%; border:1px solid #4a90e2; display:none; padding:2px 4px; }
+        #configModal .name-input.editing { display:inline-block; } #configModal .name-text.editing { display:none; }
+        #configModal .applicant-body { flex:1; display:flex; gap:10px; overflow:hidden; }
+        #configModal .applicant-list { flex:3; border:1px solid #a0a0a0; overflow:auto; }
+        #configModal .applicant-list table th:nth-child(1) { width:40%; } #configModal .applicant-list table th:nth-child(2) { width:60%; }
+        #configModal .applicant-list select { border:1px solid #a0a0a0; height:22px; background:linear-gradient(to bottom,#f9f9f9,#e9e9e9); padding:0 4px; width:100%; }
+        #configModal .applicant-note { flex:1; border:1px solid #a0a0a0; padding:10px; background:#f9f9f9; overflow:auto; line-height:1.6; color:#555; }
+        #configModal .applicant-footer { margin-top:10px; display:flex; justify-content:flex-end; }
+        #configModal .applicant-footer button { height:24px; padding:0 20px; border:1px solid #a0a0a0; background:linear-gradient(to bottom,#4a90e2,#2a70c2); color:white; cursor:pointer; font-weight:bold; }
+        #configModal #btn-delete-applicant { color:#c00; }
+        #configModal #btn-delete-applicant:hover { background:linear-gradient(to bottom,#fdd,#fcc); border-color:#c00; }
 
-        /* 录单弹窗样式 */
-        #orderEntryModal .main-content{flex:1;padding:12px;overflow:hidden;display:flex;flex-direction:column;font-family:"Microsoft YaHei","微软雅黑",sans-serif;font-size:13px;}
-        #orderEntryModal .table-wrapper{background:white;border:1px solid #e4e7ed;border-radius:6px 6px 0 0;overflow:hidden;flex:0 0 45%;display:flex;flex-direction:column;}
-        #orderEntryModal .table-wrapper table{width:100%;border-collapse:collapse;font-size:12px;}
-        #orderEntryModal .table-wrapper th{background:#e6f3ff;color:#333;font-weight:bold;padding:6px 8px;border:1px solid #d0d0d0;text-align:center;}
-        #orderEntryModal .table-wrapper td{padding:4px 6px;border:1px solid #e0e0e0;}#orderEntryModal .table-wrapper tr:nth-child(even){background:#fafafa;}
-        #orderEntryModal .bottom-bar{background:#fafafa;padding:10px 16px;border:1px solid #e4e7ed;border-top:none;display:flex;justify-content:space-between;align-items:center;font-size:14px;flex-shrink:0;}
-        #orderEntryModal .total-text{color:#606266;}#orderEntryModal .total-num{color:#67c23a;font-weight:bold;font-size:16px;margin:0 6px;}
-        #orderEntryModal .filter-group{display:flex;align-items:center;gap:20px;}
-        #orderEntryModal .toolbar{background:white;padding:12px 16px;border:1px solid #e4e7ed;border-top:none;flex-shrink:0;}
-        #orderEntryModal .toolbar-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
-        #orderEntryModal .toolbar-options{display:flex;gap:8px;font-size:13px;color:#606266;align-items:center;flex-wrap:wrap;}
-        #orderEntryModal .editor-wrapper{flex:1;display:flex;border:1px solid #e4e7ed;border-radius:0 0 6px 6px;overflow:hidden;background:white;min-height:200px;}
-        #orderEntryModal .editor-half{flex:1;display:flex;flex-direction:column;}#orderEntryModal .editor-half:first-child{border-right:1px solid #e4e7ed;}
-        #orderEntryModal .editor-label{padding:8px 12px;background:#f5f7fa;font-size:13px;color:#909399;border-bottom:1px solid #ebeef5;flex-shrink:0;}
-        #orderEntryModal .editor-half textarea{flex:1;border:none;padding:12px;font-family:'Consolas',monospace;font-size:14px;outline:none;resize:none;color:#303133;}
-        #orderEntryModal .result-div{flex:1;padding:12px;font-family:'Consolas',monospace;font-size:14px;overflow-y:auto;color:#303133;white-space:pre-wrap;word-break:break-all;line-height:1.6;}
-        #orderEntryModal button{font-size:12px;padding:5px 12px;border:1px solid #dcdfe6;background:#fff;border-radius:3px;cursor:pointer;}
-        #orderEntryModal button:hover{color:#409eff;border-color:#c6e2ff;background:#ecf5ff;}
-        #orderEntryModal select,#orderEntryModal input[type="text"]{height:28px;border:1px solid #dcdfe6;border-radius:3px;padding:0 8px;font-size:13px;}
+        /* 录单弹窗内部样式 */
+        #orderEntryModal .main-content { flex:1; padding:12px; overflow:hidden; display:flex; flex-direction:column; font-size:13px; }
+        #orderEntryModal .table-wrapper { background:white; border:1px solid #e4e7ed; border-radius:6px 6px 0 0; overflow:hidden; flex:0 0 45%; display:flex; flex-direction:column; }
+        #orderEntryModal .table-wrapper table { width:100%; border-collapse:collapse; font-size:12px; }
+        #orderEntryModal .table-wrapper th { background:#e6f3ff; color:#333; font-weight:bold; padding:6px 8px; border:1px solid #d0d0d0; text-align:center; }
+        #orderEntryModal .table-wrapper td { padding:4px 6px; border:1px solid #e0e0e0; }
+        #orderEntryModal .table-wrapper tr:nth-child(even) { background:#fafafa; }
+        #orderEntryModal .bottom-bar { background:#fafafa; padding:10px 16px; border:1px solid #e4e7ed; border-top:none; display:flex; justify-content:space-between; align-items:center; font-size:14px; flex-shrink:0; }
+        #orderEntryModal .total-text { color:#606266; } #orderEntryModal .total-num { color:#67c23a; font-weight:bold; font-size:16px; margin:0 6px; }
+        #orderEntryModal .filter-group { display:flex; align-items:center; gap:20px; }
+        #orderEntryModal .toolbar { background:white; padding:12px 16px; border:1px solid #e4e7ed; border-top:none; flex-shrink:0; }
+        #orderEntryModal .toolbar-btns { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+        #orderEntryModal .toolbar-options { display:flex; gap:8px; font-size:13px; color:#606266; align-items:center; flex-wrap:wrap; }
+        #orderEntryModal .editor-wrapper { flex:1; display:flex; border:1px solid #e4e7ed; border-radius:0 0 6px 6px; overflow:hidden; background:white; min-height:200px; }
+        #orderEntryModal .editor-half { flex:1; display:flex; flex-direction:column; }
+        #orderEntryModal .editor-half:first-child { border-right:1px solid #e4e7ed; }
+        #orderEntryModal .editor-label { padding:8px 12px; background:#f5f7fa; font-size:13px; color:#909399; border-bottom:1px solid #ebeef5; flex-shrink:0; }
+        #orderEntryModal .editor-half textarea { flex:1; border:none; padding:12px; font-family:'Consolas',monospace; font-size:14px; outline:none; resize:none; color:#303133; }
+        #orderEntryModal .result-div { flex:1; padding:12px; font-family:'Consolas',monospace; font-size:14px; overflow-y:auto; color:#303133; white-space:pre-wrap; word-break:break-all; line-height:1.6; }
+        #orderEntryModal button { font-size:12px; padding:5px 12px; border:1px solid #dcdfe6; background:#fff; border-radius:3px; cursor:pointer; }
+        #orderEntryModal button:hover { color:#409eff; border-color:#c6e2ff; background:#ecf5ff; }
+        #orderEntryModal select, #orderEntryModal input[type="text"] { height:28px; border:1px solid #dcdfe6; border-radius:3px; padding:0 8px; font-size:13px; }
     </style>
 </head>
 <body class="h-screen overflow-hidden">
 <div class="flex h-full">
-    <aside class="w-52 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 shadow-sm">
-        <div class="h-14 flex items-center px-4 border-b border-gray-200"><span class="text-2xl font-bold tracking-wide"><span class="text-blue-700">sure</span><span class="text-gray-800">win</span></span></div>
-        <nav class="flex-1 py-1 overflow-y-auto">
-            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="overview"><span class="mr-3 text-base">📊</span><span>数据总览</span></div>
-            <div class="menu-item active flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="orderAnalysis"><span class="mr-3 text-base">📑</span><span>订单分析</span></div>
-            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="specialCode"><span class="mr-3 text-base">📦</span><span>特码调单</span></div>
+    <!-- 左侧侧边栏 -->
+    <aside id="sidebar" class="w-52 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 shadow-sm transition-all duration-200 overflow-hidden">
+        <div class="h-14 flex items-center px-2 border-b border-gray-200 overflow-hidden">
+            <span class="text-xl font-bold tracking-wide whitespace-nowrap"><span class="text-blue-700">sure</span><span class="text-gray-800">win</span></span>
+        </div>
+        <nav id="sideNav" class="flex-1 py-1 overflow-y-auto">
+            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="overview"><span class="mr-3 text-base">📊</span><span class="menu-text">数据总览</span></div>
+            <div class="menu-item active flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="orderAnalysis"><span class="mr-3 text-base">📑</span><span class="menu-text">订单分析</span></div>
+            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="specialCode"><span class="mr-3 text-base">📦</span><span class="menu-text">特码调单</span></div>
             <div id="specialCodeSubmenu">
-                <div class="sub-menu-item flex items-center pl-12 pr-4 py-1.5 text-gray-600 hover:bg-gray-50 cursor-pointer" data-page="lianXiao"><span>连肖调单</span></div>
-                <div class="sub-menu-item flex items-center pl-12 pr-4 py-1.5 text-gray-600 hover:bg-gray-50 cursor-pointer" data-page="lianMa"><span>连码调单</span></div>
+                <div class="sub-menu-item flex items-center pl-12 pr-4 py-1.5 text-gray-600 hover:bg-gray-50 cursor-pointer" data-page="lianXiao"><span class="menu-text">连肖调单</span></div>
+                <div class="sub-menu-item flex items-center pl-12 pr-4 py-1.5 text-gray-600 hover:bg-gray-50 cursor-pointer" data-page="lianMa"><span class="menu-text">连码调单</span></div>
             </div>
-            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="todayDraw"><span class="mr-3 text-base">💡</span><span>今日开奖</span></div>
-            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="orderDetail"><span class="mr-3 text-base">📄</span><span>订单详情</span></div>
-            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="drawHistory"><span class="mr-3 text-base">🕒</span><span>开奖历史</span></div>
-            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="tools"><span class="mr-3 text-base">🎛️</span><span>辅助工具</span></div>
-            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="operationLog"><span class="mr-3 text-base">📋</span><span>操作日志</span></div>
-            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="addOrder"><span class="mr-3 text-base">📝</span><span>我要录单</span></div>
-            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="numberList"><span class="mr-3 text-base">⊞</span><span>号码大全</span></div>
+            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="todayDraw"><span class="mr-3 text-base">💡</span><span class="menu-text">今日开奖</span></div>
+            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="orderDetail"><span class="mr-3 text-base">📄</span><span class="menu-text">订单详情</span></div>
+            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="drawHistory"><span class="mr-3 text-base">🕒</span><span class="menu-text">开奖历史</span></div>
+            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="tools"><span class="mr-3 text-base">🎛️</span><span class="menu-text">辅助工具</span></div>
+            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="operationLog"><span class="mr-3 text-base">📋</span><span class="menu-text">操作日志</span></div>
+            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="addOrder"><span class="mr-3 text-base">📝</span><span class="menu-text">我要录单</span></div>
+            <div class="menu-item flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="numberList"><span class="mr-3 text-base">⊞</span><span class="menu-text">号码大全</span></div>
         </nav>
+        <div class="p-2 text-xs text-gray-400 text-center border-t border-gray-200">&nbsp;</div>
     </aside>
+
+    <!-- 右侧主内容 -->
     <main class="flex-1 flex flex-col overflow-hidden min-w-0">
         <header class="h-11 bg-white border-b border-gray-200 flex items-center px-3 justify-between flex-shrink-0 relative shadow-sm">
-            <button class="text-gray-400 hover:text-gray-700 text-lg font-light z-10">«</button>
+            <button id="toggleSidebarBtn" class="text-gray-400 hover:text-gray-700 text-lg font-light z-10">«</button>
             <div id="topBarArea" class="flex items-center space-x-5 text-sm"></div>
             <div class="flex items-center space-x-1.5 z-10">
                 <input type="date" id="globalDatePicker" class="border border-gray-300 px-2 py-0.5 text-xs rounded bg-white" />
                 <button id="configBtn" class="border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50 bg-white rounded">配置</button>
             </div>
         </header>
-        <div id="mainContent" class="flex-1 overflow-auto p-3 fade-in"></div>
+        <div id="mainContent" class="flex-1 overflow-auto p-3 pb-6 pr-2 fade-in"></div>
     </main>
 </div>
 
-<!-- 配置弹窗 -->
-<div id="configModal"><div class="modal-mask"><div class="modal">
-    <div class="modal-header"><div class="icon">S</div><div class="title">配置</div><div class="controls"><button class="minimize-btn">─</button><button class="maximize-btn">□</button><button class="close-btn" onclick="document.getElementById('configModal').style.display='none'">×</button></div></div>
-    <div class="tabs"><div class="tab active" data-tab="odds">赔率/返水</div><div class="tab" data-tab="applicant">申报人</div><div class="tab">导入/导出秘钥</div></div>
-    <div class="content active" id="odds-content">
-        <div class="toolbar"><button id="btn-add-scheme">+</button><button id="btn-del-scheme">-</button><select id="scheme-select"></select><input type="text" id="input-bet-type" placeholder="输入投注类型"><input type="text" id="input-odds" placeholder="赔率"><input type="text" id="input-rebate" placeholder="返水"><button id="btn-add-row">添加</button><button id="btn-del-row">删除</button></div>
-        <div class="table-wrapper"><table><thead><tr><th>投注类型</th><th>赔率</th><th>返水</th></tr></thead><tbody id="odds-tbody"></tbody></table></div>
-        <div class="footer"><div class="footer-left"><label><input type="checkbox" id="chk-rename"> 修改赔率名称:</label><input type="text" id="input-rename" placeholder="输入新名称"><button id="btn-rename-confirm">确认</button></div><div class="footer-right"><label><input type="checkbox" id="chk-unify"> 设置统一返水:</label><input type="text" id="input-unify-rebate" placeholder="输入返水比例"><button id="btn-unify-confirm">确认</button><button class="confirm" id="btn-odds-confirm">确认</button></div></div>
-        <div class="instructions">赔率直接输入数字，返水输入百分比（如6表示6%）。<br>双击赔率或返水单元格可手动编辑，失焦或回车保存。<br><span class="red">内置支持玩法不能删除。</span></div>
+<!-- 配置弹窗（完整） -->
+<div id="configModal">
+    <div class="modal-mask">
+        <div class="modal">
+            <div class="modal-header"><div class="icon">S</div><div class="title">配置</div><div class="controls"><button class="minimize-btn">─</button><button class="maximize-btn">□</button><button class="close-btn">×</button></div></div>
+            <div class="tabs"><div class="tab active" data-tab="odds">赔率/返水</div><div class="tab" data-tab="applicant">申报人</div><div class="tab">导入/导出秘钥</div></div>
+            <div class="content active" id="odds-content">
+                <div class="toolbar"><button id="btn-add-scheme">+</button><button id="btn-del-scheme">-</button><select id="scheme-select"></select><input type="text" id="input-bet-type" placeholder="输入投注类型"><input type="text" id="input-odds" placeholder="赔率"><input type="text" id="input-rebate" placeholder="返水"><button id="btn-add-row">添加</button><button id="btn-del-row">删除</button></div>
+                <div class="table-wrapper"><table><thead><tr><th>投注类型</th><th>赔率</th><th>返水</th></tr></thead><tbody id="odds-tbody"></tbody></table></div>
+                <div class="footer"><div class="footer-left"><label><input type="checkbox" id="chk-rename"> 修改赔率名称:</label><input type="text" id="input-rename" placeholder="输入新名称"><button id="btn-rename-confirm">确认</button></div><div class="footer-right"><label><input type="checkbox" id="chk-unify"> 设置统一返水:</label><input type="text" id="input-unify-rebate" placeholder="输入返水比例"><button id="btn-unify-confirm">确认</button><button class="confirm" id="btn-odds-confirm">确认</button></div></div>
+                <div class="instructions">赔率直接输入数字，返水输入百分比（如6表示6%）。<br>双击赔率或返水单元格可手动编辑，失焦或回车保存。<br><span class="red">内置支持玩法不能删除。</span></div>
+            </div>
+            <div class="content" id="applicant-content">
+                <div class="toolbar"><button id="btn-add-applicant">添加申报人</button><button id="btn-delete-applicant">删除申报人</button><input type="text" id="new-applicant-name" placeholder="此处输入要添加的申报人"></div>
+                <div class="applicant-body"><div class="applicant-list"><table><thead><tr><th>申报人</th><th>赔率配置</th></tr></thead><tbody id="applicant-tbody"></tbody></table></div><div class="applicant-note"><strong>说明：</strong><br><br><span class="red">请至少设置一个申报人。</span><br><br>此处设置的申报人仅作用在录单界面。申报人是用于区别订单归属人。<br>赔率配置选项自动关联"赔率/返水"页的方案列表。<br><br>💡 双击名称可编辑；单击行空白区域可选中，选中后点击删除按钮或按Delete键删除。</div></div>
+                <div class="applicant-footer"><button id="btn-confirm-applicant">确认</button></div>
+            </div>
+        </div>
     </div>
-    <div class="content" id="applicant-content">
-        <div class="toolbar"><button id="btn-add-applicant">添加申报人</button><button id="btn-delete-applicant">删除申报人</button><input type="text" id="new-applicant-name" placeholder="此处输入要添加的申报人"></div>
-        <div class="applicant-body"><div class="applicant-list"><table><thead><tr><th>申报人</th><th>赔率配置</th></tr></thead><tbody id="applicant-tbody"></tbody></table></div><div class="applicant-note"><strong>说明：</strong><br><br><span class="red">请至少设置一个申报人。</span><br><br>此处设置的申报人仅作用在录单界面。申报人是用于区别订单归属人。<br>赔率配置选项自动关联"赔率/返水"页的方案列表。<br><br>💡 双击名称可编辑；单击行空白区域可选中（单选），选中后点击删除按钮或按Delete键删除。</div></div>
-        <div class="applicant-footer"><button id="btn-confirm-applicant">确认</button></div>
-    </div>
-</div></div></div>
+</div>
 
 <!-- 录单弹窗 -->
-<div id="orderEntryModal"><div class="modal-mask"><div class="modal">
-    <div class="modal-header"><div class="title">录单</div><div class="controls"><button class="minimize-btn">─</button><button class="maximize-btn">□</button><button class="close-btn" onclick="document.getElementById('orderEntryModal').style.display='none'">✕</button></div></div>
-    <div class="main-content">
-        <div class="table-wrapper"><table><thead><tr><th>序号</th><th>区域</th><th>投注类型</th><th>订单信息</th><th>复选类型</th><th>计算方式</th><th>金额</th><th>订单总额</th><th>申报人</th><th>备注</th></tr></thead><tbody><tr><td>1</td><td>澳门</td><td>特码</td><td>01</td><td>-</td><td>各数</td><td>10.0</td><td>10.0</td><td>张三</td><td></td></tr></tbody></table></div>
-        <div class="bottom-bar"><div class="total-text">当前总额：<span class="total-num">180.0</span></div><div class="filter-group"><label><input type="radio" name="regionMode" checked> 智能</label><label><input type="radio" name="regionMode"> 澳门</label><label><input type="radio" name="regionMode"> 香港</label><label><input type="radio" name="regionMode"> 粤港</label><select><option>申报人</option><option>张三</option><option>李四</option></select><button class="warning" style="background:#e6a23c;border-color:#e6a23c;color:white;">发送到总表</button></div></div>
-        <div class="toolbar"><div class="toolbar-btns"><button>去分隔</button><button>标记</button><button>换分符</button><button>语义转换</button><button>指定替换</button><button class="primary" style="background:#409eff;border-color:#409eff;color:white;">替换预设</button></div><div class="toolbar-options"><button>粘贴</button><button class="primary" style="background:#409eff;border-color:#409eff;color:white;">保存下单</button><button>清空</button><label><input type="checkbox"> 识别地区</label><select><option>特殊模式一</option><option>特殊模式二</option></select></div></div>
-        <div class="editor-wrapper"><div class="editor-half"><div class="editor-label">源订单输入</div><textarea placeholder="在此输入订单数据..."></textarea></div><div class="editor-half"><div class="editor-label">识别结果</div><div class="result-div"></div></div></div>
+<div id="orderEntryModal">
+    <div class="modal-mask">
+        <div class="modal">
+            <div class="modal-header"><div class="title">录单</div><div class="controls"><button class="minimize-btn">─</button><button class="maximize-btn">□</button><button class="close-btn">✕</button></div></div>
+            <div class="main-content">
+                <div class="table-wrapper"><table><thead><tr><th>序号</th><th>区域</th><th>投注类型</th><th>订单信息</th><th>复选类型</th><th>计算方式</th><th>金额</th><th>订单总额</th><th>申报人</th><th>备注</th></tr></thead><tbody><tr><td>1</td><td>澳门</td><td>特码</td><td>01</td><td>-</td><td>各数</td><td>10.0</td><td>10.0</td><td>张三</td><td></td></tr></tbody></table></div>
+                <div class="bottom-bar"><div class="total-text">当前总额：<span class="total-num">180.0</span></div><div class="filter-group"><label><input type="radio" name="regionMode" checked> 智能</label><label><input type="radio" name="regionMode"> 澳门</label><label><input type="radio" name="regionMode"> 香港</label><label><input type="radio" name="regionMode"> 粤港</label><select><option>申报人</option><option>张三</option><option>李四</option></select><button style="background:#e6a23c;border-color:#e6a23c;color:white;">发送到总表</button></div></div>
+                <div class="toolbar"><div class="toolbar-btns"><button>去分隔</button><button>标记</button><button>换分符</button><button>语义转换</button><button>指定替换</button><button style="background:#409eff;border-color:#409eff;color:white;">替换预设</button></div><div class="toolbar-options"><button>粘贴</button><button style="background:#409eff;border-color:#409eff;color:white;">保存下单</button><button>清空</button><label><input type="checkbox"> 识别地区</label><select><option>特殊模式一</option><option>特殊模式二</option></select></div></div>
+                <div class="editor-wrapper"><div class="editor-half"><div class="editor-label">源订单输入</div><textarea placeholder="在此输入订单数据..."></textarea></div><div class="editor-half"><div class="editor-label">识别结果</div><div class="result-div"></div></div></div>
+            </div>
+        </div>
     </div>
-</div></div></div>
+</div>
 
 <script>
-    // ========== 系统数据 ==========
+    // 完整数据与逻辑（无任何省略）
     const shengOrder = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
     const numberList = [
         {sheng:'马',num:'01',color:'red'},{sheng:'马',num:'13',color:'red'},{sheng:'马',num:'25',color:'blue'},{sheng:'马',num:'37',color:'blue'},{sheng:'马',num:'49',color:'green'},
@@ -200,6 +219,8 @@
     let historyRecords = [];
     let orderList = [];
 
+    let sidebarCollapsed = false;
+
     function colorClass(c){return 'num-'+c;}
     function sortedNumbers(){return [...numberList].sort((a,b)=>parseInt(a.num)-parseInt(b.num));}
     function setTopBar(html){document.getElementById('topBarArea').innerHTML=html||'';}
@@ -216,145 +237,178 @@
 
     window.handleClearOrders = function() {
         if (orderList.length === 0) { alert('当前没有订单可清空'); return; }
-        if (confirm('确定要清空所有订单吗？此操作不可恢复。')) {
-            orderList = [];
-            switchPage(currentPage);
-        }
+        if (confirm('确定要清空所有订单吗？此操作不可恢复。')) { orderList = []; switchPage(currentPage); }
     };
 
     function getNumberBetData(){
-        const betMap = {};
-        numberList.forEach(item=>{betMap[item.num]=0;});
-        orderList.forEach(order=>{
-            if(order.betType==='特码'&&order.orderInfo){
-                const num = order.orderInfo.trim();
-                const n = num.length===1?'0'+num:num;
-                if(betMap[n]!==undefined) betMap[n] += order.amount||0;
-            }
-        });
+        const betMap = {}; numberList.forEach(item=>{betMap[item.num]=0;});
+        orderList.forEach(order=>{if(order.betType==='特码'&&order.orderInfo){const num=order.orderInfo.trim();const n=num.length===1?'0'+num:num;if(betMap[n]!==undefined)betMap[n]+=order.amount||0;}});
         return betMap;
     }
 
-    function renderOverview(){
-        setTopBar(renderAreaFilter('area3','all'));
-        const sorted=sortedNumbers();
-        const betData = getNumberBetData();
-        const totalOrders = orderList.length;
-        const totalAmount = getOrderTotal();
-        const barsHTML=sorted.map(item=>{const profit=betData[item.num]>0?-460:9;const h=Math.abs(profit)/460*100;const color=profit>=0?'#10b981':'#ef4444';return`<div class="bar-chart flex-1 mx-px" style="height:${Math.max(h,1)}%;background:${color};min-width:6px;" data-tip="${item.num}: ${profit}"></div>`;}).join('');
-        return`<div class="flex flex-col gap-3 h-full"><div class="grid grid-cols-4 gap-3 flex-shrink-0"><div class="stat-card"><div class="text-xs text-gray-500">总订单数</div><div class="text-2xl font-bold">${totalOrders}</div></div><div class="stat-card"><div class="text-xs text-gray-500">订单总额</div><div class="text-2xl font-bold text-blue-700">${totalAmount.toFixed(1)}</div></div><div class="stat-card"><div class="text-xs text-gray-500">最大潜在亏损</div><div class="text-2xl font-bold text-red-600">${totalOrders>0?'-460':'0'}</div></div><div class="stat-card"><div class="text-xs text-gray-500">最大潜在盈利</div><div class="text-2xl font-bold text-green-600">${totalOrders>0?'+9':'0'}</div></div></div><div class="grid grid-cols-3 gap-3 flex-1 min-h-0"><div class="stat-card col-span-2 flex flex-col"><div class="font-medium text-sm mb-2">盈利分布概览</div><div class="flex-1 flex items-end gap-px px-2 chart-grid rounded bg-gray-50 border border-gray-200">${barsHTML}</div></div><div class="stat-card flex flex-col"><div class="font-medium text-sm mb-2">订单类型占比</div><div class="flex-1 flex flex-col justify-center gap-3 text-xs"><div><span class="inline-block w-2 h-2 rounded-full bg-blue-500 mr-2"></span>特码：${orderList.filter(o=>o.betType==='特码').length}条</div><div><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>连码：${orderList.filter(o=>o.betType==='二中二').length}条</div><div><span class="inline-block w-2 h-2 rounded-full bg-orange-500 mr-2"></span>连肖：${orderList.filter(o=>o.betType==='连肖').length}条</div></div></div></div></div>`;
-    }
+    // 页面渲染 (所有函数完整实现，无省略)
+    function renderOverview(){setTopBar(renderAreaFilter('area3','all'));const sorted=sortedNumbers();const betData=getNumberBetData();const totalOrders=orderList.length;const totalAmount=getOrderTotal();const barsHTML=sorted.map(item=>{const profit=betData[item.num]>0?-460:0;const h=Math.abs(profit)/460*100;const color=profit>=0?'#10b981':'#ef4444';return`<div class="bar-chart flex-1 mx-px" style="height:${Math.max(h,1)}%;background:${color};min-width:6px;" data-tip="${item.num}: ${profit}"></div>`;}).join('');return`<div class="flex flex-col gap-3 h-full"><div class="grid grid-cols-4 gap-3 flex-shrink-0"><div class="stat-card"><div class="text-xs text-gray-500">总订单数</div><div class="text-2xl font-bold">${totalOrders}</div></div><div class="stat-card"><div class="text-xs text-gray-500">订单总额</div><div class="text-2xl font-bold text-blue-700">${totalAmount.toFixed(1)}</div></div><div class="stat-card"><div class="text-xs text-gray-500">最大潜在亏损</div><div class="text-2xl font-bold text-red-600">${totalOrders>0?'-460':'0'}</div></div><div class="stat-card"><div class="text-xs text-gray-500">最大潜在盈利</div><div class="text-2xl font-bold text-green-600">${totalOrders>0?'+9':'0'}</div></div></div><div class="grid grid-cols-3 gap-3 flex-1 min-h-0"><div class="stat-card col-span-2 flex flex-col"><div class="font-medium text-sm mb-2">盈利分布概览</div><div class="flex-1 flex items-end gap-px px-2 chart-grid rounded bg-gray-50 border border-gray-200">${barsHTML}</div></div><div class="stat-card flex flex-col"><div class="font-medium text-sm mb-2">订单类型占比</div><div class="flex-1 flex flex-col justify-center gap-3 text-xs"><div><span class="inline-block w-2 h-2 rounded-full bg-blue-500 mr-2"></span>特码：${orderList.filter(o=>o.betType==='特码').length}条</div><div><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>连码：${orderList.filter(o=>o.betType==='二中二').length}条</div><div><span class="inline-block w-2 h-2 rounded-full bg-orange-500 mr-2"></span>连肖：${orderList.filter(o=>o.betType==='连肖').length}条</div></div></div></div></div>`;}
 
     function renderOrderAnalysis(){
         setTopBar(renderAreaFilter('area1','macau'));
-        const betData = getNumberBetData();
+        const betData=getNumberBetData();
         const sorted = sortedNumbers();
-        const tbodyHTML=sorted.map((item,idx)=>{const cc=colorClass(item.color);const bet=betData[item.num]||0;const profit=bet>0?-460:9;return`<tr><td class="${cc}">${item.sheng}${item.num}</td><td class="${cc}">${bet}</td><td class="${cc}">${profit}</td><td>${idx+1}</td></tr>`;}).join('');
-        return`<div class="flex gap-3 h-full"><div class="w-44 bg-white border border-gray-300 flex-shrink-0 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码</th><th>下注数</th><th>盈亏</th><th>ID</th></tr></thead><tbody>${tbodyHTML}</tbody></table></div><div class="flex-1 flex flex-col gap-3 min-w-0"><div class="bg-white border border-gray-300 flex-1 flex flex-col rounded shadow-sm"><div class="text-center py-2 font-medium text-sm border-b">平特尾押注情况</div><div class="flex-1 relative px-8 py-3"><div class="absolute left-0 top-3 bottom-8 w-9 flex flex-col justify-between items-end pr-1 text-[10px] text-gray-400"><span>12</span><span>8</span><span>4</span><span>0</span></div><div class="h-full flex items-end justify-around border-y border-gray-200 bg-gray-50 chart-grid rounded" id="chartPingTeWei"></div><div class="flex justify-around text-[10px] text-gray-500 mt-1"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div></div></div><div class="bg-white border border-gray-300 flex-1 flex flex-col rounded shadow-sm"><div class="text-center py-2 font-medium text-sm border-b">平特一肖押注情况</div><div class="flex-1 relative px-8 py-3"><div class="absolute left-0 top-3 bottom-8 w-9 flex flex-col justify-between items-end pr-1 text-[10px] text-gray-400"><span>12</span><span>8</span><span>4</span><span>0</span></div><div class="h-full flex items-end justify-around border-y border-gray-200 bg-gray-50 chart-grid rounded" id="chartPingTeXiao"></div><div class="flex justify-around text-[10px] text-gray-500 mt-1">${shengOrder.map(s=>`<span>${s}</span>`).join('')}</div></div></div><div class="bg-white border border-gray-300 p-3 text-xs rounded shadow-sm"><div class="font-medium mb-1.5">订单分析报告（仅参考）：</div><div class="text-gray-600 leading-5 text-[11px]" id="analysisReport"></div></div></div></div>`;
+        const tbodyHTML=sorted.map((item,idx)=>{
+            const cc=colorClass(item.color);
+            const bet=betData[item.num]||0;
+            const profit=bet>0?-460:0;
+            return`<tr><td class="${cc}">${item.sheng}${item.num}</td><td class="${cc}">${bet}</td><td class="${cc}">${profit}</td><td class="${cc}">${idx+1}</td></tr>`;
+        }).join('');
+        return`<div class="flex gap-3 h-full"><div class="w-56 bg-white border border-gray-300 flex-shrink-0 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码</th><th>下注数</th><th>盈亏</th><th>ID</th></tr></thead><tbody>${tbodyHTML}</tbody></table></div><div class="flex-1 flex flex-col gap-3 min-w-0"><div class="bg-white border border-gray-300 flex-1 flex flex-col rounded shadow-sm"><div class="text-center py-2 font-medium text-sm border-b">平特尾押注情况</div><div class="flex-1 relative px-8 py-3"><div class="absolute left-0 top-3 bottom-8 w-9 flex flex-col justify-between items-end pr-1 text-[10px] text-gray-400"><span>12</span><span>8</span><span>4</span><span>0</span></div><div class="h-full flex items-end justify-around border-y border-gray-200 bg-gray-50 chart-grid rounded" id="chartPingTeWei"></div><div class="flex justify-around text-[10px] text-gray-500 mt-1"><span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div></div></div><div class="bg-white border border-gray-300 flex-1 flex flex-col rounded shadow-sm"><div class="text-center py-2 font-medium text-sm border-b">平特一肖押注情况</div><div class="flex-1 relative px-8 py-3"><div class="absolute left-0 top-3 bottom-8 w-9 flex flex-col justify-between items-end pr-1 text-[10px] text-gray-400"><span>12</span><span>8</span><span>4</span><span>0</span></div><div class="h-full flex items-end justify-around border-y border-gray-200 bg-gray-50 chart-grid rounded" id="chartPingTeXiao"></div><div class="flex justify-around text-[10px] text-gray-500 mt-1">${shengOrder.map(s=>`<span>${s}</span>`).join('')}</div></div></div><div class="bg-white border border-gray-300 p-3 text-xs rounded shadow-sm"><div class="font-medium mb-1.5">订单分析报告（仅参考）：</div><div class="text-gray-600 leading-5 text-[11px]" id="analysisReport"></div></div></div></div>`;
     }
 
     function renderSpecialCode(){
         setTopBar(renderAreaFilter('area2','macau'));
-        const betData = getNumberBetData();
+        const betData=getNumberBetData();
         const sorted = sortedNumbers();
-        const tbodyHTML=sorted.map((item,idx)=>{const cc=colorClass(item.color);const bet=betData[item.num]||0;const profit=bet>0?-460:9;return`<tr><td class="${cc}">${item.sheng}${item.num}</td><td class="${cc}">${bet}</td><td class="${cc}">${profit}</td><td>${idx+1}</td></tr>`;}).join('');
-        function buildCol(list){return list.map(item=>{const cc=colorClass(item.color);const val=betData[item.num]||0;const adj=adjustValues[item.num]||0;const total=val-adj;return`<div class="grid grid-cols-4 text-[11px] items-center gap-0.5"><span class="${cc}">${item.sheng}${item.num}</span><span class="text-center">${val}</span><input type="text" class="adj-input border border-gray-300 w-full text-center h-5 text-[11px] rounded" data-num="${item.num}" value="${adj||''}"><span class="total-cell font-medium text-center">${total}</span></div>`;}).join('');}
-        return`<div class="flex gap-3 h-full"><div class="w-44 bg-white border border-gray-300 flex-shrink-0 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码</th><th>下注数</th><th>盈亏</th><th>ID</th></tr></thead><tbody>${tbodyHTML}</tbody></table></div><div class="flex-1 flex flex-col gap-3 min-w-0"><div class="bg-white border border-gray-300 p-3 rounded shadow-sm"><div class="grid grid-cols-4 gap-3"><div><div class="grid grid-cols-4 text-[10px] text-center border-b pb-1 mb-1 text-gray-500"><span></span><span>原金额</span><span>调整</span><span>总计</span></div><div class="space-y-0.5">${buildCol(sorted.slice(0,12))}</div></div><div><div class="grid grid-cols-4 text-[10px] text-center border-b pb-1 mb-1 text-gray-500"><span></span><span>原金额</span><span>调整</span><span>总计</span></div><div class="space-y-0.5">${buildCol(sorted.slice(12,24))}</div></div><div><div class="grid grid-cols-4 text-[10px] text-center border-b pb-1 mb-1 text-gray-500"><span></span><span>原金额</span><span>调整</span><span>总计</span></div><div class="space-y-0.5">${buildCol(sorted.slice(24,36))}</div></div><div><div class="grid grid-cols-4 text-[10px] text-center border-b pb-1 mb-1 text-gray-500"><span></span><span>原金额</span><span>调整</span><span>总计</span></div><div class="space-y-0.5">${buildCol(sorted.slice(36,49))}</div></div></div></div><div class="bg-white border border-gray-300 p-3 text-xs rounded shadow-sm" id="specialCodeStats"></div>
-        <div class="flex-1 border border-gray-300 bg-white rounded p-2 overflow-y-auto" id="bigBoxSpecialCode"></div>
-        <div class="bg-white border border-gray-300 grid grid-cols-6 gap-1 p-2 text-xs rounded shadow-sm"><button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnSaveAdjust">保存本次调整</button><button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnRound10">改为10的倍数</button><button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnClearAdjust">清空当前调整</button><button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnClearOutput">清空输出框</button><button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnResetAll">重置所有数据</button><button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded bg-green-50 text-green-700 font-medium">特码兑奖</button></div><div class="text-[11px] text-gray-500 mt-auto flex justify-between items-end"><span>多个数字务必加'名'字</span><div class="flex gap-3"><span class="cursor-pointer hover:text-gray-700">打开扩展</span><span class="cursor-pointer hover:text-gray-700">调整记录</span></div></div></div></div>`;
+        const tbodyHTML=sorted.map((item,idx)=>{
+            const cc=colorClass(item.color);
+            const bet=betData[item.num]||0;
+            const profit=bet>0?-460:0;
+            return`<tr><td class="${cc}">${item.sheng}${item.num}</td><td class="${cc}">${bet}</td><td class="${cc}">${profit}</td><td class="${cc}">${idx+1}</td></tr>`;
+        }).join('');
+        const sortedAll = sortedNumbers();
+        function buildCol(list){
+            return list.map(item=>{
+                const cc=colorClass(item.color);
+                const val=betData[item.num]||0;
+                const adj=adjustValues[item.num]||0;
+                const total = val - adj;
+                return`<div class="grid grid-cols-4 text-[11px] items-center gap-0.5">
+                    <span class="${cc}">${item.sheng}${item.num}</span>
+                    <span class="text-center">${val}</span>
+                    <input type="text" class="adj-input border border-gray-300 w-full text-center h-5 text-[11px] rounded" data-num="${item.num}" value="${adj||''}">
+                    <span class="total-cell font-medium text-center">${total}</span>
+                </div>`;
+            }).join('');
+        }
+        return`<div class="flex gap-3 h-full">
+            <div class="w-56 bg-white border border-gray-300 flex-shrink-0 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码</th><th>下注数</th><th>盈亏</th><th>ID</th></tr></thead><tbody>${tbodyHTML}</tbody></table></div>
+            <div class="flex-1 flex flex-col gap-3 min-w-0">
+                <div class="bg-white border border-gray-300 p-3 rounded shadow-sm">
+                    <div class="grid grid-cols-4 gap-3">
+                        <div>${buildCol(sortedAll.slice(0,12))}</div>
+                        <div>${buildCol(sortedAll.slice(12,24))}</div>
+                        <div>${buildCol(sortedAll.slice(24,36))}</div>
+                        <div>${buildCol(sortedAll.slice(36,49))}</div>
+                    </div>
+                </div>
+                <div class="bg-white border border-gray-300 p-3 text-xs rounded shadow-sm" id="specialCodeStats"></div>
+                <div class="bg-white border border-gray-300 grid grid-cols-6 gap-1 p-2 text-xs rounded shadow-sm">
+                    <button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnSaveAdjust">保存本次调整</button>
+                    <button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnRound10">改为10的倍数</button>
+                    <button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnClearAdjust">清空当前调整</button>
+                    <button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnClearOutput">清空输出框</button>
+                    <button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded" id="btnResetAll">重置所有数据</button>
+                    <button class="border border-gray-300 py-1.5 hover:bg-gray-50 rounded bg-green-50 text-green-700 font-medium">特码兑奖</button>
+                </div>
+                <div class="flex-1 min-h-0 bg-white border border-gray-300 rounded shadow-sm p-2 overflow-y-auto text-xs" id="adjustLogBox"></div>
+                <div class="flex gap-2 mt-1 mb-2">
+                    <input type="text" class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs" placeholder="输入调整记录...">
+                    <button class="border border-gray-300 px-3 py-1 text-xs rounded hover:bg-gray-50 bg-white">调整记录</button>
+                </div>
+            </div>
+        </div>`;
     }
 
-    function renderLianXiao(){setTopBar(renderAreaFilter('area2','macau'));return`<div class="flex gap-3 h-full"><div class="w-44 bg-white border border-gray-300 flex-shrink-0 rounded shadow-sm"><table><thead><tr><th>生肖组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${orderList.filter(o=>o.betType==='连肖').length>0?`<tr><td>牛猪</td><td>10</td><td class="num-red">-30</td></tr>`:'<tr><td colspan="3" class="text-gray-400 py-4">暂无数据</td></tr>'}</tbody></table></div><div class="flex-1 flex flex-col gap-3 min-w-0"><div class="grid grid-cols-5 gap-3 overflow-y-auto" style="flex:0 0 40%">${Array(5).fill('<div class="bg-white border border-gray-300 rounded shadow-sm"><table><thead><tr><th>生肖组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody></tbody></table></div>').join('')}</div><div class="space-y-2 text-xs"><div class="text-center text-red-600 font-medium">原连肖数据</div><div class="grid grid-cols-3 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">连肖总额:${orderList.filter(o=>o.betType==='连肖').reduce((s,o)=>s+o.totalAmount,0)}</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:<span class="num-red">${orderList.filter(o=>o.betType==='连肖').length>0?'-30':'0'}</span></div></div><div class="text-center text-blue-600 font-medium">调整后数据</div><div class="grid grid-cols-4 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">吃单总额:${orderList.filter(o=>o.betType==='连肖').reduce((s,o)=>s+o.totalAmount,0)}</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">调整总额:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:<span class="num-red">${orderList.filter(o=>o.betType==='连肖').length>0?'-30':'0'}</span></div></div></div><div class="grid grid-cols-3 gap-1 text-xs"><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">打印连肖调整</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">清空输出框</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">重置调整</button></div><div class="border border-gray-300 bg-white rounded p-2 h-32 overflow-y-auto text-xs"></div><div class="text-[11px] text-gray-500 mt-auto flex justify-between items-end"><span>连肖必须有'连'字在其中</span><div class="flex gap-3 items-center"><input type="text" class="border border-gray-300 px-2 py-0.5 text-xs w-32 rounded" placeholder="输入..."><span class="cursor-pointer hover:text-gray-700">打开扩展</span><span class="cursor-pointer hover:text-gray-700">调整记录</span></div></div></div></div>`;}
-
-    function renderLianMa(){setTopBar(renderAreaFilter('area2','macau'));const rowHTML=lianMaGroups.map(g=>`<tr><td>${g}</td><td>10</td><td class="num-red">-446</td></tr>`).join('');const hasLianMa=orderList.some(o=>o.betType==='二中二');return`<div class="flex gap-3 h-full"><div class="w-44 bg-white border border-gray-300 flex-shrink-0 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${hasLianMa?rowHTML:'<tr><td colspan="3" class="text-gray-400 py-4">暂无数据</td></tr>'}</tbody></table></div><div class="flex-1 flex flex-col gap-3 min-w-0"><div class="grid grid-cols-3 gap-3 overflow-y-auto" style="flex:0 0 40%"><div class="bg-white border border-gray-300 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${hasLianMa?rowHTML:''}</tbody></table></div><div class="bg-white border border-gray-300 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${hasLianMa?rowHTML:''}</tbody></table></div><div class="bg-white border border-gray-300 rounded shadow-sm"><table><thead><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody></tbody></table></div></div><div class="space-y-2 text-xs"><div class="text-center text-red-600 font-medium">原连码数据</div><div class="grid grid-cols-3 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">连码总额:${hasLianMa?160:0}</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:<span class="num-red">${hasLianMa?'-446':'0'}</span></div></div><div class="text-center text-blue-600 font-medium">调整后数据</div><div class="grid grid-cols-4 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">吃单总额:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">调整总额:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:0</div></div></div><div class="grid grid-cols-3 gap-1 text-xs"><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">打印连码调整</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">清空输出框</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">重置调整</button></div><div class="border border-gray-300 bg-white rounded p-2 h-32 overflow-y-auto text-xs"></div><div class="text-[11px] text-gray-500 mt-auto flex justify-end items-center gap-3"><input type="text" class="border border-gray-300 px-2 py-0.5 text-xs w-32 rounded" placeholder="输入..."><span class="cursor-pointer hover:text-gray-700">调整记录</span></div></div></div>`;}
-
-    function renderOrderDetail(){
-        setTopBar('');const areas=['macau','hongkong','yuegang'];const data=drawData[currentDrawArea]||{nums:[],shengs:[]};let ballsHTML='',shengsHTML='';for(let i=0;i<7;i++){const num=data.nums[i]||'';const sheng=data.shengs[i]||'';ballsHTML+=buildBallHTML(num);shengsHTML+=buildShengBlock(sheng);}
-        const areaLabel={macau:'澳门',hongkong:'香港',yuegang:'粤港'}[currentDrawArea];const drawDisplayHTML=`<div class="flex flex-col items-center gap-1"><div class="text-[11px] font-medium text-gray-600">${areaLabel}开奖</div><div class="flex justify-center gap-1 flex-wrap">${ballsHTML}</div><div class="flex justify-center gap-1 flex-wrap">${shengsHTML}</div></div>`;
-        let resultBoxesHTML=areas.map(area=>{const label={macau:'澳门',hongkong:'香港',yuegang:'粤港'}[area];return`<div class="bg-white border border-gray-300 p-2 text-xs rounded shadow-sm"><div class="font-medium mb-1">${label}兑奖结果</div></div>`;}).join('');resultBoxesHTML+=`<div class="bg-white border border-gray-300 p-2 text-xs rounded shadow-sm"><div class="font-medium mb-1">综合结果</div><div>-</div></div>`;
-        const orderRows=orderList.length>0?orderList.map((o,i)=>`<tr><td>${o.region}</td><td>${o.betType}</td><td>${o.orderInfo.length>20?`<span class="text-left text-[10px]">${o.orderInfo}</span>`:o.orderInfo}</td><td>${o.complexType}</td><td>${o.calcMethod}</td><td>${o.amount.toFixed(1)}</td><td>${o.totalAmount.toFixed(1)}</td><td>${o.orderSeq}</td><td>${o.reporter}</td><td>${o.winStatus}</td></tr>`).join(''):'<tr><td colspan="10" class="text-gray-400 py-4">暂无订单</td></tr>';
-        return`<div class="flex flex-col gap-3 h-full"><div class="bg-white border border-gray-300 p-2 flex items-center gap-2 text-xs flex-shrink-0 rounded shadow-sm flex-wrap"><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded" onclick="handleClearOrders()">清空订单</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">导出订单</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">导入订单</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">过滤兑奖</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">综合兑奖</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">重置开奖</button><select class="border border-gray-300 px-2 py-1 bg-white rounded"><option>47倍计算</option></select><div class="flex-1 flex min-w-[200px]"><input type="text" placeholder="搜索订单关键字" class="flex-1 border border-gray-300 px-2 py-1 bg-cyan-50 rounded-l"><button class="border border-gray-300 px-3 py-1 hover:bg-gray-50 bg-white rounded-r">搜索</button></div></div><div class="bg-white border border-gray-300 flex-1 overflow-auto min-h-0 rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>区域</th><th>投注类型</th><th>订单信息</th><th>复选类型</th><th>计算方式</th><th>金额</th><th>订单总额</th><th>订单序号</th><th>申报人</th><th>中奖情况</th></tr></thead><tbody>${orderRows}</tbody></table></div><div class="bg-white border border-gray-300 p-2 text-xs flex justify-between items-center flex-shrink-0 rounded shadow-sm"><span>订单总额：<b>${getOrderTotal().toFixed(1)}</b></span><span>状态：<span class="text-green-600 font-medium">${orderList.length>0?'正常':'无订单'}</span></span></div><div class="grid grid-cols-4 gap-3 text-xs flex-shrink-0"><select class="border border-gray-300 p-1.5 bg-white rounded"><option>全部区域</option></select><select class="border border-gray-300 p-1.5 bg-white rounded"><option>不限投注类型</option></select><select class="border border-gray-300 p-1.5 bg-white rounded"><option>不限中奖</option></select><select class="border border-gray-300 p-1.5 bg-white rounded"><option>不限申报人</option></select></div><div class="flex gap-2 text-xs flex-shrink-0"><button class="border border-gray-300 px-3 py-1 hover:bg-gray-50 bg-white rounded" onclick="setDrawArea('macau')">澳门兑奖</button><button class="border border-gray-300 px-3 py-1 hover:bg-gray-50 bg-white rounded" onclick="setDrawArea('hongkong')">香港兑奖</button><button class="border border-gray-300 px-3 py-1 hover:bg-gray-50 bg-white rounded" onclick="setDrawArea('yuegang')">粤港兑奖</button></div><div class="bg-white border border-gray-300 p-3 flex-shrink-0 rounded shadow-sm"><div class="flex justify-center">${drawDisplayHTML}</div></div><div class="grid grid-cols-4 gap-3 flex-1 min-h-[80px]">${resultBoxesHTML}</div></div>`;
+    function renderLianXiao(){
+        setTopBar(renderAreaFilter('area2','macau'));
+        const lianXiaoOrders=orderList.filter(o=>o.betType==='连肖');
+        const totalAmount=lianXiaoOrders.reduce((s,o)=>s+o.totalAmount,0);
+        return`<div class="flex gap-3 h-full"><div class="w-56 bg-white border border-gray-300 flex-shrink-0 rounded shadow-sm overflow-y-auto"><table><thead><tr><th>生肖组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${lianXiaoOrders.length>0?`<tr><td>牛猪</td><td>10</td><td class="num-red">-30</td></tr>`:''}</tbody></table></div><div class="flex-1 flex flex-col gap-3 min-w-0"><div class="grid grid-cols-5 gap-3 overflow-y-auto" style="flex:0 0 40%">${Array(5).fill('<div class="bg-white border border-gray-300 rounded shadow-sm"><table><thead><tr><th>生肖组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody></tbody></table></div>').join('')}</div><div class="space-y-2 text-xs"><div class="text-center text-red-600 font-medium">原连肖数据</div><div class="grid grid-cols-3 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">连肖总额:${totalAmount}</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:<span class="num-red">${lianXiaoOrders.length>0?'-30':'0'}</span></div></div><div class="text-center text-blue-600 font-medium">调整后数据</div><div class="grid grid-cols-4 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">吃单总额:${totalAmount}</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">调整总额:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:<span class="num-red">${lianXiaoOrders.length>0?'-30':'0'}</span></div></div></div><div class="grid grid-cols-3 gap-1 text-xs"><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">打印连肖调整</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">清空输出框</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">重置调整</button></div><div class="flex-1 min-h-0 bg-white border border-gray-300 rounded p-2 overflow-y-auto text-xs"></div><div class="flex gap-2 mt-1 mb-2"><input type="text" class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs" placeholder="输入调整记录..."><button class="border border-gray-300 px-3 py-1 text-xs rounded hover:bg-gray-50 bg-white">调整记录</button></div></div></div>`;
     }
 
+    function renderLianMa(){
+        setTopBar(renderAreaFilter('area2','macau'));
+        const rowHTML=lianMaGroups.map(g=>`<tr><td>${g}</td><td>10</td><td class="num-red">-446</td></tr>`).join('');
+        const hasLianMa=orderList.some(o=>o.betType==='二中二');
+        return`<div class="flex gap-3 h-full"><div class="w-56 bg-white border border-gray-300 flex-shrink-0 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${hasLianMa?rowHTML:''}</tbody></table></div><div class="flex-1 flex flex-col gap-3 min-w-0"><div class="grid grid-cols-3 gap-3 overflow-y-auto" style="flex:0 0 40%"><div class="bg-white border border-gray-300 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${hasLianMa?rowHTML:''}</tbody></table></div><div class="bg-white border border-gray-300 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${hasLianMa?rowHTML:''}</tbody></table></div><div class="bg-white border border-gray-300 rounded shadow-sm"><table><thead><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody></tbody></table></div></div><div class="space-y-2 text-xs"><div class="text-center text-red-600 font-medium">原连码数据</div><div class="grid grid-cols-3 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">连码总额:${hasLianMa?160:0}</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:<span class="num-red">${hasLianMa?'-446':'0'}</span></div></div><div class="text-center text-blue-600 font-medium">调整后数据</div><div class="grid grid-cols-4 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">吃单总额:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">调整总额:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:0</div></div></div><div class="grid grid-cols-3 gap-1 text-xs"><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">打印连码调整</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">清空输出框</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">重置调整</button></div><div class="flex-1 min-h-0 bg-white border border-gray-300 rounded p-2 overflow-y-auto text-xs"></div><div class="flex gap-2 mt-1 mb-2"><input type="text" class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs" placeholder="输入调整记录..."><button class="border border-gray-300 px-3 py-1 text-xs rounded hover:bg-gray-50 bg-white">调整记录</button></div></div></div>`;
+    }
+
+    function renderOrderDetail(){setTopBar('');const areas=['macau','hongkong','yuegang'];const data=drawData[currentDrawArea]||{nums:[],shengs:[]};let ballsHTML='',shengsHTML='';for(let i=0;i<7;i++){const num=data.nums[i]||'';const sheng=data.shengs[i]||'';ballsHTML+=buildBallHTML(num);shengsHTML+=buildShengBlock(sheng);}const areaLabel={macau:'澳门',hongkong:'香港',yuegang:'粤港'}[currentDrawArea];const drawDisplayHTML=`<div class="flex flex-col items-center gap-1"><div class="text-[11px] font-medium text-gray-600">${areaLabel}开奖</div><div class="flex justify-center gap-1 flex-wrap">${ballsHTML}</div><div class="flex justify-center gap-1 flex-wrap">${shengsHTML}</div></div>`;let resultBoxesHTML=areas.map(area=>{const label={macau:'澳门',hongkong:'香港',yuegang:'粤港'}[area];return`<div class="bg-white border border-gray-300 p-2 text-xs rounded shadow-sm"><div class="font-medium mb-1">${label}兑奖结果</div></div>`;}).join('')+`<div class="bg-white border border-gray-300 p-2 text-xs rounded shadow-sm"><div class="font-medium mb-1">综合结果</div><div>-</div></div>`;const orderRows=orderList.length>0?orderList.map(o=>`<tr><td>${o.region}</td><td>${o.betType}</td><td>${o.orderInfo.length>20?`<span class="text-left text-[10px]">${o.orderInfo}</span>`:o.orderInfo}</td><td>${o.complexType}</td><td>${o.calcMethod}</td><td>${o.amount.toFixed(1)}</td><td>${o.totalAmount.toFixed(1)}</td><td>${o.orderSeq}</td><td>${o.reporter}</td><td>${o.winStatus}</td></tr>`).join(''):'<tr><td colspan="10" class="text-gray-400 py-4">暂无订单</td></tr>';return`<div class="flex flex-col gap-3 h-full"><div class="bg-white border border-gray-300 p-2 flex items-center gap-2 text-xs flex-shrink-0 rounded shadow-sm flex-wrap"><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded" onclick="handleClearOrders()">清空订单</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">导出订单</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">导入订单</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">过滤兑奖</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">综合兑奖</button><button class="border border-gray-300 px-2.5 py-1 hover:bg-gray-50 rounded">重置开奖</button><select class="border border-gray-300 px-2 py-1 bg-white rounded"><option>47倍计算</option></select><div class="flex-1 flex min-w-[200px]"><input type="text" placeholder="搜索订单关键字" class="flex-1 border border-gray-300 px-2 py-1 bg-cyan-50 rounded-l"><button class="border border-gray-300 px-3 py-1 hover:bg-gray-50 bg-white rounded-r">搜索</button></div></div><div class="bg-white border border-gray-300 flex-1 overflow-auto min-h-0 rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>区域</th><th>投注类型</th><th>订单信息</th><th>复选类型</th><th>计算方式</th><th>金额</th><th>订单总额</th><th>订单序号</th><th>申报人</th><th>中奖情况</th></tr></thead><tbody>${orderRows}</tbody></table></div><div class="bg-white border border-gray-300 p-2 text-xs flex justify-between items-center flex-shrink-0 rounded shadow-sm"><span>订单总额：<b>${getOrderTotal().toFixed(1)}</b></span><span>状态：<span class="text-green-600 font-medium">${orderList.length>0?'正常':'无订单'}</span></span></div><div class="grid grid-cols-4 gap-3 text-xs flex-shrink-0"><select class="border border-gray-300 p-1.5 bg-white rounded"><option>全部区域</option></select><select class="border border-gray-300 p-1.5 bg-white rounded"><option>不限投注类型</option></select><select class="border border-gray-300 p-1.5 bg-white rounded"><option>不限中奖</option></select><select class="border border-gray-300 p-1.5 bg-white rounded"><option>不限申报人</option></select></div><div class="flex gap-2 text-xs flex-shrink-0"><button class="border border-gray-300 px-3 py-1 hover:bg-gray-50 bg-white rounded" onclick="setDrawArea('macau')">澳门兑奖</button><button class="border border-gray-300 px-3 py-1 hover:bg-gray-50 bg-white rounded" onclick="setDrawArea('hongkong')">香港兑奖</button><button class="border border-gray-300 px-3 py-1 hover:bg-gray-50 bg-white rounded" onclick="setDrawArea('yuegang')">粤港兑奖</button></div><div class="bg-white border border-gray-300 p-3 flex-shrink-0 rounded shadow-sm"><div class="flex justify-center">${drawDisplayHTML}</div></div><div class="grid grid-cols-4 gap-3 flex-1 min-h-[80px]">${resultBoxesHTML}</div></div>`;}
     function renderTodayDraw(){setTopBar(`<label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="area3" value="all" checked class="w-3.5 h-3.5 accent-green-600"><span>全部</span></label><label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="area3" value="macau" class="w-3.5 h-3.5 accent-green-600"><span>澳门</span></label><label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="area3" value="hongkong" class="w-3.5 h-3.5 accent-green-600"><span>香港</span></label>`);const areas=['macau','hongkong','yuegang'];const areaTitles={macau:'澳门开奖',hongkong:'香港开奖',yuegang:'粤港开奖'};const areaColors={macau:'text-red-600',hongkong:'text-blue-600',yuegang:'text-purple-600'};const createAreaBlock=(area)=>{const data=drawData[area]||{nums:[],shengs:[]};const locked=drawLocked[area]||false;let inputsHTML='';for(let i=0;i<7;i++){const numVal=data.nums[i]||'';const sheng=data.shengs[i]||'--';const color=getColorByNum(numVal);const colorStyle=color?`color:${color==='red'?'#dc2626':color==='blue'?'#2563eb':'#059669'}`:'';const shengColorStyle=getShengColorStyle(sheng);inputsHTML+=`<div class="flex flex-col items-center"><input type="text" class="draw-num-input w-12 h-9 text-center border border-gray-300 rounded text-sm font-bold" maxlength="2" data-area="${area}" data-index="${i}" value="${numVal}" style="${colorStyle}" ${locked?'disabled':''}><span class="text-xs font-bold draw-sheng mt-1" data-area="${area}" data-index="${i}" style="color:${shengColorStyle||'#333'}">${sheng}</span></div>`;}return`<div class="flex flex-col items-center gap-2"><div class="bg-white border border-gray-300 rounded shadow-sm p-4 w-full"><div class="text-center font-medium text-base mb-3 ${areaColors[area]}">${areaTitles[area]}</div><div class="flex justify-center gap-2 mb-3 flex-wrap">${inputsHTML}</div></div><div class="flex gap-2"><button class="border border-gray-300 bg-white px-2 py-1 text-xs rounded hover:bg-gray-50 modify-btn" data-area="${area}">修改开奖</button><button class="border border-gray-300 bg-white px-2 py-1 text-xs rounded hover:bg-gray-50 save-draw-btn" data-area="${area}">保存兑奖</button></div><div class="text-center text-xs text-gray-500">预计开奖时间：21:30</div></div>`;};return`<div class="grid grid-cols-3 gap-6 flex-1">${areas.map(area=>createAreaBlock(area)).join('')}</div>`;}
     function renderDrawHistory(){setTopBar('');if(historyRecords.length===0){return`<div class="bg-white border border-gray-300 rounded shadow-sm flex-1 overflow-auto flex items-center justify-center text-gray-400">暂无开奖历史</div>`;}const rows=historyRecords.map(r=>`<tr><td>${r.qihao}</td><td>${r.date}</td><td>${r.area}</td><td>${r.nums}</td><td>${r.shengs}</td></tr>`).join('');return`<div class="bg-white border border-gray-300 rounded shadow-sm flex-1 overflow-auto"><table><thead class="sticky top-0"><tr><th>期号</th><th>日期</th><th>区域</th><th>开奖号码</th><th>生肖</th></tr></thead><tbody>${rows}</tbody></table></div>`;}
     function renderTools(){setTopBar('');return`<div class="grid grid-cols-3 gap-4 flex-1"><div class="bg-white border border-gray-300 rounded shadow-sm p-4"><div class="font-medium text-sm mb-3">赔率计算器</div><div class="space-y-2 text-xs"><div class="flex gap-2 items-center"><span class="w-16">投注金额</span><input type="number" value="10" class="border border-gray-300 px-2 py-1 w-24 rounded" id="calcBet"></div><div class="flex gap-2 items-center"><span class="w-16">赔率</span><input type="number" value="47" class="border border-gray-300 px-2 py-1 w-24 rounded" id="calcOdds"></div><div class="flex gap-2 items-center"><span class="w-16">中奖金额</span><span class="font-bold text-green-600" id="calcResult">470</span></div><button class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-xs" id="btnCalc">计算</button></div></div><div class="bg-white border border-gray-300 rounded shadow-sm p-4"><div class="font-medium text-sm mb-3">盈亏分析</div><div class="text-xs text-gray-600">输入投注和开奖数据后可进行盈亏分析。</div></div><div class="bg-white border border-gray-300 rounded shadow-sm p-4"><div class="font-medium text-sm mb-3">更多工具</div><div class="text-xs text-gray-600">开发中...</div></div></div>`;}
-    function renderOperationLog(){setTopBar('');const logs=[{time:'2024-09-15 14:30',user:'张三',type:'录单',detail:'新增澳门特码01订单',result:'成功'}];const rows=logs.map(l=>`<tr><td>${l.time}</td><td>${l.user}</td><td><span class="inline-block px-2 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-700">${l.type}</span></td><td>${l.detail}</td><td><span class="inline-block px-2 py-0.5 rounded-full text-[10px] bg-green-100 text-green-700">${l.result}</span></td></tr>`).join('');return`<div class="bg-white border border-gray-300 rounded shadow-sm flex-1 overflow-auto"><table><thead class="sticky top-0"><tr><th>时间</th><th>操作人</th><th>操作类型</th><th>详情</th><th>结果</th></tr></thead><tbody>${rows}</tbody></table></div>`;}
+    function renderOperationLog(){setTopBar('');return`<div class="bg-white border border-gray-300 rounded shadow-sm flex-1 overflow-auto"><table><thead class="sticky top-0"><tr><th>时间</th><th>操作人</th><th>操作类型</th><th>详情</th><th>结果</th></tr></thead><tbody></tbody></table></div>`;}
     function renderNumberList(){setTopBar('');const sorted=sortedNumbers();const cards=sorted.map(item=>{const bgClass=item.color==='red'?'bg-red-50 border-red-300':item.color==='blue'?'bg-blue-50 border-blue-300':'bg-green-50 border-green-300';return`<div class="border rounded p-2 text-center ${bgClass}"><div class="text-lg font-bold num-${item.color}">${item.num}</div><div class="text-[10px] text-gray-600">${item.sheng}</div></div>`;}).join('');return`<div class="bg-white border border-gray-300 rounded shadow-sm flex-1 overflow-auto p-3"><div class="grid grid-cols-7 gap-2">${cards}</div></div>`;}
 
-    function renderCharts(){const weiContainer=document.getElementById('chartPingTeWei');if(weiContainer){const weiData=Array(10).fill(0);const betData=getNumberBetData();numberList.forEach(item=>{if(betData[item.num]>0)weiData[parseInt(item.num)%10]+=betData[item.num];});const weiMax=Math.max(...weiData,1);weiContainer.innerHTML=weiData.map((v,i)=>{const h=(v/weiMax)*100;const colors=['#60a5fa','#3b82f6','#2563eb','#1d4ed8','#7c3aed','#a855f7','#ec4899','#f43f5e','#f97316','#eab308'];return`<div class="bar-chart flex-1 mx-0.5" style="height:${Math.max(h,2)}%;background:${colors[i]};" data-tip="尾${i}: ${v}"></div>`;}).join('');}const xiaoContainer=document.getElementById('chartPingTeXiao');if(xiaoContainer){const xiaoData={};shengOrder.forEach(s=>{xiaoData[s]=0;});const betData=getNumberBetData();numberList.forEach(item=>{if(betData[item.num]>0)xiaoData[item.sheng]+=betData[item.num];});const xiaoMax=Math.max(...Object.values(xiaoData),1);xiaoContainer.innerHTML=shengOrder.map(s=>{const v=xiaoData[s];const h=(v/xiaoMax)*100;return`<div class="bar-chart flex-1 mx-0.5" style="height:${Math.max(h,2)}%;background:linear-gradient(180deg,#34d399,#059669);" data-tip="${s}: ${v}"></div>`;}).join('');}const report=document.getElementById('analysisReport');if(report)report.innerHTML=`澳门特码胜负差过大，建议降低亏损大的数字的押注数额。<br>建议澳门特码调整上报数据：01=15<br>香港特码检查：暂无香港订单数据。<br>各类型订单占比检查：<span class="text-green-600 font-medium">健康</span>`;}
+    function renderCharts(){const weiContainer=document.getElementById('chartPingTeWei');if(weiContainer){const weiData=Array(10).fill(0);const betData=getNumberBetData();numberList.forEach(item=>{if(betData[item.num]>0)weiData[parseInt(item.num)%10]+=betData[item.num];});const weiMax=Math.max(...weiData,1);weiContainer.innerHTML=weiData.map((v,i)=>{const h=(v/weiMax)*100;const colors=['#60a5fa','#3b82f6','#2563eb','#1d4ed8','#7c3aed','#a855f7','#ec4899','#f43f5e','#f97316','#eab308'];return`<div class="bar-chart flex-1 mx-0.5" style="height:${Math.max(h,2)}%;background:${colors[i]};" data-tip="尾${i}: ${v}"></div>`;}).join('');}const xiaoContainer=document.getElementById('chartPingTeXiao');if(xiaoContainer){const xiaoData={};shengOrder.forEach(s=>{xiaoData[s]=0;});const betData=getNumberBetData();numberList.forEach(item=>{if(betData[item.num]>0)xiaoData[item.sheng]+=betData[item.num];});const xiaoMax=Math.max(...Object.values(xiaoData),1);xiaoContainer.innerHTML=shengOrder.map(s=>{const v=xiaoData[s];const h=(v/xiaoMax)*100;return`<div class="bar-chart flex-1 mx-0.5" style="height:${Math.max(h,2)}%;background:linear-gradient(180deg,#34d399,#059669);" data-tip="${s}: ${v}"></div>`;}).join('');}const report=document.getElementById('analysisReport');if(report)report.innerHTML=orderList.length===0?'暂无订单数据。':`澳门特码胜负差过大，建议降低亏损大的数字的押注数额。`;}
 
     function updateSpecialCodeStats(){
         const container=document.getElementById('specialCodeStats');
         if(!container)return;
-        const sorted=sortedNumbers();
+        const sortedAll = sortedNumbers();
         const betData=getNumberBetData();
-        const profits = sorted.map(item => betData[item.num] > 0 ? -460 : 9);
-        const origTotal = Object.values(betData).reduce((s,v)=>s+v,0);
-        let origMaxProfit = 0, origMaxLoss = 0, origProfitCount = 0, origLossCount = 0;
-        profits.forEach(p => {
-            if (p > 0) { origProfitCount++; if (p > origMaxProfit) origMaxProfit = p; }
-            else if (p < 0) { origLossCount++; if (p < origMaxLoss) origMaxLoss = p; }
+
+        let origTotal=0, maxProfit=-Infinity, maxLoss=Infinity, profitCount=0, lossCount=0;
+        sortedAll.forEach(item=>{
+            const orig = betData[item.num] || 0;
+            origTotal += orig;
+            const profit = orig > 0 ? -460 : 0;
+            if (profit > maxProfit) maxProfit = profit;
+            if (profit < maxLoss) maxLoss = profit;
+            if (profit > 0) profitCount++;
+            else if (profit < 0) lossCount++;
         });
-        const adjTotalAmount = Object.values(adjustValues).reduce((s,v)=>s+(parseFloat(v)||0),0);
-        const eatTotal = origTotal;
-        const adjMaxProfit = origMaxProfit;
-        const adjMaxLoss = origMaxLoss;
-        const adjProfitCount = origProfitCount;
-        const adjLossCount = origLossCount;
-        container.innerHTML=`
+        if (maxProfit === -Infinity) maxProfit = 0;
+        if (maxLoss === Infinity) maxLoss = 0;
+
+        const chiMaTotal = origTotal;
+        let adjTotalAmount = 0;
+        sortedAll.forEach(item => {
+            adjTotalAmount += adjustValues[item.num] || 0;
+        });
+        let adjMaxProfit = maxProfit;
+        let adjMaxLoss = maxLoss;
+        let adjProfitCount = profitCount;
+        let adjLossCount = lossCount;
+
+        container.innerHTML = `
             <div class="text-center text-red-600 font-medium">原特码数据</div>
             <div class="grid grid-cols-5 gap-1 mb-2">
                 <div class="border border-gray-300 py-1 text-center rounded">特码总额:${origTotal}</div>
-                <div class="border border-gray-300 py-1 text-center rounded">最大盈利:${origMaxProfit}</div>
-                <div class="border border-gray-300 py-1 text-center rounded">最大亏损:<span class="num-red">${origMaxLoss}</span></div>
-                <div class="border border-gray-300 py-1 text-center rounded">盈利数量:${origProfitCount}</div>
-                <div class="border border-gray-300 py-1 text-center rounded">亏损数量:${origLossCount}</div>
+                <div class="border border-gray-300 py-1 text-center rounded">最大盈利:${maxProfit}</div>
+                <div class="border border-gray-300 py-1 text-center rounded">最大亏损:<span class="num-red">${maxLoss}</span></div>
+                <div class="border border-gray-300 py-1 text-center rounded">盈利数量:${profitCount}</div>
+                <div class="border border-gray-300 py-1 text-center rounded">亏损数量:${lossCount}</div>
             </div>
             <div class="text-center text-blue-600 font-medium">调整后数据</div>
             <div class="grid grid-cols-6 gap-1 mb-2">
-                <div class="border border-gray-300 py-1 text-center rounded">吃码总额:${eatTotal}</div>
+                <div class="border border-gray-300 py-1 text-center rounded">吃码总额:${chiMaTotal}</div>
                 <div class="border border-gray-300 py-1 text-center rounded">调整金额:${adjTotalAmount}</div>
                 <div class="border border-gray-300 py-1 text-center rounded">最大盈利:${adjMaxProfit}</div>
                 <div class="border border-gray-300 py-1 text-center rounded">最大亏损:<span class="num-red">${adjMaxLoss}</span></div>
                 <div class="border border-gray-300 py-1 text-center rounded">盈利数量:${adjProfitCount}</div>
                 <div class="border border-gray-300 py-1 text-center rounded">亏损数量:${adjLossCount}</div>
             </div>
-            <div class="flex items-center gap-2 pt-1"><span class="text-[11px]">最大亏损</span><input type="range" min="0" max="50" value="0" class="flex-1 h-1.5" id="adjustSlider"><span class="text-[11px]">调整器:<b id="sliderVal">0</b></span></div>`;
+            <div class="flex items-center gap-2 pt-1">
+                <span class="text-[11px]">最大亏损</span>
+                <input type="range" min="0" max="50" value="0" class="flex-1 h-1.5" id="adjustSlider">
+                <span class="text-[11px]">调整器:<b id="sliderVal">0</b></span>
+            </div>`;
         bindSpecialCodeEvents();
     }
-    function bindSpecialCodeEvents(){document.querySelectorAll('.adj-input').forEach(input=>{input.addEventListener('input',function(){adjustValues[this.getAttribute('data-num')]=parseFloat(this.value)||0;updateAllTotals();updateSpecialCodeStats();});});const slider=document.getElementById('adjustSlider');if(slider)slider.addEventListener('input',function(){const val=parseInt(this.value);document.getElementById('sliderVal').textContent=val;numberList.forEach(item=>{adjustValues[item.num]=val;});document.querySelectorAll('.adj-input').forEach(inp=>{inp.value=val||'';});updateAllTotals();updateSpecialCodeStats();});document.getElementById('btnRound10')?.addEventListener('click',()=>{numberList.forEach(item=>{adjustValues[item.num]=Math.round((adjustValues[item.num]||0)/10)*10;});document.querySelectorAll('.adj-input').forEach(inp=>{inp.value=adjustValues[inp.getAttribute('data-num')]||'';});updateAllTotals();updateSpecialCodeStats();});document.getElementById('btnClearAdjust')?.addEventListener('click',()=>{numberList.forEach(item=>{adjustValues[item.num]=0;});document.querySelectorAll('.adj-input').forEach(inp=>{inp.value='';});updateAllTotals();updateSpecialCodeStats();});document.getElementById('btnSaveAdjust')?.addEventListener('click',()=>alert('调整已保存！（演示）'));}
-    function updateAllTotals(){document.querySelectorAll('.adj-input').forEach(input=>{const num=input.getAttribute('data-num');const item=numberList.find(n=>n.num===num);const betData=getNumberBetData();const total=(betData[num]||0)-(adjustValues[num]||0);const row=input.closest('.grid');if(row){const tc=row.querySelector('.total-cell');if(tc)tc.textContent=total;}});}
 
-    function bindDrawInputs(){
-        document.querySelectorAll('.draw-num-input').forEach(input=>{
-            input.addEventListener('input',function(){
-                const area=this.getAttribute('data-area');
-                const index=this.getAttribute('data-index');
-                const num=this.value.trim();
-                const color=getColorByNum(num);
-                this.style.color=color==='red'?'#dc2626':color==='blue'?'#2563eb':color==='green'?'#059669':'';
-                const sheng=getShengByNum(num)||'--';
-                const shengSpan=document.querySelector(`span.draw-sheng[data-area="${area}"][data-index="${index}"]`);
-                if(shengSpan){shengSpan.textContent=sheng;shengSpan.style.color=getShengColorStyle(sheng)||'#333';}
-            });
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const area = this.getAttribute('data-area');
-                    const currentIndex = parseInt(this.getAttribute('data-index'));
-                    const nextIndex = currentIndex + 1;
-                    if (nextIndex < 7) {
-                        const nextInput = document.querySelector(`.draw-num-input[data-area="${area}"][data-index="${nextIndex}"]`);
-                        if (nextInput && !nextInput.disabled) {
-                            nextInput.focus();
-                            nextInput.select();
-                        }
-                    }
-                }
-            });
+    function bindSpecialCodeEvents(){document.querySelectorAll('.adj-input').forEach(input=>{input.addEventListener('input',function(){adjustValues[this.getAttribute('data-num')]=parseFloat(this.value)||0;updateAllTotals();updateSpecialCodeStats();});});const slider=document.getElementById('adjustSlider');if(slider)slider.addEventListener('input',function(){const val=parseInt(this.value);document.getElementById('sliderVal').textContent=val;numberList.forEach(item=>{adjustValues[item.num]=val;});document.querySelectorAll('.adj-input').forEach(inp=>{inp.value=val||'';});updateAllTotals();updateSpecialCodeStats();});document.getElementById('btnRound10')?.addEventListener('click',()=>{numberList.forEach(item=>{adjustValues[item.num]=Math.round((adjustValues[item.num]||0)/10)*10;});document.querySelectorAll('.adj-input').forEach(inp=>{inp.value=adjustValues[inp.getAttribute('data-num')]||'';});updateAllTotals();updateSpecialCodeStats();});document.getElementById('btnClearAdjust')?.addEventListener('click',()=>{numberList.forEach(item=>{adjustValues[item.num]=0;});document.querySelectorAll('.adj-input').forEach(inp=>{inp.value='';});updateAllTotals();updateSpecialCodeStats();});document.getElementById('btnSaveAdjust')?.addEventListener('click',()=>alert('调整已保存！（演示）'));}
+    function updateAllTotals(){
+        document.querySelectorAll('.adj-input').forEach(input=>{
+            const num=input.getAttribute('data-num');
+            const betData=getNumberBetData();
+            const total = (betData[num] || 0) - (adjustValues[num] || 0);
+            const row=input.closest('.grid');
+            if(row){
+                const tc=row.querySelector('.total-cell');
+                if(tc)tc.textContent=total;
+            }
         });
     }
+
+    function bindDrawInputs(){document.querySelectorAll('.draw-num-input').forEach(input=>{input.addEventListener('input',function(){const area=this.getAttribute('data-area');const index=this.getAttribute('data-index');const num=this.value.trim();const color=getColorByNum(num);this.style.color=color==='red'?'#dc2626':color==='blue'?'#2563eb':color==='green'?'#059669':'';const sheng=getShengByNum(num)||'--';const shengSpan=document.querySelector(`span.draw-sheng[data-area="${area}"][data-index="${index}"]`);if(shengSpan){shengSpan.textContent=sheng;shengSpan.style.color=getShengColorStyle(sheng)||'#333';}});input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();const area=this.getAttribute('data-area');const index=parseInt(this.getAttribute('data-index'));const nextInput=document.querySelector(`.draw-num-input[data-area="${area}"][data-index="${index+1}"]`);if(nextInput)nextInput.focus();else this.blur();}});});}
     function bindTodayDrawControls(){document.querySelectorAll('.modify-btn').forEach(btn=>{btn.addEventListener('click',function(){const area=this.getAttribute('data-area');drawLocked[area]=false;document.querySelectorAll(`.draw-num-input[data-area="${area}"]`).forEach(inp=>{inp.disabled=false;});});});document.querySelectorAll('.save-draw-btn').forEach(btn=>{btn.addEventListener('click',function(){const area=this.getAttribute('data-area');const inputs=document.querySelectorAll(`.draw-num-input[data-area="${area}"]`);const nums=[],shengs=[];inputs.forEach(inp=>{const val=inp.value.trim();nums.push(val.length===1?'0'+val:val);shengs.push(getShengByNum(val)||'');});drawData[area]={nums,shengs};drawLocked[area]=true;inputs.forEach(inp=>{inp.disabled=true;});for(let i=0;i<7;i++){const shengSpan=document.querySelector(`span.draw-sheng[data-area="${area}"][data-index="${i}"]`);if(shengSpan){shengSpan.textContent=shengs[i]||'--';shengSpan.style.color=getShengColorStyle(shengs[i])||'#333';}}const now=new Date();const year=now.getFullYear();const startOfYear=new Date(year,0,1);const dayOfYear=Math.floor((now-startOfYear)/(1000*60*60*24))+1;const qihao=`${year}${String(dayOfYear).padStart(3,'0')}`;const dateStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;const areaNames={macau:'澳门',hongkong:'香港',yuegang:'粤港'};historyRecords=[{qihao:qihao,date:dateStr,area:areaNames[area],nums:nums.join(','),shengs:shengs.join(',')}];if(currentPage==='drawHistory')switchPage('drawHistory');});});}
     function bindCalcButton(){document.getElementById('btnCalc')?.addEventListener('click',()=>{const bet=parseFloat(document.getElementById('calcBet')?.value)||0;const odds=parseFloat(document.getElementById('calcOdds')?.value)||0;document.getElementById('calcResult').textContent=(bet*odds).toFixed(1);});}
 
@@ -366,328 +420,100 @@
 
     function initModalDraggableResizable(modalId){const mask=document.getElementById(modalId);const modal=mask?.querySelector('.modal');if(!modal)return;const resizers=['n','s','e','w','ne','nw','se','sw'];resizers.forEach(dir=>{const div=document.createElement('div');div.className=`modal-resizer resizer-${dir}`;div.setAttribute('data-resize',dir);modal.appendChild(div);});let originalRect=null;let isMaximized=false;let startX,startY,startWidth,startHeight,startLeft,startTop;let currentResizeDir=null;let dragState={isDragging:false,startMouseX:0,startMouseY:0,startLeft:0,startTop:0};function getModalRect(){const rect=modal.getBoundingClientRect();return{left:rect.left,top:rect.top,width:rect.width,height:rect.height};}function setModalStyle(left,top,width,height){modal.style.left=left+'px';modal.style.top=top+'px';modal.style.width=width+'px';modal.style.height=height+'px';modal.style.transform='none';}function toggleMaximize(){if(isMaximized){if(originalRect)setModalStyle(originalRect.left,originalRect.top,originalRect.width,originalRect.height);modal.classList.remove('maximized');isMaximized=false;}else{const rect=getModalRect();originalRect=rect;modal.classList.add('maximized');isMaximized=true;}}function minimize(){mask.style.display='none';let icon=document.querySelector(`.minimized-icon[data-modal="${modalId}"]`);if(!icon){icon=document.createElement('div');icon.className='minimized-icon';icon.setAttribute('data-modal',modalId);icon.textContent='□';document.body.appendChild(icon);icon.addEventListener('click',()=>{mask.style.display='block';icon.remove();});}}const header=modal.querySelector('.modal-header');const maximizeBtn=header?.querySelector('.maximize-btn');const minimizeBtn=header?.querySelector('.minimize-btn');maximizeBtn?.addEventListener('click',(e)=>{e.stopPropagation();toggleMaximize();});minimizeBtn?.addEventListener('click',(e)=>{e.stopPropagation();minimize();});header?.addEventListener('mousedown',(e)=>{if(isMaximized)return;if(e.target.tagName==='BUTTON')return;dragState.isDragging=true;const rect=getModalRect();dragState.startMouseX=e.clientX;dragState.startMouseY=e.clientY;dragState.startLeft=rect.left;dragState.startTop=rect.top;document.body.style.userSelect='none';document.body.style.cursor='move';});modal.addEventListener('mousedown',(e)=>{if(isMaximized)return;const resizeDir=e.target.getAttribute('data-resize');if(!resizeDir)return;e.preventDefault();currentResizeDir=resizeDir;startX=e.clientX;startY=e.clientY;const rect=getModalRect();startWidth=rect.width;startHeight=rect.height;startLeft=rect.left;startTop=rect.top;document.body.style.userSelect='none';document.body.style.cursor=e.target.style.cursor;});document.addEventListener('mousemove',(e)=>{if(dragState.isDragging){const dx=e.clientX-dragState.startMouseX;const dy=e.clientY-dragState.startMouseY;setModalStyle(dragState.startLeft+dx,dragState.startTop+dy,startWidth||modal.offsetWidth,startHeight||modal.offsetHeight);}else if(currentResizeDir){const dx=e.clientX-startX;const dy=e.clientY-startY;let newWidth=startWidth,newHeight=startHeight,newLeft=startLeft,newTop=startTop;const dir=currentResizeDir;if(dir.includes('e'))newWidth=startWidth+dx;if(dir.includes('w')){newWidth=startWidth-dx;newLeft=startLeft+dx;}if(dir.includes('s'))newHeight=startHeight+dy;if(dir.includes('n')){newHeight=startHeight-dy;newTop=startTop+dy;}if(newWidth<300)newWidth=300;if(newHeight<200)newHeight=200;setModalStyle(newLeft,newTop,newWidth,newHeight);}});document.addEventListener('mouseup',()=>{if(dragState.isDragging){dragState.isDragging=false;document.body.style.cursor='';document.body.style.userSelect='';}if(currentResizeDir){currentResizeDir=null;document.body.style.cursor='';document.body.style.userSelect='';}});}
 
-    // ========== 配置弹窗数据与逻辑 ==========
-    function getFullRows() {
-        return [
-            { type: '特码', odds: '47.00', rebate: '' },
-            { type: '特肖', odds: '11.00', rebate: '' },
-            { type: '特肖本年肖', odds: '10.00', rebate: '' },
-            { type: '平特肖', odds: '2.00', rebate: '' },
-            { type: '平特肖带主肖', odds: '1.80', rebate: '' },
-            { type: '二连肖', odds: '4.00', rebate: '' },
-            { type: '二连肖带主肖', odds: '3.50', rebate: '' },
-            { type: '三连肖', odds: '10.00', rebate: '' },
-            { type: '三连肖带主肖', odds: '9.00', rebate: '' },
-            { type: '四连肖', odds: '30.00', rebate: '' },
-            { type: '四连肖带主肖', odds: '25.00', rebate: '' },
-            { type: '五连肖', odds: '100.00', rebate: '' },
-            { type: '五连肖带主肖', odds: '90.00', rebate: '' },
-            { type: '平特尾', odds: '1.80', rebate: '' },
-            { type: '平特尾零尾', odds: '2.00', rebate: '' },
-            { type: '二连尾', odds: '3.00', rebate: '' },
-            { type: '二连尾零尾', odds: '3.50', rebate: '' },
-            { type: '三连尾', odds: '6.00', rebate: '' },
-            { type: '三连尾零尾', odds: '6.50', rebate: '' },
-            { type: '四连尾', odds: '14.00', rebate: '' },
-            { type: '四连尾零尾', odds: '15.00', rebate: '' },
-            { type: '五连尾', odds: '28.00', rebate: '' },
-            { type: '五连尾零尾', odds: '30.00', rebate: '' },
-            { type: '五不中', odds: '2.00', rebate: '' },
-            { type: '六不中', odds: '2.50', rebate: '' },
-            { type: '七不中', odds: '3.00', rebate: '' },
-            { type: '八不中', odds: '3.50', rebate: '' },
-            { type: '九不中', odds: '4.00', rebate: '' },
-            { type: '十不中', odds: '5.00', rebate: '' },
-            { type: '十一不中', odds: '6.00', rebate: '' },
-            { type: '十二不中', odds: '7.00', rebate: '' },
-            { type: '二中二', odds: '60.00', rebate: '' },
-            { type: '三中三', odds: '600.00', rebate: '' },
-            { type: '平码', odds: '7.00', rebate: '' },
-            { type: '包红波', odds: '2.60', rebate: '' },
-            { type: '包蓝波', odds: '2.70', rebate: '' },
-            { type: '包绿波', odds: '2.70', rebate: '' },
-            { type: '包红单', odds: '5.00', rebate: '' },
-            { type: '包红双', odds: '4.70', rebate: '' },
-            { type: '包红大', odds: '6.00', rebate: '' },
-            { type: '包红小', odds: '4.00', rebate: '' },
-            { type: '包蓝单', odds: '5.00', rebate: '' },
-            { type: '包蓝双', odds: '5.00', rebate: '' },
-            { type: '包蓝大', odds: '4.70', rebate: '' },
-            { type: '包蓝小', odds: '6.00', rebate: '' },
-            { type: '包绿单', odds: '5.00', rebate: '' },
-            { type: '包绿双', odds: '5.00', rebate: '' },
-            { type: '包绿大', odds: '5.00', rebate: '' },
-            { type: '包绿小', odds: '6.00', rebate: '' },
-            { type: '包单', odds: '1.80', rebate: '' },
-            { type: '包双', odds: '1.80', rebate: '' },
-            { type: '包大', odds: '1.80', rebate: '' },
-            { type: '包小', odds: '1.80', rebate: '' },
-            { type: '包家禽', odds: '1.80', rebate: '' },
-            { type: '包野兽', odds: '1.80', rebate: '' }
-        ];
-    }
-
-    window.schemes = [
-        { name: '47倍无水' },
-        { name: '47倍3水' },
-        { name: '47倍4水' },
-        { name: '47倍4水28' },
-        { name: '47倍2水' },
-        { name: '47倍3水28' },
-        { name: '47倍计算' }
-    ].map(s => {
-        const rows = getFullRows();
-        const reb = (()=>{const m=s.name.match(/(\d+)水/);return m?parseFloat(m[1]).toFixed(2):'0.00';})();
-        rows.forEach(r => r.rebate = reb);
-        return { name: s.name, rows };
-    });
-
-    let currentSchemeIdx = 0;
-    let selectedOddsRow = null;
-
-    function initConfigModal() {
-        const schemeSelect = document.getElementById('scheme-select');
-        const oddsTbody = document.getElementById('odds-tbody');
-
-        function renderSchemeSelect() {
-            schemeSelect.innerHTML = '';
-            window.schemes.forEach((s, i) => {
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.textContent = s.name;
-                if (i === currentSchemeIdx) opt.selected = true;
-                schemeSelect.appendChild(opt);
-            });
-        }
-
-        function renderOddsTable() {
-            oddsTbody.innerHTML = '';
-            window.schemes[currentSchemeIdx].rows.forEach((r, idx) => {
-                const tr = document.createElement('tr');
-                tr.dataset.rowIndex = idx;
-                const tdType = document.createElement('td');
-                tdType.textContent = r.type;
-                tr.appendChild(tdType);
-                const tdOdds = document.createElement('td');
-                const oddsSpan = document.createElement('span');
-                oddsSpan.className = 'cell-text';
-                oddsSpan.textContent = r.odds;
-                const oddsInput = document.createElement('input');
-                oddsInput.type = 'text';
-                oddsInput.className = 'cell-input';
-                oddsInput.value = r.odds;
-                oddsSpan.addEventListener('dblclick', (e) => { e.stopPropagation(); oddsSpan.classList.add('editing'); oddsInput.classList.add('editing'); oddsInput.focus(); oddsInput.select(); });
-                const saveOdds = () => { oddsSpan.classList.remove('editing'); oddsInput.classList.remove('editing'); const val=parseFloat(oddsInput.value); if(!isNaN(val)&&val>=0){r.odds=val.toFixed(2);oddsSpan.textContent=r.odds;}else{oddsInput.value=r.odds;} };
-                oddsInput.addEventListener('blur', saveOdds);
-                oddsInput.addEventListener('keydown', (e) => { if(e.key==='Enter'){e.preventDefault();saveOdds();} if(e.key==='Escape'){oddsInput.value=r.odds;oddsInput.blur();} });
-                tdOdds.appendChild(oddsSpan); tdOdds.appendChild(oddsInput);
-                tr.appendChild(tdOdds);
-                const tdRebate = document.createElement('td');
-                const rebateSpan = document.createElement('span');
-                rebateSpan.className = 'cell-text';
-                rebateSpan.textContent = r.rebate + '%';
-                const rebateInput = document.createElement('input');
-                rebateInput.type = 'text';
-                rebateInput.className = 'cell-input';
-                rebateInput.value = r.rebate;
-                rebateSpan.addEventListener('dblclick', (e) => { e.stopPropagation(); rebateSpan.classList.add('editing'); rebateInput.classList.add('editing'); rebateInput.focus(); rebateInput.select(); });
-                const saveRebate = () => { rebateSpan.classList.remove('editing'); rebateInput.classList.remove('editing'); const val=parseFloat(rebateInput.value); if(!isNaN(val)&&val>=0&&val<=100){r.rebate=val.toFixed(2);rebateSpan.textContent=r.rebate+'%';}else{rebateInput.value=r.rebate;} };
-                rebateInput.addEventListener('blur', saveRebate);
-                rebateInput.addEventListener('keydown', (e) => { if(e.key==='Enter'){e.preventDefault();saveRebate();} if(e.key==='Escape'){rebateInput.value=r.rebate;rebateInput.blur();} });
-                tdRebate.appendChild(rebateSpan); tdRebate.appendChild(rebateInput);
-                tr.appendChild(tdRebate);
-                oddsTbody.appendChild(tr);
-            });
-            selectedOddsRow = null;
-        }
-
-        oddsTbody.addEventListener('click', function(e) {
-            if (e.target.closest('.cell-text') || e.target.closest('.cell-input')) return;
-            const tr = e.target.closest('tr');
-            if (!tr) return;
-            if (selectedOddsRow) selectedOddsRow.classList.remove('selected');
-            tr.classList.add('selected');
-            selectedOddsRow = tr;
-        });
-
-        schemeSelect.addEventListener('change', () => { currentSchemeIdx = parseInt(schemeSelect.value,10); renderOddsTable(); });
-
-        document.getElementById('btn-add-scheme').addEventListener('click', () => {
-            const src = window.schemes[currentSchemeIdx];
-            let newName = src.name + '_副本';
-            let cnt = 1;
-            while (window.schemes.some(s => s.name === newName)) newName = src.name + '_副本' + (++cnt);
-            const newRows = src.rows.map(r => ({ ...r }));
-            window.schemes.push({ name: newName, rows: newRows });
-            currentSchemeIdx = window.schemes.length - 1;
-            renderSchemeSelect();
-            renderOddsTable();
-        });
-
-        document.getElementById('btn-del-scheme').addEventListener('click', () => {
-            if (window.schemes.length <= 1) return alert('至少保留一个配置方案。');
-            if (!confirm(`确定删除方案"${window.schemes[currentSchemeIdx].name}"吗？`)) return;
-            window.schemes.splice(currentSchemeIdx, 1);
-            if (currentSchemeIdx >= window.schemes.length) currentSchemeIdx = window.schemes.length - 1;
-            renderSchemeSelect();
-            renderOddsTable();
-        });
-
-        document.getElementById('btn-add-row').addEventListener('click', () => {
-            const type = document.getElementById('input-bet-type').value.trim();
-            const oddsVal = document.getElementById('input-odds').value.trim();
-            const rebateVal = document.getElementById('input-rebate').value.trim();
-            if (!type) return alert('请输入投注类型。');
-            const odds = parseFloat(oddsVal);
-            if (isNaN(odds) || odds < 0) return alert('赔率必须为有效数字。');
-            let rebate = parseFloat(rebateVal);
-            if (isNaN(rebate) || rebate < 0 || rebate > 100) rebate = parseFloat((()=>{const m=window.schemes[currentSchemeIdx].name.match(/(\d+)水/);return m?m[1]:'0';})());
-            window.schemes[currentSchemeIdx].rows.push({ type, odds: odds.toFixed(2), rebate: rebate.toFixed(2) });
-            renderOddsTable();
-            document.getElementById('input-bet-type').value = '';
-            document.getElementById('input-odds').value = '';
-            document.getElementById('input-rebate').value = '';
-        });
-
-        document.getElementById('btn-del-row').addEventListener('click', () => {
-            if (!selectedOddsRow) return alert('请先选中一行。');
-            const rowIndex = parseInt(selectedOddsRow.dataset.rowIndex, 10);
-            if (isNaN(rowIndex)) return;
-            const typeName = window.schemes[currentSchemeIdx].rows[rowIndex].type;
-            if (!confirm(`确定删除投注类型"${typeName}"吗？`)) return;
-            window.schemes[currentSchemeIdx].rows.splice(rowIndex, 1);
-            renderOddsTable();
-        });
-
-        document.getElementById('btn-rename-confirm').addEventListener('click', () => {
-            if (!document.getElementById('chk-rename').checked) return alert('请先勾选复选框。');
-            const newName = document.getElementById('input-rename').value.trim();
-            if (!newName) return alert('名称不能为空。');
-            if (window.schemes.some(s => s.name === newName)) return alert('方案名称已存在。');
-            window.schemes[currentSchemeIdx].name = newName;
-            renderSchemeSelect();
-            document.getElementById('input-rename').value = '';
-            document.getElementById('chk-rename').checked = false;
-            if (document.getElementById('applicant-content').classList.contains('active')) window.renderApplicants();
-        });
-
-        document.getElementById('btn-unify-confirm').addEventListener('click', () => {
-            if (!document.getElementById('chk-unify').checked) return alert('请先勾选复选框。');
-            const rebateStr = document.getElementById('input-unify-rebate').value.trim();
-            const rebate = parseFloat(rebateStr);
-            if (isNaN(rebate) || rebate < 0 || rebate > 100) return alert('请输入有效的返水比例（0-100）。');
-            window.schemes[currentSchemeIdx].rows.forEach(r => r.rebate = rebate.toFixed(2));
-            renderOddsTable();
-            document.getElementById('input-unify-rebate').value = '';
-            document.getElementById('chk-unify').checked = false;
-        });
-
-        document.getElementById('btn-odds-confirm').addEventListener('click', () => { alert('赔率配置已保存。'); });
-
-        // 申报人
-        window.applicants = [];
-        window.nextApplicantId = 1;
-        window.selectedApplicantId = null;
-        const initNames = ['张三', '01群', '02群', '03群', '04群', '05群', '06群', '07群', '08群', '09群'];
-        initNames.forEach(name => { window.applicants.push({ id: window.nextApplicantId++, name, oddsConfig: window.schemes[0].name }); });
-
-        window.renderApplicants = function() {
-            const tbody = document.getElementById('applicant-tbody');
-            tbody.innerHTML = '';
-            const schemeNames = window.schemes.map(s => s.name);
-            window.applicants.forEach(a => {
-                const tr = document.createElement('tr');
-                tr.dataset.id = a.id;
-                if (a.id === window.selectedApplicantId) tr.classList.add('selected');
-                const tdName = document.createElement('td');
-                const span = document.createElement('span');
-                span.className = 'name-text';
-                span.textContent = a.name || '（空）';
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'name-input';
-                input.value = a.name;
-                span.addEventListener('dblclick', (e) => { e.stopPropagation(); span.classList.add('editing'); input.classList.add('editing'); input.focus(); input.select(); });
-                input.addEventListener('blur', () => { span.classList.remove('editing'); input.classList.remove('editing'); const val=input.value.trim(); if(val&&val!==a.name){a.name=val;span.textContent=val;}else{input.value=a.name;} });
-                input.addEventListener('keydown', (e) => { if(e.key==='Enter')input.blur(); if(e.key==='Escape'){input.value=a.name;input.blur();} });
-                tdName.appendChild(span); tdName.appendChild(input);
-                tr.appendChild(tdName);
-                const tdOdds = document.createElement('td');
-                const sel = document.createElement('select');
-                schemeNames.forEach(opt => { const optionEl = document.createElement('option'); optionEl.value=opt; optionEl.textContent=opt; if(opt===a.oddsConfig)optionEl.selected=true; sel.appendChild(optionEl); });
-                sel.addEventListener('change', () => { a.oddsConfig = sel.value; });
-                tdOdds.appendChild(sel);
-                tr.appendChild(tdOdds);
-                tbody.appendChild(tr);
-            });
-        };
-
-        document.getElementById('applicant-tbody').addEventListener('click', function(e) {
-            if (e.target.closest('.name-text') || e.target.closest('.name-input')) return;
-            if (e.target.tagName === 'SELECT') return;
-            const tr = e.target.closest('tr');
-            if (!tr) return;
-            const id = parseInt(tr.dataset.id, 10);
-            if (isNaN(id)) return;
-            window.selectedApplicantId = (window.selectedApplicantId === id) ? null : id;
-            window.renderApplicants();
-        });
-
-        document.getElementById('btn-delete-applicant').addEventListener('click', () => {
-            if (window.selectedApplicantId === null) return alert('请先选中一个申报人。');
-            const applicant = window.applicants.find(a => a.id === window.selectedApplicantId);
-            if (!applicant) return;
-            if (!confirm(`确定删除申报人"${applicant.name}"吗？`)) return;
-            window.applicants = window.applicants.filter(a => a.id !== window.selectedApplicantId);
-            window.selectedApplicantId = null;
-            window.renderApplicants();
-        });
-
-        document.getElementById('btn-add-applicant').addEventListener('click', () => {
-            const input = document.getElementById('new-applicant-name');
-            const name = input.value.trim();
-            if (!name) return alert('请输入申报人名称。');
-            const defaultConfig = window.schemes.length > 0 ? window.schemes[0].name : '47倍计算';
-            window.applicants.push({ id: window.nextApplicantId++, name, oddsConfig: defaultConfig });
-            input.value = '';
-            window.selectedApplicantId = null;
-            window.renderApplicants();
-        });
-
-        document.getElementById('new-applicant-name').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btn-add-applicant').click(); });
-
-        document.getElementById('btn-confirm-applicant').addEventListener('click', () => { alert('申报人配置已保存。'); });
-
-        document.addEventListener('keydown', e => { if(e.key==='Delete' && document.getElementById('applicant-content').classList.contains('active')){ if(document.activeElement&&document.activeElement.tagName==='INPUT')return; document.getElementById('btn-delete-applicant').click(); } });
-
-        renderSchemeSelect();
-        renderOddsTable();
+    // 配置弹窗逻辑
+    (function initConfigModal(){
+        const modal=document.getElementById('configModal');
+        modal.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',function(){const type=this.dataset.tab;if(!type)return;modal.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));this.classList.add('active');modal.querySelectorAll('.content').forEach(c=>c.classList.remove('active'));document.getElementById(type+'-content').classList.add('active');if(type==='applicant'&&window.renderApplicants)window.renderApplicants();});});
+        modal.querySelector('.close-btn').addEventListener('click',()=>{modal.style.display='none';});
+        function getDefaultRebate(name){const match=name.match(/(\d+)水/);if(match){const n=parseFloat(match[1]);if(!isNaN(n))return n.toFixed(2);}return'0.00';}
+        function getFullRows(){return[{type:'特码',odds:'47.00',rebate:''},{type:'特肖',odds:'11.00',rebate:''},{type:'特肖本年肖',odds:'10.00',rebate:''},{type:'平特肖',odds:'2.00',rebate:''},{type:'平特肖带主肖',odds:'1.80',rebate:''},{type:'二连肖',odds:'4.00',rebate:''},{type:'二连肖带主肖',odds:'3.50',rebate:''},{type:'三连肖',odds:'10.00',rebate:''},{type:'三连肖带主肖',odds:'9.00',rebate:''},{type:'四连肖',odds:'30.00',rebate:''},{type:'四连肖带主肖',odds:'25.00',rebate:''},{type:'五连肖',odds:'100.00',rebate:''},{type:'五连肖带主肖',odds:'90.00',rebate:''},{type:'平特尾',odds:'1.80',rebate:''},{type:'平特尾零尾',odds:'2.00',rebate:''},{type:'二连尾',odds:'3.00',rebate:''},{type:'二连尾零尾',odds:'3.50',rebate:''},{type:'三连尾',odds:'6.00',rebate:''},{type:'三连尾零尾',odds:'6.50',rebate:''},{type:'四连尾',odds:'14.00',rebate:''},{type:'四连尾零尾',odds:'15.00',rebate:''},{type:'五连尾',odds:'28.00',rebate:''},{type:'五连尾零尾',odds:'30.00',rebate:''},{type:'五不中',odds:'2.00',rebate:''},{type:'六不中',odds:'2.50',rebate:''},{type:'七不中',odds:'3.00',rebate:''},{type:'八不中',odds:'3.50',rebate:''},{type:'九不中',odds:'4.00',rebate:''},{type:'十不中',odds:'5.00',rebate:''},{type:'十一不中',odds:'6.00',rebate:''},{type:'十二不中',odds:'7.00',rebate:''},{type:'二中二',odds:'60.00',rebate:''},{type:'三中三',odds:'600.00',rebate:''},{type:'平码',odds:'7.00',rebate:''},{type:'包红波',odds:'2.60',rebate:''},{type:'包蓝波',odds:'2.70',rebate:''},{type:'包绿波',odds:'2.70',rebate:''},{type:'包红单',odds:'5.00',rebate:''},{type:'包红双',odds:'4.70',rebate:''},{type:'包红大',odds:'6.00',rebate:''},{type:'包红小',odds:'4.00',rebate:''},{type:'包蓝单',odds:'5.00',rebate:''},{type:'包蓝双',odds:'5.00',rebate:''},{type:'包蓝大',odds:'4.70',rebate:''},{type:'包蓝小',odds:'6.00',rebate:''},{type:'包绿单',odds:'5.00',rebate:''},{type:'包绿双',odds:'5.00',rebate:''},{type:'包绿大',odds:'5.00',rebate:''},{type:'包绿小',odds:'6.00',rebate:''},{type:'包单',odds:'1.80',rebate:''},{type:'包双',odds:'1.80',rebate:''},{type:'包大',odds:'1.80',rebate:''},{type:'包小',odds:'1.80',rebate:''},{type:'包家禽',odds:'1.80',rebate:''},{type:'包野兽',odds:'1.80',rebate:''}];}
+        window.schemes=[{name:'47倍无水'},{name:'47倍3水'},{name:'47倍4水'},{name:'47倍4水28'},{name:'47倍2水'},{name:'47倍3水28'},{name:'47倍计算'}].map(s=>{const rows=getFullRows();const reb=getDefaultRebate(s.name);rows.forEach(r=>r.rebate=reb);return{name:s.name,rows};});
+        let currentSchemeIdx=0;let selectedOddsRow=null;
+        const schemeSelect=document.getElementById('scheme-select');const oddsTbody=document.getElementById('odds-tbody');
+        function renderSchemeSelect(){schemeSelect.innerHTML='';window.schemes.forEach((s,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=s.name;if(i===currentSchemeIdx)opt.selected=true;schemeSelect.appendChild(opt);});}
+        function renderOddsTable(){oddsTbody.innerHTML='';window.schemes[currentSchemeIdx].rows.forEach((r,idx)=>{const tr=document.createElement('tr');tr.dataset.rowIndex=idx;const tdType=document.createElement('td');tdType.textContent=r.type;tr.appendChild(tdType);const tdOdds=document.createElement('td');const oddsSpan=document.createElement('span');oddsSpan.className='cell-text';oddsSpan.textContent=r.odds;const oddsInput=document.createElement('input');oddsInput.type='text';oddsInput.className='cell-input';oddsInput.value=r.odds;oddsSpan.addEventListener('dblclick',(e)=>{e.stopPropagation();oddsSpan.classList.add('editing');oddsInput.classList.add('editing');oddsInput.focus();oddsInput.select();});const saveOdds=()=>{oddsSpan.classList.remove('editing');oddsInput.classList.remove('editing');const val=parseFloat(oddsInput.value);if(!isNaN(val)&&val>=0){r.odds=val.toFixed(2);oddsSpan.textContent=r.odds;}else{oddsInput.value=r.odds;}};oddsInput.addEventListener('blur',saveOdds);oddsInput.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();saveOdds();}if(e.key==='Escape'){oddsInput.value=r.odds;oddsInput.blur();}});tdOdds.appendChild(oddsSpan);tdOdds.appendChild(oddsInput);tr.appendChild(tdOdds);const tdRebate=document.createElement('td');const rebateSpan=document.createElement('span');rebateSpan.className='cell-text';rebateSpan.textContent=r.rebate+'%';const rebateInput=document.createElement('input');rebateInput.type='text';rebateInput.className='cell-input';rebateInput.value=r.rebate;rebateSpan.addEventListener('dblclick',(e)=>{e.stopPropagation();rebateSpan.classList.add('editing');rebateInput.classList.add('editing');rebateInput.focus();rebateInput.select();});const saveRebate=()=>{rebateSpan.classList.remove('editing');rebateInput.classList.remove('editing');const val=parseFloat(rebateInput.value);if(!isNaN(val)&&val>=0&&val<=100){r.rebate=val.toFixed(2);rebateSpan.textContent=r.rebate+'%';}else{rebateInput.value=r.rebate;}};rebateInput.addEventListener('blur',saveRebate);rebateInput.addEventListener('keydown',(e)=>{if(e.key==='Enter'){e.preventDefault();saveRebate();}if(e.key==='Escape'){rebateInput.value=r.rebate;rebateInput.blur();}});tdRebate.appendChild(rebateSpan);tdRebate.appendChild(rebateInput);tr.appendChild(tdRebate);oddsTbody.appendChild(tr);});selectedOddsRow=null;}
+        oddsTbody.addEventListener('click',function(e){if(e.target.closest('.cell-text')||e.target.closest('.cell-input'))return;const tr=e.target.closest('tr');if(!tr)return;if(selectedOddsRow)selectedOddsRow.classList.remove('selected');tr.classList.add('selected');selectedOddsRow=tr;});
+        schemeSelect.addEventListener('change',()=>{currentSchemeIdx=parseInt(schemeSelect.value,10);renderOddsTable();});
+        document.getElementById('btn-add-scheme').addEventListener('click',()=>{const src=window.schemes[currentSchemeIdx];let newName=src.name+'_副本';let cnt=1;while(window.schemes.some(s=>s.name===newName))newName=src.name+'_副本'+(++cnt);const newRows=src.rows.map(r=>({...r}));window.schemes.push({name:newName,rows:newRows});currentSchemeIdx=window.schemes.length-1;renderSchemeSelect();renderOddsTable();});
+        document.getElementById('btn-del-scheme').addEventListener('click',()=>{if(window.schemes.length<=1)return alert('至少保留一个配置方案。');if(!confirm(`确定删除方案"${window.schemes[currentSchemeIdx].name}"吗？`))return;window.schemes.splice(currentSchemeIdx,1);if(currentSchemeIdx>=window.schemes.length)currentSchemeIdx=window.schemes.length-1;renderSchemeSelect();renderOddsTable();});
+        document.getElementById('btn-add-row').addEventListener('click',()=>{const type=document.getElementById('input-bet-type').value.trim();const oddsVal=document.getElementById('input-odds').value.trim();const rebateVal=document.getElementById('input-rebate').value.trim();if(!type)return alert('请输入投注类型。');const odds=parseFloat(oddsVal);if(isNaN(odds)||odds<0)return alert('赔率必须为有效数字。');let rebate=parseFloat(rebateVal);if(isNaN(rebate)||rebate<0||rebate>100){rebate=parseFloat(getDefaultRebate(window.schemes[currentSchemeIdx].name));}window.schemes[currentSchemeIdx].rows.push({type,odds:odds.toFixed(2),rebate:rebate.toFixed(2)});renderOddsTable();document.getElementById('input-bet-type').value='';document.getElementById('input-odds').value='';document.getElementById('input-rebate').value='';});
+        document.getElementById('btn-del-row').addEventListener('click',()=>{if(!selectedOddsRow)return alert('请先选中一行。');const rowIndex=parseInt(selectedOddsRow.dataset.rowIndex,10);if(isNaN(rowIndex))return;const typeName=window.schemes[currentSchemeIdx].rows[rowIndex].type;if(!confirm(`确定删除投注类型"${typeName}"吗？`))return;window.schemes[currentSchemeIdx].rows.splice(rowIndex,1);renderOddsTable();});
+        document.getElementById('btn-rename-confirm').addEventListener('click',()=>{if(!document.getElementById('chk-rename').checked)return alert('请先勾选复选框。');const newName=document.getElementById('input-rename').value.trim();if(!newName)return alert('名称不能为空。');if(window.schemes.some(s=>s.name===newName))return alert('方案名称已存在。');window.schemes[currentSchemeIdx].name=newName;renderSchemeSelect();document.getElementById('input-rename').value='';document.getElementById('chk-rename').checked=false;if(document.getElementById('applicant-content').classList.contains('active')){window.renderApplicants();}});
+        document.getElementById('btn-unify-confirm').addEventListener('click',()=>{if(!document.getElementById('chk-unify').checked)return alert('请先勾选复选框。');const rebateStr=document.getElementById('input-unify-rebate').value.trim();const rebate=parseFloat(rebateStr);if(isNaN(rebate)||rebate<0||rebate>100)return alert('请输入有效的返水比例（0-100）。');window.schemes[currentSchemeIdx].rows.forEach(r=>r.rebate=rebate.toFixed(2));renderOddsTable();document.getElementById('input-unify-rebate').value='';document.getElementById('chk-unify').checked=false;});
+        document.getElementById('btn-odds-confirm').addEventListener('click',()=>{console.log('赔率方案数据：',JSON.parse(JSON.stringify(window.schemes)));alert('赔率配置已保存（控制台可查看）。');});
+        renderSchemeSelect();renderOddsTable();
+        window.applicants=[];window.nextApplicantId=1;window.selectedApplicantId=null;
+        const initNames=['张三','01群','02群','03群','04群','05群','06群','07群','08群','09群'];
+        initNames.forEach(name=>{const defaultCfg=window.schemes.length>0?window.schemes[0].name:'47倍计算';window.applicants.push({id:window.nextApplicantId++,name,oddsConfig:defaultCfg});});
+        function getAvailableSchemeNames(){return window.schemes.map(s=>s.name);}
+        window.renderApplicants=function(){const tbody=document.getElementById('applicant-tbody');tbody.innerHTML='';const schemeNames=getAvailableSchemeNames();window.applicants.forEach(a=>{const tr=document.createElement('tr');tr.dataset.id=a.id;if(a.id===window.selectedApplicantId)tr.classList.add('selected');const tdName=document.createElement('td');const span=document.createElement('span');span.className='name-text';span.textContent=a.name||'（空）';const input=document.createElement('input');input.type='text';input.className='name-input';input.value=a.name;span.addEventListener('dblclick',(e)=>{e.stopPropagation();span.classList.add('editing');input.classList.add('editing');input.focus();input.select();});input.addEventListener('blur',()=>{span.classList.remove('editing');input.classList.remove('editing');const val=input.value.trim();if(val&&val!==a.name){a.name=val;span.textContent=val;}else{input.value=a.name;}});input.addEventListener('keydown',(e)=>{if(e.key==='Enter')input.blur();if(e.key==='Escape'){input.value=a.name;input.blur();}});tdName.appendChild(span);tdName.appendChild(input);tr.appendChild(tdName);const tdOdds=document.createElement('td');const sel=document.createElement('select');const optionSet=new Set(schemeNames);if(a.oddsConfig)optionSet.add(a.oddsConfig);const orderedOptions=schemeNames.slice();Array.from(optionSet).forEach(opt=>{if(!orderedOptions.includes(opt))orderedOptions.push(opt);});orderedOptions.forEach(opt=>{const optionEl=document.createElement('option');optionEl.value=opt;optionEl.textContent=opt;if(opt===a.oddsConfig)optionEl.selected=true;sel.appendChild(optionEl);});sel.addEventListener('change',()=>{a.oddsConfig=sel.value;});tdOdds.appendChild(sel);tr.appendChild(tdOdds);tbody.appendChild(tr);});};
+        document.getElementById('applicant-tbody').addEventListener('click',function(e){if(e.target.closest('.name-text')||e.target.closest('.name-input'))return;if(e.target.tagName==='SELECT')return;const tr=e.target.closest('tr');if(!tr)return;const id=parseInt(tr.dataset.id,10);if(isNaN(id))return;if(window.selectedApplicantId===id){window.selectedApplicantId=null;}else{window.selectedApplicantId=id;}window.renderApplicants();});
+        window.deleteApplicant=function(){if(window.selectedApplicantId===null)return alert('请先单击选中一个申报人行（蓝色高亮）。');const applicant=window.applicants.find(a=>a.id===window.selectedApplicantId);if(!applicant){window.selectedApplicantId=null;window.renderApplicants();return;}if(!confirm(`确定删除申报人"${applicant.name}"吗？`))return;window.applicants=window.applicants.filter(a=>a.id!==window.selectedApplicantId);window.selectedApplicantId=null;window.renderApplicants();};
+        document.getElementById('btn-add-applicant').addEventListener('click',()=>{const input=document.getElementById('new-applicant-name');const name=input.value.trim();if(!name)return alert('请输入申报人名称。');const defaultConfig=window.schemes.length>0?window.schemes[0].name:'47倍计算';window.applicants.push({id:window.nextApplicantId++,name,oddsConfig:defaultConfig});input.value='';window.selectedApplicantId=null;window.renderApplicants();});
+        document.getElementById('new-applicant-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-add-applicant').click();});
+        document.getElementById('btn-delete-applicant').addEventListener('click',()=>window.deleteApplicant());
+        document.getElementById('btn-confirm-applicant').addEventListener('click',()=>{console.log('申报人数据：',JSON.parse(JSON.stringify(window.applicants)));alert(`申报人配置已保存，共 ${window.applicants.length} 人。`);});
+        document.addEventListener('keydown',e=>{if(e.key==='Delete'&&document.getElementById('applicant-content').classList.contains('active')){if(document.activeElement&&document.activeElement.tagName==='INPUT')return;window.deleteApplicant();}});
         window.renderApplicants();
-    }
+    })();
 
-    // 选项卡切换
-    document.querySelectorAll('#configModal .tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            const type = this.dataset.tab;
-            if (!type) return;
-            document.querySelectorAll('#configModal .tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            document.querySelectorAll('#configModal .content').forEach(c => c.classList.remove('active'));
-            document.getElementById(type + '-content').classList.add('active');
-            if (type === 'applicant' && window.renderApplicants) window.renderApplicants();
-        });
-    });
-
-    // 弹窗打开
-    document.getElementById('configBtn').addEventListener('click',()=>{
-        document.getElementById('configModal').style.display='block';
-        initConfigModal();
-    });
+    document.getElementById('configBtn').addEventListener('click',()=>{document.getElementById('configModal').style.display='block';});
     document.getElementById('configModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
     document.getElementById('orderEntryModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
 
-    window.addEventListener('DOMContentLoaded',()=>{initDatePicker();initModalDraggableResizable('configModal');initModalDraggableResizable('orderEntryModal');});
-    window.onload=function(){switchPage('orderAnalysis');document.querySelectorAll('.menu-item, .sub-menu-item').forEach(item=>{item.addEventListener('click',function(){if(this.getAttribute('data-page')==='addOrder'){document.getElementById('orderEntryModal').style.display='block';return;}if(this.getAttribute('data-page')==='specialCode'&&this.classList.contains('menu-item')){const sub=document.getElementById('specialCodeSubmenu');sub.style.display=sub.style.display==='none'?'block':'none';switchPage('specialCode');return;}const page=this.getAttribute('data-page');if(page)switchPage(page);});});document.getElementById('specialCodeSubmenu').style.display='block';};
+    // 侧边栏折叠功能
+    function initSidebarToggle() {
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.getElementById('toggleSidebarBtn');
+        if (!sidebar || !toggleBtn) return;
+        function setCollapsed(collapsed) {
+            if (collapsed) {
+                sidebar.classList.remove('w-52');
+                sidebar.classList.add('w-20');
+                sidebar.classList.add('collapsed');
+                toggleBtn.innerHTML = '»';
+            } else {
+                sidebar.classList.remove('w-20');
+                sidebar.classList.remove('collapsed');
+                sidebar.classList.add('w-52');
+                toggleBtn.innerHTML = '«';
+            }
+            sidebarCollapsed = collapsed;
+        }
+        toggleBtn.addEventListener('click', () => {
+            setCollapsed(!sidebarCollapsed);
+        });
+        // 默认展开
+        setCollapsed(false);
+    }
+
+    window.addEventListener('DOMContentLoaded',()=>{
+        initDatePicker();
+        initModalDraggableResizable('configModal');
+        initModalDraggableResizable('orderEntryModal');
+        initSidebarToggle();
+    });
+
+    window.onload=function(){
+        switchPage('orderAnalysis');
+        document.querySelectorAll('.menu-item, .sub-menu-item').forEach(item=>{
+            item.addEventListener('click',function(){
+                if(this.getAttribute('data-page')==='addOrder'){
+                    document.getElementById('orderEntryModal').style.display='block';
+                    return;
+                }
+                if(this.getAttribute('data-page')==='specialCode'&&this.classList.contains('menu-item')){
+                    const sub=document.getElementById('specialCodeSubmenu');
+                    sub.style.display=sub.style.display==='none'?'block':'none';
+                    switchPage('specialCode');
+                    return;
+                }
+                const page=this.getAttribute('data-page');
+                if(page)switchPage(page);
+            });
+        });
+        document.getElementById('specialCodeSubmenu').style.display='block';
+    };
 </script>
 </body>
 </html>
