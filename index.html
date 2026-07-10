@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wealthy 订单管理系统</title>
-    <script src="https://cdn.tailwindcss.com">
-    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         :root { --bg: #f3f4f6; --white: #fff; --border: #d1d5db; --text: #333; --cyan-bg: #e0f7fa; }
         * { margin:0; padding:0; box-sizing:border-box; }
@@ -62,7 +61,7 @@
         /* 表格选中行高亮 */
         tr.selected td { background-color:#b8daff!important; }
 
-        /* 配置弹窗内部样式 (作用域限制) */
+        /* 配置弹窗内部样式 */
         #configModal .tabs { height:32px; background:#f0f0f0; border-bottom:1px solid #a0a0a0; display:flex; align-items:flex-end; padding-left:10px; }
         #configModal .tab { padding:6px 20px; border:1px solid #a0a0a0; border-bottom:none; background:linear-gradient(to bottom,#f9f9f9,#e0e0e0); margin-right:4px; cursor:pointer; position:relative; top:1px; font-size:12px; }
         #configModal .tab.active { background:#fff; border-bottom:1px solid #fff; font-weight:bold; color:#c00; }
@@ -112,7 +111,7 @@
         #orderEntryModal .total-text { color:#606266; } #orderEntryModal .total-num { color:#67c23a; font-weight:bold; font-size:16px; margin:0 6px; }
         #orderEntryModal .filter-group { display:flex; align-items:center; gap:20px; }
         #orderEntryModal .toolbar { background:white; padding:12px 16px; border:1px solid #e4e7ed; border-top:none; flex-shrink:0; }
-        #orderEntryModal .toolbar-btns { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+        #orderEntryModal .toolbar-btns { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:0; }
         #orderEntryModal .toolbar-options { display:flex; gap:8px; font-size:13px; color:#606266; align-items:center; flex-wrap:wrap; }
         #orderEntryModal .editor-wrapper { flex:1; display:flex; border:1px solid #e4e7ed; border-radius:0 0 6px 6px; overflow:hidden; background:white; min-height:200px; }
         #orderEntryModal .editor-half { flex:1; display:flex; flex-direction:column; }
@@ -242,11 +241,19 @@
     </div>
 </div>
 
-<!-- 录单弹窗 -->
+<!-- 录单弹窗（修改后） -->
 <div id="orderEntryModal">
     <div class="modal-mask">
         <div class="modal">
-            <div class="modal-header"><div class="title">录单</div><div class="controls"><button class="minimize-btn">─</button><button class="maximize-btn">□</button><button class="close-btn">✕</button></div></div>
+            <div class="modal-header">
+                <div class="title">录单</div>
+                <div class="controls">
+                    <button id="btnSendToMain" title="发送到总表" style="font-size:16px;">📤</button>
+                    <button class="minimize-btn">─</button>
+                    <button class="maximize-btn">□</button>
+                    <button class="close-btn">✕</button>
+                </div>
+            </div>
             <div class="main-content">
                 <div class="table-wrapper" id="entryTableWrapper" style="flex:1; min-height:0; overflow-y:auto;">
                     <table id="entryTable">
@@ -258,9 +265,34 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="bottom-bar"><div class="total-text">当前总额：<span class="total-num" id="entryTotal">0.0</span></div><div class="filter-group"><label><input type="radio" name="regionMode" checked> 智能</label><label><input type="radio" name="regionMode"> 澳门</label><label><input type="radio" name="regionMode"> 香港</label><label><input type="radio" name="regionMode"> 粤港</label><select id="entryReporterSelect"><option value="">申报人</option></select><button id="btnSendToMain" style="background:#e6a23c;border-color:#e6a23c;color:white;">发送到总表</button></div></div>
-                <div class="toolbar"><div class="toolbar-btns"><button id="btnRemoveSep">去分隔</button><button id="btnMark">标记</button><button id="btnChangeSep">换分符</button><button id="btnSemantic">语义转换</button><button id="btnReplace">指定替换</button><button id="btnReplacePreset" style="background:#409eff;border-color:#409eff;color:white;">替换预设</button></div><div class="toolbar-options"><button id="btnPaste">粘贴</button><button id="btnSaveOrder" style="background:#409eff;border-color:#409eff;color:white;">保存下单</button><button id="btnClear">清空</button><label><input type="checkbox" id="chkRecognizeRegion"> 识别地区</label><select><option>特殊模式一</option><option>特殊模式二</option></select></div></div>
-                <div class="editor-wrapper"><div class="editor-half"><div class="editor-label">源订单输入</div><textarea id="sourceOrderInput" placeholder="在此输入订单数据..."></textarea></div><div class="editor-half"><div class="editor-label">识别结果</div><div class="result-div" id="orderResult"></div></div></div>
+                <div class="bottom-bar">
+                    <div class="total-text">当前总额：<span class="total-num" id="entryTotal">0.0</span></div>
+                    <div class="filter-group">
+                        <label><input type="radio" name="regionMode" checked> 智能</label>
+                        <label><input type="radio" name="regionMode"> 澳门</label>
+                        <label><input type="radio" name="regionMode"> 香港</label>
+                        <label><input type="radio" name="regionMode"> 粤港</label>
+                        <select id="entryReporterSelect"><option value="">申报人</option></select>
+                        <select id="entrySpecialMode"><option>特殊模式一</option><option>特殊模式二</option></select>
+                    </div>
+                </div>
+                <div class="toolbar">
+                    <div class="toolbar-options" style="margin-bottom:0;">
+                        <button id="btnPaste">粘贴</button>
+                        <button id="btnSaveOrder">保存下单</button>
+                        <button id="btnClear">清空</button>
+                        <button id="btnRemoveSep">去分隔</button>
+                        <button id="btnMark">标记</button>
+                        <button id="btnChangeSep">换分符</button>
+                        <button id="btnSemantic">语义转换</button>
+                        <button id="btnReplace">指定替换</button>
+                        <button id="btnReplacePreset">替换预设</button>
+                    </div>
+                </div>
+                <div class="editor-wrapper">
+                    <div class="editor-half"><div class="editor-label">源订单输入</div><textarea id="sourceOrderInput" placeholder="在此输入订单数据..."></textarea></div>
+                    <div class="editor-half"><div class="editor-label">识别结果</div><div class="result-div" id="orderResult"></div></div>
+                </div>
             </div>
         </div>
     </div>
@@ -499,12 +531,12 @@
         if (ok) { orderList = []; persistAll(); switchPage(currentPage); }
     };
 
-    // 渲染录单弹窗表格
+    // 渲染录单弹窗表格（基于 entryOrders 数组，data-index 即真实索引）
     function renderEntryTable() {
         const tbody = document.getElementById('entryTableBody');
         if (!tbody) return;
         tbody.innerHTML = entryOrders.map((order, idx) => {
-            const rowClass = selectedOrderIndices.has(idx) ? 'selected' : '';
+            const rowClass = entrySelectedIndices.has(idx) ? 'selected' : '';
             return `<tr class="order-row ${rowClass}" data-index="${idx}">
                 <td>${idx + 1}</td>
                 <td>${order.region || ''}</td>
@@ -523,12 +555,11 @@
         if (totalEl) totalEl.textContent = total.toFixed(1);
     }
 
-    // 通用右键菜单处理函数（彻底修复隐藏逻辑）
-    function showGeneralContextMenu(menuId, x, y, dataArray, selectedIndicesSet, onDataChanged) {
+    // 通用右键菜单处理函数（支持传入真实索引提取函数）
+    function showGeneralContextMenu(menuId, x, y, dataArray, selectedIndicesSet, onDataChanged, realIndexGetter) {
         const menu = document.getElementById(menuId);
         const panel = menu.querySelector('.menu-panel');
 
-        // 先关闭所有菜单
         document.getElementById('contextMenu').style.display = 'none';
         document.getElementById('entryContextMenu').style.display = 'none';
 
@@ -543,55 +574,51 @@
         };
 
         const outsideMouseDown = (e) => {
-            // 如果点击的是菜单内部，不做任何事，让菜单内部的 click 事件处理
-            if (menu.contains(e.target)) {
-                return;
-            }
-            // 外部点击，直接隐藏
+            if (menu.contains(e.target)) return;
             hide();
         };
 
         const escHandler = (e) => {
-            if (e.key === 'Escape') {
-                hide();
-            }
+            if (e.key === 'Escape') hide();
         };
 
-        // 菜单项点击处理
         panel.onclick = async (e) => {
             const action = e.target.getAttribute('data-action');
             if (!action) return;
-            hide(); // 执行操作前隐藏菜单
+            hide();
 
-            const indices = Array.from(selectedIndicesSet).filter(i => i >= 0 && i < dataArray.length);
+            const indices = Array.from(selectedIndicesSet);
             if (indices.length === 0 && action !== 'pasteRow' && action !== 'createEmptyRow') return;
+
+            // 如果提供了 realIndexGetter，将选中的索引转换为真实索引
+            const realIndices = realIndexGetter ? indices.map(i => realIndexGetter(i)) : indices;
 
             const performAction = async (act) => {
                 switch(act) {
                     case 'deleteRow': {
-                        const ok = await showConfirm(`确定删除选中的 ${indices.length} 行吗？`);
+                        const ok = await showConfirm(`确定删除选中的 ${realIndices.length} 行吗？`);
                         if (!ok) return;
-                        for (let i = indices.length - 1; i >= 0; i--) {
-                            dataArray.splice(indices[i], 1);
+                        for (let i = realIndices.length - 1; i >= 0; i--) {
+                            dataArray.splice(realIndices[i], 1);
                         }
                         selectedIndicesSet.clear();
                         break;
                     }
                     case 'copyRow':
-                        clipboardData = indices.map(i => ({...dataArray[i]}));
+                        clipboardData = realIndices.map(i => ({...dataArray[i]}));
                         persistAll();
-                        return; // 不触发 onDataChanged
+                        return;
                     case 'cutRow':
-                        clipboardData = indices.map(i => ({...dataArray[i]}));
-                        for (let i = indices.length - 1; i >= 0; i--) {
-                            dataArray.splice(indices[i], 1);
+                        clipboardData = realIndices.map(i => ({...dataArray[i]}));
+                        for (let i = realIndices.length - 1; i >= 0; i--) {
+                            dataArray.splice(realIndices[i], 1);
                         }
                         selectedIndicesSet.clear();
                         persistAll();
                         break;
                     case 'pasteRow': {
                         if (!clipboardData.length) return;
-                        const insertIdx = indices.length ? indices[0] : dataArray.length;
+                        const insertIdx = realIndices.length ? realIndices[0] : dataArray.length;
                         const toInsert = clipboardData.map(o => ({...o}));
                         dataArray.splice(insertIdx, 0, ...toInsert);
                         selectedIndicesSet.clear();
@@ -600,19 +627,19 @@
                     case 'batchChangeRegion': {
                         const newRegion = prompt('请输入新地区（澳门/香港/粤港）：');
                         if (!newRegion || !['澳门','香港','粤港'].includes(newRegion)) return;
-                        indices.forEach(i => { dataArray[i].region = newRegion; });
+                        realIndices.forEach(i => { dataArray[i].region = newRegion; });
                         break;
                     }
                     case 'batchChangeReporter': {
                         const newReporter = prompt('请输入新申报人：');
                         if (!newReporter) return;
-                        indices.forEach(i => { dataArray[i].reporter = newReporter; });
+                        realIndices.forEach(i => { dataArray[i].reporter = newReporter; });
                         break;
                     }
                     case 'batchChangeRemark': {
                         const newRemark = prompt('请输入新备注：');
                         if (newRemark === null) return;
-                        indices.forEach(i => { dataArray[i].remark = newRemark; });
+                        realIndices.forEach(i => { dataArray[i].remark = newRemark; });
                         break;
                     }
                     case 'createEmptyRow': {
@@ -644,7 +671,7 @@
         document.addEventListener('keydown', escHandler, true);
     }
 
-    // 录单弹窗右键菜单
+    // 录单弹窗右键菜单（data-index 即真实索引，不需要 realIndexGetter）
     let entrySelectedIndices = new Set();
     function initEntryContextMenu() {
         const tbody = document.getElementById('entryTableBody');
@@ -688,20 +715,21 @@
         });
     }
 
-    // 订单详情右键菜单
+    // 订单详情右键菜单（使用 data-real-index 映射到 orderList 真实索引）
     function bindOrderDetailEvents() {
         const tbody = document.getElementById('orderDetailTbody');
         if (!tbody) return;
         tbody.addEventListener('click', (e) => {
             const tr = e.target.closest('tr.order-row');
             if (!tr) return;
-            const idx = parseInt(tr.dataset.index);
+            const realIdx = parseInt(tr.dataset.realIndex);
+            if (isNaN(realIdx)) return;
             if (e.ctrlKey || e.metaKey) {
-                if (selectedOrderIndices.has(idx)) selectedOrderIndices.delete(idx);
-                else selectedOrderIndices.add(idx);
+                if (selectedOrderIndices.has(realIdx)) selectedOrderIndices.delete(realIdx);
+                else selectedOrderIndices.add(realIdx);
             } else {
                 selectedOrderIndices.clear();
-                selectedOrderIndices.add(idx);
+                selectedOrderIndices.add(realIdx);
             }
             updateRowSelection();
         });
@@ -710,22 +738,17 @@
             e.preventDefault();
             const tr = e.target.closest('tr.order-row');
             if (tr) {
-                const idx = parseInt(tr.dataset.index);
-                if (!selectedOrderIndices.has(idx) && !e.ctrlKey) {
-                    selectedOrderIndices.clear();
-                    selectedOrderIndices.add(idx);
-                    updateRowSelection();
+                const realIdx = parseInt(tr.dataset.realIndex);
+                if (!isNaN(realIdx)) {
+                    if (!selectedOrderIndices.has(realIdx) && !e.ctrlKey) {
+                        selectedOrderIndices.clear();
+                        selectedOrderIndices.add(realIdx);
+                        updateRowSelection();
+                    }
                 }
             }
-            const base = getFilteredOrders();
-            const filtered = base.filter(o => {
-                if (orderDetailFilters.region !== '不限' && o.region !== orderDetailFilters.region) return false;
-                if (orderDetailFilters.betType !== '不限' && o.betType !== orderDetailFilters.betType) return false;
-                if (orderDetailFilters.winStatus !== '不限' && o.winStatus !== orderDetailFilters.winStatus) return false;
-                if (orderDetailFilters.reporter !== '不限' && o.reporter !== orderDetailFilters.reporter) return false;
-                return true;
-            });
-            showGeneralContextMenu('contextMenu', e.clientX, e.clientY, filtered, selectedOrderIndices, () => {
+            // 右键菜单操作的数据源是 orderList，不需要 realIndexGetter
+            showGeneralContextMenu('contextMenu', e.clientX, e.clientY, orderList, selectedOrderIndices, () => {
                 persistAll();
                 switchPage('orderDetail');
             });
@@ -750,12 +773,12 @@
 
     function updateRowSelection() {
         document.querySelectorAll('#orderDetailTbody .order-row').forEach(row => {
-            const idx = parseInt(row.dataset.index);
-            row.classList.toggle('selected', selectedOrderIndices.has(idx));
+            const realIdx = parseInt(row.dataset.realIndex);
+            row.classList.toggle('selected', selectedOrderIndices.has(realIdx));
         });
     }
 
-    // 页面渲染
+    // ===================== 页面渲染函数 =====================
     function renderOverview(){
         setTopBar(`<label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="globalRegion" value="all" ${currentFilterRegion==='all'?'checked':''} class="w-3.5 h-3.5 accent-green-600"><span>全部订单</span></label><label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="globalRegion" value="macau" ${currentFilterRegion==='macau'?'checked':''} class="w-3.5 h-3.5 accent-green-600"><span>只看澳门</span></label><label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="globalRegion" value="hongkong" ${currentFilterRegion==='hongkong'?'checked':''} class="w-3.5 h-3.5 accent-green-600"><span>只看香港</span></label><label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="globalRegion" value="yuegang" ${currentFilterRegion==='yuegang'?'checked':''} class="w-3.5 h-3.5 accent-green-600"><span>只看粤港</span></label>`);
         const sorted=sortedNumbers();const betData=getNumberBetData();const filteredOrders=getFilteredOrders();const totalOrders=filteredOrders.length;const totalAmount=filteredOrders.reduce((s,o)=>s+o.totalAmount,0);const barsHTML=sorted.map(item=>{const profit=betData[item.num]>0?-460:0;const h=Math.abs(profit)/460*100;const color=profit>=0?'#10b981':'#ef4444';return`<div class="bar-chart flex-1 mx-px" style="height:${Math.max(h,1)}%;background:${color};min-width:6px;" data-tip="${item.num}: ${profit}"></div>`;}).join('');return`<div class="flex flex-col gap-3 h-full"><div class="grid grid-cols-4 gap-3 flex-shrink-0"><div class="stat-card"><div class="text-xs text-gray-500">总订单数</div><div class="text-2xl font-bold">${totalOrders}</div></div><div class="stat-card"><div class="text-xs text-gray-500">订单总额</div><div class="text-2xl font-bold text-blue-700">${totalAmount.toFixed(1)}</div></div><div class="stat-card"><div class="text-xs text-gray-500">最大潜在亏损</div><div class="text-2xl font-bold text-red-600">${totalOrders>0?'-460':'0'}</div></div><div class="stat-card"><div class="text-xs text-gray-500">最大潜在盈利</div><div class="text-2xl font-bold text-green-600">${totalOrders>0?'+9':'0'}</div></div></div><div class="grid grid-cols-3 gap-3 flex-1 min-h-0"><div class="stat-card col-span-2 flex flex-col"><div class="font-medium text-sm mb-2">盈利分布概览</div><div class="flex-1 flex items-end gap-px px-2 chart-grid rounded bg-gray-50 border border-gray-200">${barsHTML}</div></div><div class="stat-card flex flex-col"><div class="font-medium text-sm mb-2">订单类型占比</div><div class="flex-1 flex flex-col justify-center gap-3 text-xs"><div><span class="inline-block w-2 h-2 rounded-full bg-blue-500 mr-2"></span>特码：${filteredOrders.filter(o=>o.betType==='特码').length}条</div><div><span class="inline-block w-2 h-2 rounded-full bg-green-500 mr-2"></span>连码：${filteredOrders.filter(o=>o.betType==='二中二').length}条</div><div><span class="inline-block w-2 h-2 rounded-full bg-orange-500 mr-2"></span>连肖：${filteredOrders.filter(o=>o.betType==='连肖').length}条</div></div></div></div></div>`;}
@@ -859,6 +882,7 @@
         return`<div class="flex gap-3 h-full"><div class="w-56 bg-white border border-gray-300 flex-shrink-0 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${hasLianMa?rowHTML:''}</tbody></table></div><div class="flex-1 flex flex-col gap-3 min-w-0"><div class="grid grid-cols-3 gap-3 overflow-y-auto" style="flex:0 0 40%"><div class="bg-white border border-gray-300 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${hasLianMa?rowHTML:''}</tbody></table></div><div class="bg-white border border-gray-300 overflow-y-auto rounded shadow-sm"><table><thead class="sticky top-0"><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody>${hasLianMa?rowHTML:''}</tbody></table></div><div class="bg-white border border-gray-300 rounded shadow-sm"><table><thead><tr><th>号码组</th><th>下注数</th><th>盈亏</th></tr></thead><tbody></tbody></table></div></div><div class="space-y-2 text-xs"><div class="text-center text-red-600 font-medium">原连码数据</div><div class="grid grid-cols-3 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">连码总额:${hasLianMa?160:0}</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:<span class="num-red">${hasLianMa?'-446':'0'}</span></div></div><div class="text-center text-blue-600 font-medium">调整后数据</div><div class="grid grid-cols-4 gap-1"><div class="border border-gray-300 bg-white py-1.5 text-center rounded">吃单总额:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">调整总额:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大盈利:0</div><div class="border border-gray-300 bg-white py-1.5 text-center rounded">最大亏损:0</div></div></div><div class="grid grid-cols-3 gap-1 text-xs"><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">打印连码调整</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">清空输出框</button><button class="border border-gray-300 bg-white py-1.5 hover:bg-gray-50 rounded">重置调整</button></div><div class="flex-1 min-h-0 bg-white border border-gray-300 rounded p-2 overflow-y-auto text-xs"></div><div class="flex gap-2 mt-1 mb-2"><input type="text" class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs" placeholder="输入调整记录..."><button class="border border-gray-300 px-3 py-1 text-xs rounded hover:bg-gray-50 bg-white">调整记录</button></div></div></div>`;
     }
 
+    // 订单详情渲染（新增行号列，使用 data-real-index）
     function renderOrderDetail(){
         setTopBar(`<label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="globalRegion" value="all" ${currentFilterRegion==='all'?'checked':''} class="w-3.5 h-3.5 accent-green-600"><span>全部订单</span></label><label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="globalRegion" value="macau" ${currentFilterRegion==='macau'?'checked':''} class="w-3.5 h-3.5 accent-green-600"><span>只看澳门</span></label><label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="globalRegion" value="hongkong" ${currentFilterRegion==='hongkong'?'checked':''} class="w-3.5 h-3.5 accent-green-600"><span>只看香港</span></label><label class="flex items-center space-x-1.5 cursor-pointer"><input type="radio" name="globalRegion" value="yuegang" ${currentFilterRegion==='yuegang'?'checked':''} class="w-3.5 h-3.5 accent-green-600"><span>只看粤港</span></label>`);
         const areas=['macau','hongkong','yuegang'];
@@ -878,22 +902,46 @@
         }).join('')+`<div class="bg-white border border-gray-300 p-2 text-xs rounded shadow-sm"><div class="font-medium mb-1">综合结果</div><div>-</div></div>`;
 
         const baseFiltered = getFilteredOrders();
-        const filteredOrders = baseFiltered.filter(o => {
-            if (orderDetailFilters.region !== '不限' && o.region !== orderDetailFilters.region) return false;
-            if (orderDetailFilters.betType !== '不限' && o.betType !== orderDetailFilters.betType) return false;
-            if (orderDetailFilters.winStatus !== '不限' && o.winStatus !== orderDetailFilters.winStatus) return false;
-            if (orderDetailFilters.reporter !== '不限' && o.reporter !== orderDetailFilters.reporter) return false;
-            return true;
-        });
+        // 在过滤前记录每个订单在 orderList 中的真实索引
+        const filteredWithRealIdx = [];
+        for (let i = 0; i < orderList.length; i++) {
+            const o = orderList[i];
+            const dateMatch = !currentFilterDate || o.date === currentFilterDate;
+            const regionMatch = currentFilterRegion === 'all' ||
+                (o.region === '澳门' && currentFilterRegion === 'macau') ||
+                (o.region === '香港' && currentFilterRegion === 'hongkong') ||
+                (o.region === '粤港' && currentFilterRegion === 'yuegang');
+            if (dateMatch && regionMatch) {
+                if (orderDetailFilters.region !== '不限' && o.region !== orderDetailFilters.region) continue;
+                if (orderDetailFilters.betType !== '不限' && o.betType !== orderDetailFilters.betType) continue;
+                if (orderDetailFilters.winStatus !== '不限' && o.winStatus !== orderDetailFilters.winStatus) continue;
+                if (orderDetailFilters.reporter !== '不限' && o.reporter !== orderDetailFilters.reporter) continue;
+                filteredWithRealIdx.push({ ...o, _realIdx: i });
+            }
+        }
 
         const regions = ['不限', '澳门', '香港', '粤港'];
         const betTypes = ['不限', ...new Set(baseFiltered.map(o => o.betType))].filter(Boolean);
         const winStatuses = ['不限', '中奖', '未中奖', '未知'];
         const reporters = ['不限', ...new Set(baseFiltered.map(o => o.reporter))].filter(Boolean);
 
-        const orderRows=filteredOrders.length>0?filteredOrders.map((o, idx)=>
-            `<tr data-index="${idx}" class="order-row ${selectedOrderIndices.has(idx) ? 'selected' : ''}"><td>${o.region}</td><td>${o.betType}</td><td class="order-info-cell" style="width:${2.5*100/(10)}%">${o.orderInfo.length>20?`<span class="text-left text-[10px]">${o.orderInfo}</span>`:o.orderInfo}</td><td>${o.complexType}</td><td>${o.calcMethod}</td><td>${o.amount.toFixed(1)}</td><td>${o.totalAmount.toFixed(1)}</td><td>${o.orderSeq}</td><td>${o.reporter}</td><td>${o.winStatus||'未知'}</td><td>${o.winAmount||''}</td></tr>`
-        ).join(''):'<tr><td colspan="11" class="text-gray-400 py-4">暂无订单</td></tr>';
+        const orderRows = filteredWithRealIdx.length > 0 ? filteredWithRealIdx.map((o, idx) => {
+            const rowClass = selectedOrderIndices.has(o._realIdx) ? 'selected' : '';
+            return `<tr data-index="${idx}" data-real-index="${o._realIdx}" class="order-row ${rowClass}">
+                <td>${idx + 1}</td>
+                <td>${o.region}</td>
+                <td>${o.betType}</td>
+                <td class="order-info-cell">${o.orderInfo && o.orderInfo.length > 20 ? `<span class="text-left text-[10px]">${o.orderInfo}</span>` : (o.orderInfo || '')}</td>
+                <td>${o.complexType || ''}</td>
+                <td>${o.calcMethod || ''}</td>
+                <td>${(o.amount || 0).toFixed(1)}</td>
+                <td>${(o.totalAmount || 0).toFixed(1)}</td>
+                <td>${o.orderSeq || ''}</td>
+                <td>${o.reporter || ''}</td>
+                <td>${o.winStatus || '未知'}</td>
+                <td>${o.winAmount || ''}</td>
+            </tr>`;
+        }).join('') : '<tr><td colspan="12" class="text-gray-400 py-4">暂无订单</td></tr>';
 
         return`<div class="flex flex-col gap-3 h-full">
             <div class="bg-white border border-gray-300 p-2 flex items-center gap-2 text-xs flex-shrink-0 rounded shadow-sm flex-wrap">
@@ -915,25 +963,26 @@
                 <table id="orderDetailTable" style="table-layout:fixed; width:100%;">
                     <thead class="sticky top-0">
                         <tr>
-                            <th style="width:calc(100%/10)">区域</th>
-                            <th style="width:calc(100%/10)">投注类型</th>
-                            <th style="width:calc(2.5*100%/10)">订单信息</th>
-                            <th style="width:calc(100%/10)">复选类型</th>
-                            <th style="width:calc(100%/10)">计算方式</th>
-                            <th style="width:calc(100%/10)">金额</th>
-                            <th style="width:calc(100%/10)">订单总额</th>
-                            <th style="width:calc(100%/10)">订单序号</th>
-                            <th style="width:calc(100%/10)">申报人</th>
-                            <th style="width:calc(100%/10)">中奖详情</th>
-                            <th style="width:calc(100%/10)">中奖金额</th>
+                            <th style="width:4%">序号</th>
+                            <th style="width:8%">区域</th>
+                            <th style="width:8%">投注类型</th>
+                            <th style="width:16%">订单信息</th>
+                            <th style="width:8%">复选类型</th>
+                            <th style="width:8%">计算方式</th>
+                            <th style="width:8%">金额</th>
+                            <th style="width:8%">订单总额</th>
+                            <th style="width:8%">订单序号</th>
+                            <th style="width:8%">申报人</th>
+                            <th style="width:8%">中奖详情</th>
+                            <th style="width:8%">中奖金额</th>
                         </tr>
                     </thead>
                     <tbody id="orderDetailTbody">${orderRows}</tbody>
                 </table>
             </div>
             <div class="bg-white border border-gray-300 p-2 text-xs flex justify-between items-center flex-shrink-0 rounded shadow-sm">
-                <span>订单总额：<b>${filteredOrders.reduce((s,o)=>s+o.totalAmount,0).toFixed(1)}</b></span>
-                <span>状态：<span class="text-green-600 font-medium">${filteredOrders.length>0?'正常':'无订单'}</span></span>
+                <span>订单总额：<b>${filteredWithRealIdx.reduce((s,o)=>s+(o.totalAmount||0),0).toFixed(1)}</b></span>
+                <span>状态：<span class="text-green-600 font-medium">${filteredWithRealIdx.length>0?'正常':'无订单'}</span></span>
             </div>
             <div class="grid grid-cols-4 gap-3 text-xs flex-shrink-0">
                 <select id="filterRegion" class="border border-gray-300 p-1.5 bg-white rounded">
@@ -1240,11 +1289,11 @@
         window.renderApplicants();
     })();
 
-    // 更新录单弹窗申报人下拉框
+    // 更新录单弹窗申报人下拉框（去掉占位项，默认选张三）
     function updateEntryReporterSelect() {
         const sel = document.getElementById('entryReporterSelect');
         if (!sel) return;
-        sel.innerHTML = '<option value="">申报人</option>';
+        sel.innerHTML = '';
         if (window.applicants && window.applicants.length) {
             window.applicants.forEach(a => {
                 const opt = document.createElement('option');
@@ -1252,6 +1301,11 @@
                 opt.textContent = a.name;
                 sel.appendChild(opt);
             });
+            // 默认选中张三，如果存在
+            const zs = window.applicants.find(a => a.name === '张三');
+            if (zs) {
+                sel.value = '张三';
+            }
         }
     }
 
@@ -1588,7 +1642,7 @@
       return deduped;
     }
 
-    // 单行解析、继承、识别入口
+    // 单行解析
     function processOneLine(line) {
       if (!line.trim()) return [];
       const defaultSuffixes = ['米', '元', '块', '角', '分', '厘'];
@@ -1663,7 +1717,7 @@
       return false;
     }
 
-    // ===== 增强版继承函数 =====
+    // 继承函数
     function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
       if (!lineResults || lineResults.length === 0) return { results: lineResults, lastPlay: lastInheritablePlay };
       const inheritableCats = { '平特肖': { type: 'zodiac', count: 1 }, '平特尾': { type: 'tail', count: 1 } };
@@ -1710,11 +1764,11 @@
       return { results: processed, lastPlay: outgoingPlay };
     }
 
-    // ===== 地区提取 =====
+    // 地区提取
     const REGION_KEYWORDS = { 'macau': ['澳', '奥', '澳门', '奥门', '门', 'mc', 'MC', 'Mc'], 'hongkong': ['港', '香', '香港', 'hk', 'HK', 'Hk'], 'yuegang': ['粤', '粤港', 'yg', 'YG', 'Yg'] };
     const REGION_LABELS = { 'macau': '澳门', 'hongkong': '香港', 'yuegang': '粤港' };
-    let currentRegion = 'macau'; // 默认区域
-    window._dotRegion = 'auto'; // 录单弹窗地区模式
+    let currentRegion = 'macau';
+    window._dotRegion = 'auto';
 
     function extractRegion(line) {
       const allKeywords = [];
@@ -1792,173 +1846,115 @@
       return numsArr.map(g => `(` + g + `)`).join(' ');
     }
 
-    function updateOrderTotalDisplay() { /* 可进一步扩展 */ }
-    function updateMaxLossDisplay() { /* 可进一步扩展 */ }
+    function updateOrderTotalDisplay() {}
+    function updateMaxLossDisplay() {}
 
-    // ============ 按钮功能绑定 ============
+    // 按钮功能
+    function getInputArea() { return document.getElementById('sourceOrderInput'); }
 
-    // 辅助：获取当前输入框元素
-    function getInputArea() {
-        return document.getElementById('sourceOrderInput');
-    }
-
-    // 1. 去分隔
     function removeSep() {
         const ta = getInputArea();
-        if (!ta || !ta.value) {
-            alert('输入框无内容');
-            return;
-        }
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
+        if (!ta || !ta.value) { alert('输入框无内容'); return; }
+        const start = ta.selectionStart, end = ta.selectionEnd;
         if (start !== end) {
             const selected = ta.value.substring(start, end);
             const result = selected.replace(/[^\dA-Za-z\u4e00-\u9fa5\s]/g, '');
             ta.value = ta.value.substring(0, start) + result + ta.value.substring(end);
             performRecognition(ta.value);
-        } else {
-            alert('请先选择内容');
-        }
+        } else { alert('请先选择内容'); }
     }
 
-    // 2. 标记
     function markText() {
         const ta = getInputArea();
-        if (!ta || !ta.value) {
-            alert('输入框无内容');
-            return;
-        }
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
+        if (!ta || !ta.value) { alert('输入框无内容'); return; }
+        const start = ta.selectionStart, end = ta.selectionEnd;
         if (start !== end) {
             const selected = ta.value.substring(start, end);
             const result = selected.replace(/[\r\n]+/g, ' ').replace(/[\s]{2,}/g, ' ').trim();
             ta.value = ta.value.substring(0, start) + result + ta.value.substring(end);
             performRecognition(ta.value);
-        } else {
-            alert('请先选择内容');
-        }
+        } else { alert('请先选择内容'); }
     }
 
-    // 3. 换分符
     function changeSep() {
         const ta = getInputArea();
-        if (!ta || !ta.value) {
-            alert('输入框无内容');
-            return;
-        }
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
+        if (!ta || !ta.value) { alert('输入框无内容'); return; }
+        const start = ta.selectionStart, end = ta.selectionEnd;
         if (start !== end) {
             const selected = ta.value.substring(start, end);
             const result = selected.replace(/[^\dA-Za-z\u4e00-\u9fa5\s]/g, '-');
             ta.value = ta.value.substring(0, start) + result + ta.value.substring(end);
             performRecognition(ta.value);
-        } else {
-            alert('请先选择内容');
-        }
+        } else { alert('请先选择内容'); }
     }
 
-    // 4. 语义转换、指定替换、替换预设（通用占位函数）
-    function handleTool(name) {
-        alert(`已执行：${name}`);
-    }
+    function handleTool(name) { alert(`已执行：${name}`); }
 
-    // 5. 粘贴
     async function pasteFromClipboard() {
         try {
             const t = await navigator.clipboard.readText();
             const ta = getInputArea();
-            if (t && ta) {
-                ta.value = t;
-                performRecognition(t);
-                alert('已粘贴');
-            }
-        } catch (e) {
-            alert('无法访问剪切板');
-        }
+            if (t && ta) { ta.value = t; performRecognition(t); alert('已粘贴'); }
+        } catch (e) { alert('无法访问剪切板'); }
     }
 
-    // 6. 保存下单：将识别结果保存到订单列表（orderList）
+    // 保存到录单窗口表格（entryOrders）
     function saveOrder() {
         const sel = document.getElementById('entryReporterSelect');
         const reporterName = sel ? sel.value : '';
-        if (!reporterName) {
-            alert('请选择申报人');
-            return;
-        }
+        if (!reporterName) { alert('请选择申报人'); return; }
         const pureLines = window._pureOrderLines || [];
         const pureRegions = window._pureOrderRegions || [];
-        if (!pureLines.length) {
-            alert('无订单');
-            return;
-        }
-
-        // 计算当前申报人的订单序号（基于已有orderList中该申报人的数量）
-        const seq = orderList.filter(o => o.reporter === reporterName).length + 1;
-        // 最大ID
-        let maxId = orderList.reduce((m, o) => Math.max(m, o.id || 0), 0);
+        if (!pureLines.length) { alert('无订单'); return; }
 
         for (let i = 0; i < pureLines.length; i++) {
             const line = pureLines[i];
             const regionKey = pureRegions[i] || (window._dotRegion === 'auto' ? 'macau' : window._dotRegion);
             const regionName = REGION_LABELS[regionKey] || '澳门';
-
-            // 解析纯行文本 "类别:数字 各 金额" 格式
-            let category = '', numbers = '', kw = '', unitAmount = 0, totalAmount = 0;
-            // 尝试从缓存识别结果中获取更准确的数据
-            // 这里简化处理：从纯行中提取信息
-            // 格式例如 "特码:01 各10  (共10)" 我们稍微解析
+            let category = '', numbers = '', kw = '', unitAmount = 0;
             const match = line.match(/^(.+?):\s*(.+?)\s+(各|各组|各数|各号)\s*(\d+)/);
             if (match) {
-                category = match[1];
-                numbers = match[2];
-                kw = match[3];
-                unitAmount = parseFloat(match[4]) || 0;
+                category = match[1]; numbers = match[2]; kw = match[3]; unitAmount = parseFloat(match[4]) || 0;
             } else {
-                // 备用简单解析
                 const parts = line.split(' ');
                 if (parts.length >= 2) {
                     const catNum = parts[0].split(':');
-                    if (catNum.length === 2) {
-                        category = catNum[0];
-                        numbers = catNum[1];
-                    }
-                    kw = '各';
-                    unitAmount = parseFloat(parts[parts.length - 1]) || 0;
+                    if (catNum.length === 2) { category = catNum[0]; numbers = catNum[1]; }
+                    kw = '各'; unitAmount = parseFloat(parts[parts.length - 1]) || 0;
                 }
             }
-
-            orderList.push({
-                id: ++maxId,
+            entryOrders.push({
                 region: regionName,
                 betType: category || '',
                 orderInfo: numbers || '',
                 complexType: '',
                 calcMethod: kw || '各',
                 amount: unitAmount,
-                totalAmount: totalAmount || unitAmount,
-                orderSeq: seq,
+                totalAmount: unitAmount,
                 reporter: reporterName,
-                winStatus: '未知',
-                winAmount: '',
-                date: currentFilterDate,
                 remark: ''
             });
         }
+        renderEntryTable();
+        clearInput();
+    }
 
+    // 发送到总表（确认后转入 orderList）
+    async function sendToMain() {
+        if (!entryOrders.length) { alert('无订单可发送'); return; }
+        const ok = await showConfirm('确定发送到总表吗？');
+        if (!ok) return;
+        let maxId = orderList.reduce((m, o) => Math.max(m, o.id || 0), 0);
+        for (const item of entryOrders) {
+            orderList.push({ ...item, id: ++maxId, date: currentFilterDate, winStatus: '未知', winAmount: '' });
+        }
+        entryOrders = [];
+        entrySelectedIndices.clear();
+        renderEntryTable();
         persistAll();
-        switchPage('orderDetail'); // 跳转到订单详情页查看
-        alert(`已保存为${reporterName}的第${seq}条订单`);
+        switchPage('orderDetail');
     }
 
-    // 7. 发送到总表（模拟，实际不需要额外操作）
-    function sendToMain() {
-        // 无额外操作，订单保存时已经写入orderList
-        alert('订单已保存到总表');
-    }
-
-    // 8. 清空
     function clearInput() {
         const ta = getInputArea();
         if (ta) ta.value = '';
@@ -1969,7 +1965,7 @@
         window._cachedMaxLossData = [];
     }
 
-    // 绑定所有按钮事件
+    // 绑定按钮事件
     function bindEntryButtons() {
         document.getElementById('btnRemoveSep')?.addEventListener('click', removeSep);
         document.getElementById('btnMark')?.addEventListener('click', markText);
@@ -1983,15 +1979,11 @@
         document.getElementById('btnSendToMain')?.addEventListener('click', sendToMain);
     }
 
-    // 录单弹窗：绑定文本区域解析、地区联动
+    // 识别绑定
     function bindOrderEntryRecognition() {
       const textarea = document.getElementById('sourceOrderInput');
       if (!textarea) return;
-      textarea.addEventListener('input', function() {
-        performRecognition(this.value);
-      });
-
-      // 地区模式绑定
+      textarea.addEventListener('input', function() { performRecognition(this.value); });
       const regionRadios = document.querySelectorAll('#orderEntryModal input[name="regionMode"]');
       regionRadios.forEach((radio, index) => {
         radio.addEventListener('change', function() {
@@ -2003,29 +1995,8 @@
           }
         });
       });
-      // 识别地区复选框
-      const chkRegion = document.getElementById('chkRecognizeRegion');
-      if (chkRegion) {
-        chkRegion.addEventListener('change', function() {
-          if (this.checked) {
-            window._dotRegion = 'auto';
-          } else {
-            const checkedRadio = document.querySelector('#orderEntryModal input[name="regionMode"]:checked');
-            const modes = ['auto', 'macau', 'hongkong', 'yuegang'];
-            if (checkedRadio) {
-              const idx = Array.from(regionRadios).indexOf(checkedRadio);
-              window._dotRegion = modes[idx] || 'auto';
-            } else {
-              window._dotRegion = 'auto';
-            }
-          }
-          const ta = getInputArea();
-          if (ta) performRecognition(ta.value);
-        });
-      }
     }
 
-    // 初始化时调用绑定
     window.addEventListener('DOMContentLoaded', function() {
       bindOrderEntryRecognition();
       bindEntryButtons();
