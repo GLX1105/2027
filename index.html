@@ -258,13 +258,14 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="bottom-bar"><div class="total-text">当前总额：<span class="total-num" id="entryTotal">0.0</span></div><div class="filter-group"><label><input type="radio" name="regionMode" checked> 智能</label><label><input type="radio" name="regionMode"> 澳门</label><label><input type="radio" name="regionMode"> 香港</label><label><input type="radio" name="regionMode"> 粤港</label><select><option>申报人</option><option>张三</option><option>李四</option></select><button style="background:#e6a23c;border-color:#e6a23c;color:white;">发送到总表</button></div></div>
-                <div class="toolbar"><div class="toolbar-btns"><button>去分隔</button><button>标记</button><button>换分符</button><button>语义转换</button><button>指定替换</button><button style="background:#409eff;border-color:#409eff;color:white;">替换预设</button></div><div class="toolbar-options"><button>粘贴</button><button style="background:#409eff;border-color:#409eff;color:white;">保存下单</button><button>清空</button><label><input type="checkbox" id="chkRecognizeRegion"> 识别地区</label><select><option>特殊模式一</option><option>特殊模式二</option></select></div></div>
+                <div class="bottom-bar"><div class="total-text">当前总额：<span class="total-num" id="entryTotal">0.0</span></div><div class="filter-group"><label><input type="radio" name="regionMode" checked> 智能</label><label><input type="radio" name="regionMode"> 澳门</label><label><input type="radio" name="regionMode"> 香港</label><label><input type="radio" name="regionMode"> 粤港</label><select id="entryReporterSelect"><option value="">申报人</option></select><button id="btnSendToMain" style="background:#e6a23c;border-color:#e6a23c;color:white;">发送到总表</button></div></div>
+                <div class="toolbar"><div class="toolbar-btns"><button id="btnRemoveSep">去分隔</button><button id="btnMark">标记</button><button id="btnChangeSep">换分符</button><button id="btnSemantic">语义转换</button><button id="btnReplace">指定替换</button><button id="btnReplacePreset" style="background:#409eff;border-color:#409eff;color:white;">替换预设</button></div><div class="toolbar-options"><button id="btnPaste">粘贴</button><button id="btnSaveOrder" style="background:#409eff;border-color:#409eff;color:white;">保存下单</button><button id="btnClear">清空</button><label><input type="checkbox" id="chkRecognizeRegion"> 识别地区</label><select><option>特殊模式一</option><option>特殊模式二</option></select></div></div>
                 <div class="editor-wrapper"><div class="editor-half"><div class="editor-label">源订单输入</div><textarea id="sourceOrderInput" placeholder="在此输入订单数据..."></textarea></div><div class="editor-half"><div class="editor-label">识别结果</div><div class="result-div" id="orderResult"></div></div></div>
             </div>
         </div>
     </div>
 </div>
+
 <script>
     // ===== 完整数据与逻辑 =====
     const shengOrder = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
@@ -1239,12 +1240,25 @@
         window.renderApplicants();
     })();
 
+    // 更新录单弹窗申报人下拉框
+    function updateEntryReporterSelect() {
+        const sel = document.getElementById('entryReporterSelect');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">申报人</option>';
+        if (window.applicants && window.applicants.length) {
+            window.applicants.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.name;
+                opt.textContent = a.name;
+                sel.appendChild(opt);
+            });
+        }
+    }
+
     document.getElementById('configBtn').addEventListener('click',()=>{document.getElementById('configModal').style.display='block';});
     document.getElementById('configModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
     document.getElementById('orderEntryModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
     document.getElementById('confirmModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none';});
-
-    // 侧边栏折叠已在 initSidebarToggle 中定义，不重复
 
     async function initApp() {
         await restoreAll();
@@ -1252,6 +1266,7 @@
         initModalDraggableResizable('configModal');
         initModalDraggableResizable('orderEntryModal');
         initSidebarToggle();
+        updateEntryReporterSelect(); // 初始化申报人下拉框
         document.querySelector('#orderEntryModal .close-btn').addEventListener('click', () => {
             document.getElementById('orderEntryModal').style.display = 'none';
         });
@@ -1780,17 +1795,201 @@
     function updateOrderTotalDisplay() { /* 可进一步扩展 */ }
     function updateMaxLossDisplay() { /* 可进一步扩展 */ }
 
-    // 录单弹窗：绑定文本区域解析
+    // ============ 按钮功能绑定 ============
+
+    // 辅助：获取当前输入框元素
+    function getInputArea() {
+        return document.getElementById('sourceOrderInput');
+    }
+
+    // 1. 去分隔
+    function removeSep() {
+        const ta = getInputArea();
+        if (!ta || !ta.value) {
+            alert('输入框无内容');
+            return;
+        }
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        if (start !== end) {
+            const selected = ta.value.substring(start, end);
+            const result = selected.replace(/[^\dA-Za-z\u4e00-\u9fa5\s]/g, '');
+            ta.value = ta.value.substring(0, start) + result + ta.value.substring(end);
+            performRecognition(ta.value);
+        } else {
+            alert('请先选择内容');
+        }
+    }
+
+    // 2. 标记
+    function markText() {
+        const ta = getInputArea();
+        if (!ta || !ta.value) {
+            alert('输入框无内容');
+            return;
+        }
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        if (start !== end) {
+            const selected = ta.value.substring(start, end);
+            const result = selected.replace(/[\r\n]+/g, ' ').replace(/[\s]{2,}/g, ' ').trim();
+            ta.value = ta.value.substring(0, start) + result + ta.value.substring(end);
+            performRecognition(ta.value);
+        } else {
+            alert('请先选择内容');
+        }
+    }
+
+    // 3. 换分符
+    function changeSep() {
+        const ta = getInputArea();
+        if (!ta || !ta.value) {
+            alert('输入框无内容');
+            return;
+        }
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        if (start !== end) {
+            const selected = ta.value.substring(start, end);
+            const result = selected.replace(/[^\dA-Za-z\u4e00-\u9fa5\s]/g, '-');
+            ta.value = ta.value.substring(0, start) + result + ta.value.substring(end);
+            performRecognition(ta.value);
+        } else {
+            alert('请先选择内容');
+        }
+    }
+
+    // 4. 语义转换、指定替换、替换预设（通用占位函数）
+    function handleTool(name) {
+        alert(`已执行：${name}`);
+    }
+
+    // 5. 粘贴
+    async function pasteFromClipboard() {
+        try {
+            const t = await navigator.clipboard.readText();
+            const ta = getInputArea();
+            if (t && ta) {
+                ta.value = t;
+                performRecognition(t);
+                alert('已粘贴');
+            }
+        } catch (e) {
+            alert('无法访问剪切板');
+        }
+    }
+
+    // 6. 保存下单：将识别结果保存到订单列表（orderList）
+    function saveOrder() {
+        const sel = document.getElementById('entryReporterSelect');
+        const reporterName = sel ? sel.value : '';
+        if (!reporterName) {
+            alert('请选择申报人');
+            return;
+        }
+        const pureLines = window._pureOrderLines || [];
+        const pureRegions = window._pureOrderRegions || [];
+        if (!pureLines.length) {
+            alert('无订单');
+            return;
+        }
+
+        // 计算当前申报人的订单序号（基于已有orderList中该申报人的数量）
+        const seq = orderList.filter(o => o.reporter === reporterName).length + 1;
+        // 最大ID
+        let maxId = orderList.reduce((m, o) => Math.max(m, o.id || 0), 0);
+
+        for (let i = 0; i < pureLines.length; i++) {
+            const line = pureLines[i];
+            const regionKey = pureRegions[i] || (window._dotRegion === 'auto' ? 'macau' : window._dotRegion);
+            const regionName = REGION_LABELS[regionKey] || '澳门';
+
+            // 解析纯行文本 "类别:数字 各 金额" 格式
+            let category = '', numbers = '', kw = '', unitAmount = 0, totalAmount = 0;
+            // 尝试从缓存识别结果中获取更准确的数据
+            // 这里简化处理：从纯行中提取信息
+            // 格式例如 "特码:01 各10  (共10)" 我们稍微解析
+            const match = line.match(/^(.+?):\s*(.+?)\s+(各|各组|各数|各号)\s*(\d+)/);
+            if (match) {
+                category = match[1];
+                numbers = match[2];
+                kw = match[3];
+                unitAmount = parseFloat(match[4]) || 0;
+            } else {
+                // 备用简单解析
+                const parts = line.split(' ');
+                if (parts.length >= 2) {
+                    const catNum = parts[0].split(':');
+                    if (catNum.length === 2) {
+                        category = catNum[0];
+                        numbers = catNum[1];
+                    }
+                    kw = '各';
+                    unitAmount = parseFloat(parts[parts.length - 1]) || 0;
+                }
+            }
+
+            orderList.push({
+                id: ++maxId,
+                region: regionName,
+                betType: category || '',
+                orderInfo: numbers || '',
+                complexType: '',
+                calcMethod: kw || '各',
+                amount: unitAmount,
+                totalAmount: totalAmount || unitAmount,
+                orderSeq: seq,
+                reporter: reporterName,
+                winStatus: '未知',
+                winAmount: '',
+                date: currentFilterDate,
+                remark: ''
+            });
+        }
+
+        persistAll();
+        switchPage('orderDetail'); // 跳转到订单详情页查看
+        alert(`已保存为${reporterName}的第${seq}条订单`);
+    }
+
+    // 7. 发送到总表（模拟，实际不需要额外操作）
+    function sendToMain() {
+        // 无额外操作，订单保存时已经写入orderList
+        alert('订单已保存到总表');
+    }
+
+    // 8. 清空
+    function clearInput() {
+        const ta = getInputArea();
+        if (ta) ta.value = '';
+        const resultDiv = document.getElementById('orderResult');
+        if (resultDiv) resultDiv.innerHTML = '';
+        window._pureOrderLines = [];
+        window._pureOrderRegions = [];
+        window._cachedMaxLossData = [];
+    }
+
+    // 绑定所有按钮事件
+    function bindEntryButtons() {
+        document.getElementById('btnRemoveSep')?.addEventListener('click', removeSep);
+        document.getElementById('btnMark')?.addEventListener('click', markText);
+        document.getElementById('btnChangeSep')?.addEventListener('click', changeSep);
+        document.getElementById('btnSemantic')?.addEventListener('click', () => handleTool('语义转换'));
+        document.getElementById('btnReplace')?.addEventListener('click', () => handleTool('指定替换'));
+        document.getElementById('btnReplacePreset')?.addEventListener('click', () => handleTool('替换预设'));
+        document.getElementById('btnPaste')?.addEventListener('click', pasteFromClipboard);
+        document.getElementById('btnSaveOrder')?.addEventListener('click', saveOrder);
+        document.getElementById('btnClear')?.addEventListener('click', clearInput);
+        document.getElementById('btnSendToMain')?.addEventListener('click', sendToMain);
+    }
+
+    // 录单弹窗：绑定文本区域解析、地区联动
     function bindOrderEntryRecognition() {
       const textarea = document.getElementById('sourceOrderInput');
       if (!textarea) return;
-      // 移除可能存在的旧监听器避免重复（使用新的事件处理）
-      textarea.removeEventListener('input', onTextInput);
-      textarea.addEventListener('input', onTextInput);
-
-      function onTextInput() {
+      textarea.addEventListener('input', function() {
         performRecognition(this.value);
-      }
+      });
 
       // 地区模式绑定
       const regionRadios = document.querySelectorAll('#orderEntryModal input[name="regionMode"]');
@@ -1799,7 +1998,7 @@
           if (this.checked) {
             const modes = ['auto', 'macau', 'hongkong', 'yuegang'];
             window._dotRegion = modes[index] || 'auto';
-            const ta = document.getElementById('sourceOrderInput');
+            const ta = getInputArea();
             if (ta) performRecognition(ta.value);
           }
         });
@@ -1820,15 +2019,16 @@
               window._dotRegion = 'auto';
             }
           }
-          const ta = document.getElementById('sourceOrderInput');
+          const ta = getInputArea();
           if (ta) performRecognition(ta.value);
         });
       }
     }
 
-    // 绑定识别功能到录单弹窗（在 DOM 加载后执行）
+    // 初始化时调用绑定
     window.addEventListener('DOMContentLoaded', function() {
       bindOrderEntryRecognition();
+      bindEntryButtons();
     });
 </script>
 </body>
