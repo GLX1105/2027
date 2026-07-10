@@ -265,7 +265,7 @@
     </div>
 </div>
 <script>
-        // ===== 完整数据与逻辑 =====
+    // ===== 完整数据与逻辑（无任何省略） =====
     const shengOrder = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
     const numberList = [
         {sheng:'马',num:'01',color:'red'},{sheng:'马',num:'13',color:'red'},{sheng:'马',num:'25',color:'blue'},{sheng:'马',num:'37',color:'blue'},{sheng:'马',num:'49',color:'green'},
@@ -1401,7 +1401,7 @@
       return { displayItems, totalCount: cnt, warnings, allNumsArr: allNumsArr };
     }
 
-    // 复杂玩法匹配
+    // 复杂玩法匹配（完整保留）
     function collectSpecialMatches(text) {
       const Z = ZODIAC;
       const allMatches = [];
@@ -1714,9 +1714,14 @@
     function bindOrderEntryRecognition() {
       const textarea = document.getElementById('sourceOrderInput');
       if (!textarea) return;
-      textarea.addEventListener('input', function() {
+      // 移除可能存在的旧监听器避免重复（使用新的事件处理）
+      textarea.removeEventListener('input', onTextInput);
+      textarea.addEventListener('input', onTextInput);
+
+      function onTextInput() {
         performRecognition(this.value);
-      });
+      }
+
       // 地区模式绑定
       const regionRadios = document.querySelectorAll('#orderEntryModal input[name="regionMode"]');
       regionRadios.forEach((radio, index) => {
@@ -1724,7 +1729,6 @@
           if (this.checked) {
             const modes = ['auto', 'macau', 'hongkong', 'yuegang'];
             window._dotRegion = modes[index] || 'auto';
-            // 重新解析当前文本
             const ta = document.getElementById('sourceOrderInput');
             if (ta) performRecognition(ta.value);
           }
@@ -1737,7 +1741,6 @@
           if (this.checked) {
             window._dotRegion = 'auto';
           } else {
-            // 恢复默认区域
             const checkedRadio = document.querySelector('#orderEntryModal input[name="regionMode"]:checked');
             const modes = ['auto', 'macau', 'hongkong', 'yuegang'];
             if (checkedRadio) {
@@ -1754,7 +1757,6 @@
     }
 
     // ===== 原有初始化逻辑扩展 =====
-    // 覆盖 addOrder 点击行为：显示录单弹窗并绑定解析
     const originalAddOrderHandler = function(e) {
       const page = this.getAttribute('data-page');
       if (page === 'addOrder') {
@@ -1763,8 +1765,7 @@
         entrySelectedIndices.clear();
         renderEntryTable();
         initEntryContextMenu();
-        bindOrderEntryRecognition();
-        // 清空并重新绑定
+        // 清空文本并触发识别
         const ta = document.getElementById('sourceOrderInput');
         if (ta) { ta.value = ''; performRecognition(''); }
       }
@@ -1802,7 +1803,7 @@
         });
       });
       document.getElementById('specialCodeSubmenu').style.display='block';
-      bindOrderEntryRecognition(); // 初始绑定
+      bindOrderEntryRecognition(); // 一次性绑定识别功能
     }
 
     window.addEventListener('DOMContentLoaded', initApp);
