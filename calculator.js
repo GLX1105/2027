@@ -150,9 +150,10 @@ function getPlayOddsRebate(playType) {
     return { odds: row ? parseFloat(row.odds) : 1, rebate: row ? parseFloat(row.rebate) : 0 };
 }
 
-// ========== 中奖判断 ==========
+// ========== 中奖判断（已修复空值保护） ==========
 function checkWin(category, orderInfo, drawNums) {
-    if (!drawNums || drawNums.length < 7) return false;
+    // 增强的空值保护，避免崩溃
+    if (!category || !orderInfo || !drawNums || drawNums.length < 7) return false;
     const teMa = drawNums[6];
     const zhengMa = drawNums.slice(0, 6);
     const allNums = drawNums;
@@ -321,9 +322,9 @@ function calcProfit(category, orderInfo, amount, drawNums) {
     return Math.round(profit * 100) / 100;
 }
 
-// ========== 中奖本金计算 ==========
+// ========== 中奖本金计算（已修复空值保护） ==========
 function calcWinPrincipal(order, drawNums) {
-    if (!order || !drawNums) return '0';
+    if (!order || !drawNums || drawNums.length < 7) return '0';
     const betType = order.betType || '';
     const orderInfo = order.orderInfo || '';
     const unitAmount = parseFloat(order.amount) || 0;
@@ -785,7 +786,7 @@ function generateDuijiangReport() {
         const profitColor = profitInt >= 0 ? '#059669' : '#dc2626';
         const profitStr = '<span style="color:' + profitColor + ';">' + profitInt + '</span>';
 
-        // 新增：上下家标签
+        // 上下家标签
         let shangxiaTag = '';
         if (applicant && applicant.shangxia) {
             const tagColors = {
