@@ -2,6 +2,23 @@
 
 let currentPage = null;
 
+// ========== 订单详情过滤函数 ==========
+function getFilteredOrdersForDetail() {
+    const today = State.currentFilterDate;
+    const filterRegion = State.orderDetailFilters.region;
+    const filterBetType = State.orderDetailFilters.betType;
+    const filterWinStatus = State.orderDetailFilters.winStatus;
+    const filterRep = State.orderDetailFilters.reporter;
+    return State.orderList.filter(o => {
+        if (o.date !== today) return false;
+        if (filterRegion !== '不限' && o.region !== filterRegion) return false;
+        if (filterBetType !== '不限' && o.betType !== filterBetType) return false;
+        if (filterWinStatus !== '不限' && o.winStatus !== filterWinStatus) return false;
+        if (filterRep !== '不限' && o.reporter !== filterRep) return false;
+        return true;
+    });
+}
+
 // ========== 页面路由与切换 ==========
 function switchPage(pageName) {
     const oldPage = currentPage;
