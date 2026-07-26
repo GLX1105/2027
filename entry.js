@@ -136,14 +136,17 @@ function saveOrder() {
             const regionKey = pureRegions[i] || (State.dotRegion === 'auto' ? 'macau' : State.dotRegion);
             const regionName = REGION_LABELS[regionKey] || '澳门';
             let category = '', numbers = '', kw = '', unitAmount = 0, totalCount = 1;
-            const match = line.match(/^(.+?):\s*(.+?)\s+(各|各组|各数|各号)\s*(\d+)/);
+            // 尝试标准格式匹配：玩法:内容 各/各组/各数/各号 金额
+            const match = line.match(/^(.+?):\s*(.+?)\s+(各|各组|各数|各号)\s*(\d+)$/);
             if (match) {
-                category = match[1]; numbers = match[2]; kw = match[3]; unitAmount = parseFloat(match[4]) || 0;
-                if (category.includes('连肖') || category.includes('连尾') || category === '二中二' || category === '三中三' || category === '特碰' || (category && category.includes('不中'))) {
-                    const groups = numbers.match(/\)/g);
-                    totalCount = groups ? groups.length : 1;
-                } else if (category.startsWith('包')) { totalCount = 1; }
-                else if (category === '特码') {
+                category = match[1];
+                numbers = match[2];
+                kw = match[3];
+                unitAmount = parseFloat(match[4]) || 0;
+                // 根据玩法类型计算注数，与 updateOrderTotalDisplay 保持一致
+                if (category.startsWith('包')) {
+                    totalCount = 1;
+                } else if (category === '特码') {
                     const tokens = numbers.split('-').map(t => t.trim()).filter(t => t);
                     let sum = 0;
                     tokens.forEach(token => {
@@ -151,11 +154,20 @@ function saveOrder() {
                         else { const nums = keyToAllNums(token); sum += nums.length || 1; }
                     });
                     totalCount = sum || 1;
+                } else if (category === '平特肖' || category === '特肖' || category === '平特尾' || category === '平码') {
+                    // 多注玩法：按连字符拆分的项目数
+                    const items = numbers.split('-').filter(s => s.trim());
+                    totalCount = items.length || 1;
+                } else if (category.includes('连肖') || category.includes('连尾') || category === '二中二' || category === '三中三' || category === '特碰' || category.includes('不中')) {
+                    // 组合玩法：统计括号组数，若无括号则按连字符组数
+                    const cleaned = numbers.replace(/[()]/g, '');
+                    const groups = cleaned.split(/\s+/).filter(c => c.trim());
+                    totalCount = groups.length || 1;
+                } else {
+                    totalCount = 1;
                 }
-                else if (category === '平特肖' || category === '特肖' || category === '平码') {
-                    totalCount = numbers.split('-').length;
-                } else { totalCount = 1; }
             } else {
+                // 兼容旧格式或简单格式
                 const parts = line.split(' ');
                 if (parts.length >= 2) {
                     const catNum = parts[0].split(':');
@@ -169,8 +181,12 @@ function saveOrder() {
                             else { const nums = keyToAllNums(token); sum += nums.length || 1; }
                         });
                         totalCount = sum || 1;
+                    } else if (category === '平特肖' || category === '特肖' || category === '平特尾' || category === '平码') {
+                        totalCount = numbers ? numbers.split('-').length : 1;
                     } else if (numbers) {
-                        totalCount = numbers.match(/\)/g) ? numbers.match(/\)/g).length : numbers.split('-').length;
+                        const cleaned = numbers.replace(/[()]/g, '');
+                        const groups = cleaned.split(/\s+/).filter(c => c.trim());
+                        totalCount = groups.length || 1;
                     }
                 }
             }
@@ -517,8 +533,8 @@ async function performFilterDuijiang() {
         await persistAll();
         State.filterDuijiangDone = true;
         addOperationLog('兑奖操作', '过滤兑奖完成，更新 ' + updatedCount + ' 条订单');
-        
-        // ✅ 修复：强制刷新兑奖结果框
+
+        // 强制刷新兑奖结果框
         const main = document.getElementById('mainContent');
         if (main && currentPage === 'orderDetail') {
             main.innerHTML = renderOrderDetail();
@@ -557,7 +573,7 @@ async function performFilterDuijiang() {
             });
             updateOrderGroupCount();
         }
-        
+
         let extraMsg = skippedAreas.size > 0 ? `以下区域开奖数据不足7个，已跳过：${[...skippedAreas].join('、')}` : '';
         showAlert(`兑奖完成，共更新 ${updatedCount} 条订单。${extraMsg}`);
     } catch (err) { console.error(err); showAlert('兑奖过程中出现错误，请重试'); }

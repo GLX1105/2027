@@ -184,7 +184,7 @@ function collectSpecialMatches(text) {
 
     const multiMatches = []; const lockedIntervals = [];
 
-    // 连肖匹配模式...
+    // 连肖匹配
     const reLianXiaoNoKw = new RegExp(`^[\\s]*((?:[${Z}]+))[\\s]*([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)[\\s]*(?:(${KW_GROUP})\\s*)?(${AMT_GROUP})\\s*$`, 'gm');
     let mLX;
     while ((mLX = reLianXiaoNoKw.exec(text)) !== null) {
@@ -286,7 +286,7 @@ function collectSpecialMatches(text) {
         lockedIntervals.push({ start: m.index, end: m.index + m[0].length });
     }
 
-    // 特肖、包、特碰、二中二、三中三、不中、平特肖、平特尾、平码...
+    // 通用正则匹配
     const addMatch = (re, handler) => { let m; while ((m = re.exec(text)) !== null) { if (isOverlap(m.index, m.index + m[0].length, lockedIntervals)) continue; const info = handler(m); if (info) { allMatches.push({ start: m.index, end: m.index + m[0].length, result: info }); } } };
 
     addMatch(new RegExp(`特肖${SEP}((?:[${Z}]+${SEP_CHARS}*)+?)[\\s]*${END_AMT_RE}`, 'g'), m => {
@@ -624,7 +624,6 @@ function performRecognition(text) {
         return;
     }
 
-    // 应用替换预设
     text = applyReplacePresets(text);
 
     let processedText = preprocess(text);
@@ -740,7 +739,6 @@ function displayResults(rs, container) {
     State.pureOrderRegions = pureRegions;
     State.cachedMaxLossData = maxLossData;
 
-    // 绑定警告点击事件
     container.querySelectorAll('.warning-text').forEach(span => {
         span.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -777,7 +775,6 @@ function displayResults(rs, container) {
         });
     });
 
-    // 更新识别结果标题的警告汇总
     const warnSpan = document.getElementById('recognitionWarning');
     if (warnSpan) {
         if (warningCount > 0) {
@@ -798,7 +795,7 @@ function formatNums(cat, numsArr) {
     return numsArr.map(g => `(` + g + `)`).join(' ');
 }
 
-// ===== 合计与行数计算 =====
+// ===== 合计与行数计算（已修复多注玩法计算） =====
 function updateOrderTotalDisplay() {
     const re = document.getElementById('orderResult');
     const box = document.getElementById('orderTotalAmountBox');
@@ -810,32 +807,45 @@ function updateOrderTotalDisplay() {
     let total = 0;
     let validLineCount = pureLines.length;
     pureLines.forEach(line => {
-        if (line.startsWith('特肖:')) {
-            const match = line.match(/^特肖:(.+?)\s+各\s*(\d+)$/);
-            if (match) { const zodiacs = match[1].split('-').filter(z => z.trim()); const amt = parseInt(match[2]) || 0; total += zodiacs.length * amt; }
-        } else if (line.startsWith('特碰:')) {
-            const match = line.match(/^特碰:(.+?)\s+各\s*(\d+)$/);
-            if (match) { const cleaned = match[1].replace(/[()]/g, ''); const groups = cleaned.split(/\s+/).filter(c => c.trim()); const amtRaw = parseInt(match[2]) || 0; total += groups.length * amtRaw; }
-        } else if (line.startsWith('包')) {
-            const match = line.match(/^包(.+?):(.+?)\s+各\s*(\d+)$/);
-            if (match) { const amtRaw = parseInt(match[3]) || 0; total += amtRaw; }
-        } else if (line.startsWith('特码:')) {
-            const { numbers, amount } = countItemsInLine(line);
-            const cnt = numbers.length;
-            if (cnt > 0 && amount > 0) total += cnt * amount;
+        // 尝试匹配标准格式：玩法:内容 各/各组/各数/各号 金额
+        const stdMatch = line.match(/^(.+?):\s*(.+?)\s+(各|各组|各数|各号)\s*(\d+)$/);
+        if (stdMatch) {
+            const playType = stdMatch[1].trim();
+            const content = stdMatch[2].trim();
+            const kw = stdMatch[3];
+            const amt = parseInt(stdMatch[4]) || 0;
+
+            if (playType.startsWith('包')) {
+                total += amt;
+            } else if (playType === '特码') {
+                // 特码需要展开每个 token，累加对应号码数
+                const tokens = content.split('-').map(t => t.trim()).filter(t => t);
+                let cnt = 0;
+                tokens.forEach(token => {
+                    if (/^\d{1,2}$/.test(token)) { cnt += 1; }
+                    else { const nums = keyToAllNums(token); cnt += nums.length || 1; }
+                });
+                total += cnt * amt;
+            } else if (playType === '平特肖' || playType === '特肖' || playType === '平特尾' || playType === '平码') {
+                // 多注玩法：按连字符拆分后每注算一份
+                const items = content.split('-').filter(i => i.trim());
+                total += items.length * amt;
+            } else if (playType.includes('连肖') || playType.includes('连尾') || playType === '二中二' || playType === '三中三' || playType === '特碰' || playType.includes('不中')) {
+                // 组合玩法：统计括号组数
+                const cleaned = content.replace(/[()]/g, '');
+                const groups = cleaned.split(/\s+/).filter(c => c.trim());
+                total += groups.length * amt;
+            } else {
+                total += amt;
+            }
         } else {
-            const match = line.match(/^(.+?):(.+?)\s+各\s*(\d+)$/);
-            if (match) {
-                const playType = match[1];
-                const content = match[2];
-                const amt = parseInt(match[3]) || 0;
-                if (playType === '平特肖' || playType === '平特尾' || playType === '平码') {
-                    const items = content.split('-').filter(i => i.trim());
-                    total += items.length * amt;
+            // 非标准格式（如旧格式 特肖:鼠牛虎 各 100），尝试用 countItemsInLine 兜底
+            const { numbers, amount } = countItemsInLine(line);
+            if (amount > 0) {
+                if (numbers.length > 0) {
+                    total += numbers.length * amount;
                 } else {
-                    const cleaned = content.replace(/[()]/g, '');
-                    const groups = cleaned.split(/\s+/).filter(c => c.trim());
-                    total += groups.length * amt;
+                    total += amount;
                 }
             }
         }

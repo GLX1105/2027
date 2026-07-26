@@ -25,12 +25,10 @@ function switchPage(pageName) {
     currentPage = pageName;
     const main = document.getElementById('mainContent');
 
-    // 同页刷新优化
+    // 同页刷新优化（订单分析和特码调单已移除，走完整渲染）
     if (oldPage === pageName && oldPage) {
         const refreshMap = {
             overview: refreshOverviewData,
-            orderAnalysis: refreshOrderAnalysisData,
-            specialCode: refreshSpecialCodeData,
             lianXiao: refreshLianXiaoData,
             lianMa: refreshLianMaData,
             orderDetail: refreshOrderDetailData,
@@ -262,7 +260,7 @@ function refreshDrawHistoryData() {
             if (!ok) return;
             State.historyRecords = [];
             addOperationLog('清空开奖', '清空了全部开奖历史');
-            await persistAll();
+            persistAll();
             refreshDrawHistoryData();
         });
     }
@@ -284,6 +282,84 @@ function refreshOrderDetailData() {
         const total = filtered.reduce((s, o) => s + (parseFloat(o.totalAmount) || 0), 0);
         totalEl.textContent = formatMoney(total);
     }
+
+    // --- 更新开奖区域 ---
+    const drawContainer = document.querySelector('#orderDetailTableWrapper + div + div + div + div.bg-white.border.border-gray-300.p-3.flex-shrink-0.rounded.shadow-sm > div');
+    if (drawContainer) {
+        // 直接重新生成开奖 HTML 并替换
+        const areas = ['macau','hongkong','yuegang'];
+        const areaLabels = {macau:'澳门',hongkong:'香港',yuegang:'粤港'};
+        const todayDraw = getCurrentDrawData();
+        let drawHTML = '';
+        areas.forEach((area, idx) => {
+            const data = todayDraw[area] || {nums:[], shengs:[]};
+            let cellsHTML = '';
+            for(let i=0;i<7;i++){
+                const num = data.nums[i] || '';
+                const sheng = data.shengs[i] || '';
+                if (i === 6) {
+                    cellsHTML += `<div class="flex flex-col items-center justify-end" style="width:40px;">
+                        <span style="font-size:20px;font-weight:bold;line-height:40px;">+</span>
+                        <div style="height:28px;"></div>
+                    </div>`;
+                }
+                cellsHTML += `<div class="flex flex-col items-center gap-1">
+                    ${buildBallHTML(num)}
+                    ${buildShengBlock(sheng)}
+                </div>`;
+            }
+            const areaHist = State.historyRecords.filter(r => r.area === areaLabels[area] && r.date === State.currentFilterDate);
+            const latestQihao = areaHist.length ? areaHist[areaHist.length-1].qihao : '';
+            const qihaoShort = latestQihao ? String(latestQihao).slice(-3) + '期' : '';
+            let titleText = areaLabels[area] + '开奖';
+            if (area !== 'hongkong' && qihaoShort) titleText += ' ' + qihaoShort;
+            drawHTML += `<div class="flex flex-col items-center gap-1 px-2">
+                <div class="text-[11px] font-medium text-gray-600">${titleText}</div>
+                <div class="flex justify-center gap-1 flex-wrap items-end">
+                    ${cellsHTML}
+                </div>
+            </div>`;
+            if (idx < areas.length - 1) drawHTML += `<div class="border-l border-gray-300"></div>`;
+        });
+        drawContainer.innerHTML = drawHTML;
+    }
+
+    // --- 更新兑奖结果框（若已兑奖） ---
+    if (State.filterDuijiangDone) {
+        const macauDiv = document.getElementById('duijiangMacauContent');
+        const hkDiv = document.getElementById('duijiangHongkongContent');
+        const ygDiv = document.getElementById('duijiangYuegangContent');
+        const allDiv = document.getElementById('duijiangAllContent');
+        if (macauDiv) macauDiv.innerHTML = generateRegionProfitSummary('澳门', State.orderList);
+        if (hkDiv) hkDiv.innerHTML = generateRegionProfitSummary('香港', State.orderList);
+        if (ygDiv) ygDiv.innerHTML = generateRegionProfitSummary('粤港', State.orderList);
+        if (allDiv) allDiv.innerHTML = generateRegionProfitSummary('all', State.orderList);
+    }
+
+    // --- 重新创建筛选下拉框（确保选项列表为最新） ---
+    const filterRegionOpts = ['不限', '澳门', '香港', '粤港'];
+    const filterBetTypeOpts = ['不限', ...new Set(State.orderList.filter(o => o.date === State.currentFilterDate).map(o => o.betType))].filter(Boolean);
+    const filterWinStatusOpts = ['不限', '中奖', '未中奖', '未知'];
+    const filterReporterOpts = ['不限', ...new Set(State.orderList.filter(o => o.date === State.currentFilterDate).map(o => o.reporter))].filter(Boolean);
+    const schemeNames = window.schemes.map((s, i) => s.name);
+
+    createCustomSelect(document.getElementById('filterRegionWrapper'), filterRegionOpts, State.orderDetailFilters.region, (val) => {
+        State.orderDetailFilters.region = val; State.selectedOrderIndices.clear(); switchPage('orderDetail');
+    });
+    createCustomSelect(document.getElementById('filterBetTypeWrapper'), filterBetTypeOpts, State.orderDetailFilters.betType, (val) => {
+        State.orderDetailFilters.betType = val; State.selectedOrderIndices.clear(); switchPage('orderDetail');
+    });
+    createCustomSelect(document.getElementById('filterWinStatusWrapper'), filterWinStatusOpts, State.orderDetailFilters.winStatus, (val) => {
+        State.orderDetailFilters.winStatus = val; State.selectedOrderIndices.clear(); switchPage('orderDetail');
+    });
+    createCustomSelect(document.getElementById('filterReporterWrapper'), filterReporterOpts, State.orderDetailFilters.reporter, (val) => {
+        State.orderDetailFilters.reporter = val; State.selectedOrderIndices.clear(); switchPage('orderDetail');
+    });
+    createCustomSelect(document.getElementById('orderDetailSchemeSelectWrapper'), schemeNames, window.schemes[State.selectedSchemeIdx].name, (val) => {
+        State.selectedSchemeIdx = window.schemes.findIndex(s => s.name === val);
+        persistAll();
+        switchPage('orderDetail');
+    });
 }
 
 // ========== 全局地区筛选事件 ==========

@@ -1023,15 +1023,22 @@ function renderTools() {
     </div>`;
 }
 
-// ========== 操作日志页面 ==========
+// ========== 操作日志页面（已修复：按日期过滤） ==========
 function renderOperationLog() {
     setTopBar('');
     const redTypes = ['修改订单','剪切订单','复制订单','删除订单','粘贴订单','批量修改'];
+    const today = State.currentFilterDate;
+    // 按日期过滤日志
+    const filteredLogs = State.operationLogs.filter(log => {
+        // 日志时间格式: "2026-07-26 12:00:00"
+        const logDate = log.time ? log.time.substring(0, 10) : '';
+        return logDate === today;
+    });
     let html = '';
-    if (State.operationLogs.length === 0) {
+    if (filteredLogs.length === 0) {
         html += '<div class="bg-white border border-gray-300 rounded shadow-sm p-4 text-center text-gray-400">暂无操作日志</div>';
     } else {
-        const reversedLogs = [...State.operationLogs].reverse();
+        const reversedLogs = [...filteredLogs].reverse();
         html += '<div class="bg-white border border-gray-300 rounded shadow-sm p-4 overflow-y-auto flex-1" style="font-family:Consolas,Microsoft YaHei,monospace;font-size:13px;line-height:1.8;white-space:pre-wrap;">';
         reversedLogs.forEach(log => {
             const isRed = redTypes.includes(log.type);
