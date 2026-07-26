@@ -694,7 +694,8 @@ function generateDuijiangReport() {
 
     const reporters = Object.keys(reporterMap).sort();
     let html = '<div style="font-family:Courier New,Microsoft YaHei,monospace;line-height:1.8;font-weight:bold;">';
-    html += '-------------------按照申报人兑奖结果--------------------------------<br>';
+    // 顶部虚线：红色、加长
+    html += '<span style="color:#dc2626;">-------------------按照申报人兑奖结果----------------------------------------------------------------</span><br>';
 
     const todayDraw = getCurrentDrawData();
     const areaDrawNums = {};
@@ -778,8 +779,8 @@ function generateDuijiangReport() {
             const odds = row ? parseFloat(row.odds) : 1;
             const payout = data.totalWinAmount * odds;
             totalPayout += payout;
-            // 修改缩进：黑点对齐“情”字
-            winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;●&nbsp;</span>' + data.betType + ' 中: ' + detailStrWin + '——赔:<span style="color:red;">' + formatMoney(payout) + '</span><br>';
+            // 黑点缩进对齐“情”字
+            winLines += '<span style="user-select:none;">&emsp;&emsp;●&nbsp;</span>' + data.betType + ' 中: ' + detailStrWin + '——赔:<span style="color:red;">' + formatMoney(payout) + '</span><br>';
         });
 
         const profit = totalAmount - rebateAmount - totalPayout;
@@ -811,7 +812,8 @@ function generateDuijiangReport() {
             html += winLines;
         }
         html += '盈亏情况：' + profitStr + '<br>';
-        html += '----------------------------------------<br>';
+        // 结尾虚线：红色、加长
+        html += '<span style="color:#dc2626;">-------------------' + '----------------------------------------------------------------</span><br>';
     });
 
     html += '</div>';
@@ -888,8 +890,8 @@ function generateReporterProfitReport(reporter, selectedRegions) {
         const odds = row ? parseFloat(row.odds) : 1;
         const payout = data.totalWinAmount * odds;
         totalPayout += payout;
-        // 修改缩进：黑点对齐“情”字
-        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;●&nbsp;</span>' + data.betType + ' 中: <b>' + detailStrWin + '</b>——赔:<b><span style="color:red;">' + formatMoney(payout) + '</span></b><br>';
+        // 黑点缩进对齐“情”字
+        winLines += '<span style="user-select:none;">&emsp;&emsp;●&nbsp;</span>' + data.betType + ' 中: <b>' + detailStrWin + '</b>——赔:<b><span style="color:red;">' + formatMoney(payout) + '</span></b><br>';
     });
 
     const profit = totalAmount - rebateAmount - totalPayout;
@@ -981,8 +983,8 @@ function generateShangxiaSummary(label) {
     
     let winLines = '';
     orderedTypes.forEach(type => {
-        // 修改缩进：黑点对齐“情”字
-        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
+        // 黑点缩进对齐“情”字
+        winLines += '<span style="user-select:none;">&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
     });
     
     // 标签颜色映射
@@ -1073,8 +1075,8 @@ function generateMyShangxiaSummary(label1, label2, myLabel) {
     
     let winLines = '';
     orderedTypes.forEach(type => {
-        // 修改缩进：黑点对齐“情”字
-        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
+        // 黑点缩进对齐“情”字
+        winLines += '<span style="user-select:none;">&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
     });
     
     // “我的”标题颜色：我的澳门蓝色，我的粤港绿色
