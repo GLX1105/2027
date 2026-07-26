@@ -778,7 +778,8 @@ function generateDuijiangReport() {
             const odds = row ? parseFloat(row.odds) : 1;
             const payout = data.totalWinAmount * odds;
             totalPayout += payout;
-            winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;&emsp;●&nbsp;</span>' + data.betType + ' 中: ' + detailStrWin + '——赔:<span style="color:red;">' + formatMoney(payout) + '</span><br>';
+            // 修改缩进：黑点对齐“情”字
+            winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;●&nbsp;</span>' + data.betType + ' 中: ' + detailStrWin + '——赔:<span style="color:red;">' + formatMoney(payout) + '</span><br>';
         });
 
         const profit = totalAmount - rebateAmount - totalPayout;
@@ -887,7 +888,8 @@ function generateReporterProfitReport(reporter, selectedRegions) {
         const odds = row ? parseFloat(row.odds) : 1;
         const payout = data.totalWinAmount * odds;
         totalPayout += payout;
-        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;&emsp;●&nbsp;</span>' + data.betType + ' 中: <b>' + detailStrWin + '</b>——赔:<b><span style="color:red;">' + formatMoney(payout) + '</span></b><br>';
+        // 修改缩进：黑点对齐“情”字
+        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;●&nbsp;</span>' + data.betType + ' 中: <b>' + detailStrWin + '</b>——赔:<b><span style="color:red;">' + formatMoney(payout) + '</span></b><br>';
     });
 
     const profit = totalAmount - rebateAmount - totalPayout;
@@ -948,7 +950,6 @@ function generateShangxiaSummary(label) {
         const winAmount = parseFloat(o.winAmount) || 0;
         if (winAmount <= 0 || !betType) return;
         
-        // 对于简单的中奖金额，直接累加
         if (!winTypeMap[betType]) winTypeMap[betType] = 0;
         winTypeMap[betType] += winAmount;
     });
@@ -980,11 +981,21 @@ function generateShangxiaSummary(label) {
     
     let winLines = '';
     orderedTypes.forEach(type => {
-        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
+        // 修改缩进：黑点对齐“情”字
+        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
     });
     
+    // 标签颜色映射
+    const tagColors = {
+        '澳门下家': '#e74c3c',
+        '澳门上家': '#e67e22',
+        '粤港下家': '#2ecc71',
+        '粤港上家': '#3498db'
+    };
+    const titleColor = tagColors[label] || '#333';
+    
     let html = '<div style="font-weight:bold;font-size:12px;line-height:1.6;">';
-    html += label + '<br>';
+    html += '<span style="color:' + titleColor + ';">' + label + '</span><br>';
     html += '订单总额：' + formatMoney(totalAmount) + '<br>';
     html += '中奖情况：<br>';
     if (winLines) {
@@ -999,7 +1010,6 @@ function generateShangxiaSummary(label) {
 function generateMyShangxiaSummary(label1, label2, myLabel) {
     const today = State.currentFilterDate;
     
-    // 获取两个标签的申报人名称
     const reporterNames1 = (window.applicants || [])
         .filter(a => a.shangxia === label1)
         .map(a => a.name);
@@ -1007,7 +1017,6 @@ function generateMyShangxiaSummary(label1, label2, myLabel) {
         .filter(a => a.shangxia === label2)
         .map(a => a.name);
     
-    // 获取两组订单
     let orders1 = State.orderList.filter(o => 
         o.date === today && reporterNames1.includes(o.reporter || '')
     );
@@ -1019,7 +1028,6 @@ function generateMyShangxiaSummary(label1, label2, myLabel) {
     const totalAmount2 = orders2.reduce((s, o) => s + (parseFloat(o.totalAmount) || 0), 0);
     const totalAmount = totalAmount1 - totalAmount2;
     
-    // 汇总中奖情况
     const winTypeMap = {};
     
     orders1.forEach(o => {
@@ -1040,7 +1048,6 @@ function generateMyShangxiaSummary(label1, label2, myLabel) {
         winTypeMap[betType] -= winAmount;
     });
     
-    // 计算总赔付和盈亏
     let totalPayout = 0;
     const scheme = window.schemes[State.selectedSchemeIdx] || window.schemes[0];
     Object.keys(winTypeMap).forEach(type => {
@@ -1066,11 +1073,15 @@ function generateMyShangxiaSummary(label1, label2, myLabel) {
     
     let winLines = '';
     orderedTypes.forEach(type => {
-        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
+        // 修改缩进：黑点对齐“情”字
+        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
     });
     
+    // “我的”标题颜色：我的澳门蓝色，我的粤港绿色
+    const myTitleColor = myLabel === '我的澳门' ? '#2563eb' : (myLabel === '我的粤港' ? '#059669' : '#333');
+    
     let html = '<div style="font-weight:bold;font-size:12px;line-height:1.6;">';
-    html += myLabel + '<br>';
+    html += '<span style="color:' + myTitleColor + ';">' + myLabel + '</span><br>';
     html += '订单总额：' + formatMoney(totalAmount) + '<br>';
     html += '中奖情况：<br>';
     if (winLines) {
