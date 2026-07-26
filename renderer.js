@@ -1008,21 +1008,6 @@ function renderDrawHistory() {
     return `<div class="flex flex-col gap-3 h-full"><div class="flex justify-end">${clearBtnHTML}</div><div class="bg-white border border-gray-300 rounded shadow-sm flex-1 overflow-auto"><table><thead class="sticky top-0"><tr><th>期号</th><th>日期</th><th>区域</th><th>开奖号码</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
 
-// ========== 辅助工具页面 ==========
-function renderTools() {
-    setTopBar('');
-    return `<div class="grid grid-cols-3 gap-4 flex-1">
-        <div class="bg-white border border-gray-300 rounded shadow-sm p-4"><div class="font-medium text-sm mb-3">赔率计算器</div><div class="space-y-2 text-xs">
-            <div class="flex gap-2 items-center"><span class="w-16">投注金额</span><input type="number" value="10" class="border border-gray-300 px-2 py-1 w-24 rounded" id="calcBet"></div>
-            <div class="flex gap-2 items-center"><span class="w-16">赔率</span><input type="number" value="47" class="border border-gray-300 px-2 py-1 w-24 rounded" id="calcOdds"></div>
-            <div class="flex gap-2 items-center"><span class="w-16">中奖金额</span><span class="font-bold text-green-600" id="calcResult">470</span></div>
-            <button class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-xs" id="btnCalc">计算</button>
-        </div></div>
-        <div class="bg-white border border-gray-300 rounded shadow-sm p-4"><div class="font-medium text-sm mb-3">盈亏分析</div><div class="text-xs text-gray-600">输入投注和开奖数据后可进行盈亏分析。</div></div>
-        <div class="bg-white border border-gray-300 rounded shadow-sm p-4"><div class="font-medium text-sm mb-3">更多工具</div><div class="text-xs text-gray-600">开发中...</div></div>
-    </div>`;
-}
-
 // ========== 操作日志页面（已修复：按日期过滤） ==========
 function renderOperationLog() {
     setTopBar('');
@@ -1089,6 +1074,32 @@ function renderNumberList() {
         textContent += '—— 其他 ——\n' + otherText;
     }
     return `<div class="bg-white border border-gray-300 rounded shadow-sm flex-1 overflow-auto p-4"><pre style="white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.6;margin:0;">${html+'\n'+textContent}</pre></div>`;
+}
+
+// ========== 辅助工具页面（已修改：删除赔率计算器，三列两行六个框） ==========
+function renderTools() {
+    setTopBar('');
+    
+    const toolsHTML = `
+    <div class="grid grid-cols-3 gap-4 flex-1">
+        <div class="col-span-2 bg-white border border-gray-300 rounded shadow-sm p-4">
+            <div class="font-medium text-sm mb-3">盈亏分析</div>
+            <div class="grid grid-cols-3 gap-3 text-xs">
+                <div class="bg-gray-50 border border-gray-200 rounded p-3" id="toolsBox1">${generateShangxiaSummary('澳门上家')}</div>
+                <div class="bg-gray-50 border border-gray-200 rounded p-3" id="toolsBox2">${generateShangxiaSummary('澳门下家')}</div>
+                <div class="bg-gray-50 border border-gray-200 rounded p-3" id="toolsBox3">${generateMyShangxiaSummary('澳门上家', '澳门下家', '我的澳门')}</div>
+                <div class="bg-gray-50 border border-gray-200 rounded p-3" id="toolsBox4">${generateShangxiaSummary('粤港上家')}</div>
+                <div class="bg-gray-50 border border-gray-200 rounded p-3" id="toolsBox5">${generateShangxiaSummary('粤港下家')}</div>
+                <div class="bg-gray-50 border border-gray-200 rounded p-3" id="toolsBox6">${generateMyShangxiaSummary('粤港上家', '粤港下家', '我的粤港')}</div>
+            </div>
+        </div>
+        <div class="bg-white border border-gray-300 rounded shadow-sm p-4">
+            <div class="font-medium text-sm mb-3">更多工具</div>
+            <div class="text-xs text-gray-600">开发中...</div>
+        </div>
+    </div>`;
+    
+    return toolsHTML;
 }
 
 // 页面渲染映射表

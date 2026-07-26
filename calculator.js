@@ -693,7 +693,6 @@ function generateDuijiangReport() {
     });
 
     const reporters = Object.keys(reporterMap).sort();
-    // 修改1：整体字体加粗，减少标题后间隔
     let html = '<div style="font-family:Courier New,Microsoft YaHei,monospace;line-height:1.8;font-weight:bold;">';
     html += '-------------------按照申报人兑奖结果--------------------------------<br>';
 
@@ -787,7 +786,6 @@ function generateDuijiangReport() {
         const profitColor = profitInt >= 0 ? '#059669' : '#dc2626';
         const profitStr = '<span style="color:' + profitColor + ';">' + profitInt + '</span>';
 
-        // 上下家标签
         let shangxiaTag = '';
         if (applicant && applicant.shangxia) {
             const tagColors = {
@@ -803,7 +801,6 @@ function generateDuijiangReport() {
         html += shangxiaTag;
         html += '申报人：' + reporter + '<br>';
         html += '订单金额明细：' + detailStr + '<br>';
-        // 修改3：订单总额后面的数字用蓝色
         html += '订单总额：<span style="color:#2563eb;font-weight:bold;">' + formatMoney(totalAmount) + '</span><br>';
         if (rebateAmount > 0) {
             html += '返水：' + rebateAmount + '<br>';
@@ -813,7 +810,6 @@ function generateDuijiangReport() {
             html += winLines;
         }
         html += '盈亏情况：' + profitStr + '<br>';
-        // 修改2：每个申报人报告结尾减少间隔
         html += '----------------------------------------<br>';
     });
 
@@ -821,7 +817,6 @@ function generateDuijiangReport() {
     return html;
 }
 
-// 修改4：订单组明细右侧报告数据加粗 + 订单总额数字蓝色
 function generateReporterProfitReport(reporter, selectedRegions) {
     const areaLabels = { macau: '澳门', hongkong: '香港', yuegang: '粤港' };
     let orders = State.orderList.filter(o => o.date === State.currentFilterDate && o.reporter === reporter);
@@ -900,10 +895,8 @@ function generateReporterProfitReport(reporter, selectedRegions) {
     const profitColor = profitInt >= 0 ? '#059669' : '#dc2626';
     const profitStr = '<b><span style="color:' + profitColor + ';">' + profitInt + '</span></b>';
 
-    // 整体加粗
     let html = '<div style="font-size:12px;line-height:1.5;padding:4px 0;font-weight:bold;">';
     html += '申报人：' + reporter + '<br>';
-    // 订单总额数字蓝色
     html += '订单总额：<b><span style="color:#2563eb;">' + formatMoney(totalAmount) + '</span></b><br>';
     if (rebateAmount > 0) {
         html += '返水：<b>' + rebateAmount + '</b><br>';
@@ -913,6 +906,178 @@ function generateReporterProfitReport(reporter, selectedRegions) {
         html += winLines;
     }
     html += '盈亏情况：' + profitStr + '</div>';
+    return html;
+}
+
+// ========== 新增：上下家汇总函数 ==========
+function generateShangxiaSummary(label) {
+    const today = State.currentFilterDate;
+    
+    // 找出所有该上下家标签的申报人名称
+    const reporterNames = (window.applicants || [])
+        .filter(a => a.shangxia === label)
+        .map(a => a.name);
+    
+    if (reporterNames.length === 0) {
+        return '<div style="font-weight:bold;">' + label + '<br>暂无申报人</div>';
+    }
+    
+    // 汇总这些申报人在当前日期的所有订单
+    let orders = State.orderList.filter(o => 
+        o.date === today && reporterNames.includes(o.reporter || '')
+    );
+    
+    if (orders.length === 0) {
+        return '<div style="font-weight:bold;">' + label + '<br>暂无订单</div>';
+    }
+    
+    const totalAmount = orders.reduce((s, o) => s + (parseFloat(o.totalAmount) || 0), 0);
+    
+    // 汇总中奖情况：相同玩法类型金额累加
+    const winTypeMap = {};
+    const todayDraw = getCurrentDrawData();
+    const areaDrawNums = {};
+    ['macau', 'hongkong', 'yuegang'].forEach(a => {
+        const d = todayDraw[a];
+        if (d && d.nums && d.nums.length >= 7) areaDrawNums[a] = d.nums;
+    });
+    
+    orders.forEach(o => {
+        if (o.winStatus !== '中奖') return;
+        const betType = (o.betType || '').trim();
+        const winAmount = parseFloat(o.winAmount) || 0;
+        if (winAmount <= 0 || !betType) return;
+        
+        // 对于简单的中奖金额，直接累加
+        if (!winTypeMap[betType]) winTypeMap[betType] = 0;
+        winTypeMap[betType] += winAmount;
+    });
+    
+    // 计算总赔付和盈亏
+    let totalPayout = 0;
+    const scheme = window.schemes[State.selectedSchemeIdx] || window.schemes[0];
+    Object.keys(winTypeMap).forEach(type => {
+        const row = scheme.rows.find(r => r.type === type);
+        const odds = row ? parseFloat(row.odds) : 1;
+        totalPayout += winTypeMap[type] * odds;
+    });
+    
+    let rebatePercent = 0;
+    if (scheme && scheme.rows && scheme.rows.length > 0) {
+        rebatePercent = parseFloat(scheme.rows[0].rebate) || 0;
+    }
+    const rebateAmount = Math.round(totalAmount * rebatePercent / 100);
+    const profit = totalAmount - rebateAmount - totalPayout;
+    const profitInt = Math.round(profit);
+    const profitColor = profitInt >= 0 ? '#059669' : '#dc2626';
+    
+    // 按玩法排序（特码优先）
+    const orderedTypes = Object.keys(winTypeMap).sort((a, b) => {
+        if (a === '特码') return -1;
+        if (b === '特码') return 1;
+        return 0;
+    });
+    
+    let winLines = '';
+    orderedTypes.forEach(type => {
+        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
+    });
+    
+    let html = '<div style="font-weight:bold;font-size:12px;line-height:1.6;">';
+    html += label + '<br>';
+    html += '订单总额：' + formatMoney(totalAmount) + '<br>';
+    html += '中奖情况：<br>';
+    if (winLines) {
+        html += winLines;
+    }
+    html += '盈亏情况：<span style="color:' + profitColor + ';">' + profitInt + '</span>';
+    html += '</div>';
+    return html;
+}
+
+// ========== 新增：我的汇总函数（上家减下家） ==========
+function generateMyShangxiaSummary(label1, label2, myLabel) {
+    const today = State.currentFilterDate;
+    
+    // 获取两个标签的申报人名称
+    const reporterNames1 = (window.applicants || [])
+        .filter(a => a.shangxia === label1)
+        .map(a => a.name);
+    const reporterNames2 = (window.applicants || [])
+        .filter(a => a.shangxia === label2)
+        .map(a => a.name);
+    
+    // 获取两组订单
+    let orders1 = State.orderList.filter(o => 
+        o.date === today && reporterNames1.includes(o.reporter || '')
+    );
+    let orders2 = State.orderList.filter(o => 
+        o.date === today && reporterNames2.includes(o.reporter || '')
+    );
+    
+    const totalAmount1 = orders1.reduce((s, o) => s + (parseFloat(o.totalAmount) || 0), 0);
+    const totalAmount2 = orders2.reduce((s, o) => s + (parseFloat(o.totalAmount) || 0), 0);
+    const totalAmount = totalAmount1 - totalAmount2;
+    
+    // 汇总中奖情况
+    const winTypeMap = {};
+    
+    orders1.forEach(o => {
+        if (o.winStatus !== '中奖') return;
+        const betType = (o.betType || '').trim();
+        const winAmount = parseFloat(o.winAmount) || 0;
+        if (winAmount <= 0 || !betType) return;
+        if (!winTypeMap[betType]) winTypeMap[betType] = 0;
+        winTypeMap[betType] += winAmount;
+    });
+    
+    orders2.forEach(o => {
+        if (o.winStatus !== '中奖') return;
+        const betType = (o.betType || '').trim();
+        const winAmount = parseFloat(o.winAmount) || 0;
+        if (winAmount <= 0 || !betType) return;
+        if (!winTypeMap[betType]) winTypeMap[betType] = 0;
+        winTypeMap[betType] -= winAmount;
+    });
+    
+    // 计算总赔付和盈亏
+    let totalPayout = 0;
+    const scheme = window.schemes[State.selectedSchemeIdx] || window.schemes[0];
+    Object.keys(winTypeMap).forEach(type => {
+        const row = scheme.rows.find(r => r.type === type);
+        const odds = row ? parseFloat(row.odds) : 1;
+        totalPayout += winTypeMap[type] * odds;
+    });
+    
+    let rebatePercent = 0;
+    if (scheme && scheme.rows && scheme.rows.length > 0) {
+        rebatePercent = parseFloat(scheme.rows[0].rebate) || 0;
+    }
+    const rebateAmount = Math.round(totalAmount * rebatePercent / 100);
+    const profit = totalAmount - rebateAmount - totalPayout;
+    const profitInt = Math.round(profit);
+    const profitColor = profitInt >= 0 ? '#059669' : '#dc2626';
+    
+    const orderedTypes = Object.keys(winTypeMap).sort((a, b) => {
+        if (a === '特码') return -1;
+        if (b === '特码') return 1;
+        return 0;
+    });
+    
+    let winLines = '';
+    orderedTypes.forEach(type => {
+        winLines += '<span style="user-select:none;">&emsp;&emsp;&emsp;&emsp;●&nbsp;</span>' + type + ' 中: <span style="color:red;">' + formatMoney(winTypeMap[type]) + '</span><br>';
+    });
+    
+    let html = '<div style="font-weight:bold;font-size:12px;line-height:1.6;">';
+    html += myLabel + '<br>';
+    html += '订单总额：' + formatMoney(totalAmount) + '<br>';
+    html += '中奖情况：<br>';
+    if (winLines) {
+        html += winLines;
+    }
+    html += '盈亏情况：<span style="color:' + profitColor + ';">' + profitInt + '</span>';
+    html += '</div>';
     return html;
 }
 

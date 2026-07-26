@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wealthy 订单管理系统</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -27,6 +28,7 @@
         .bar-chart:hover { filter:brightness(1.2); transform:scaleY(1.04); transform-origin:bottom; box-shadow:0 -4px 12px rgba(0,0,0,.15); }
         .bar-chart:hover::after { content:attr(data-tip); position:absolute; top:-20px; left:50%; transform:translateX(-50%); background:#1f2937; color:#fff; padding:2px 7px; border-radius:3px; font-size:10px; white-space:nowrap; z-index:10; pointer-events:none; }
         .fade-in { animation:fadeIn .2s ease; } @keyframes fadeIn { from{opacity:0;transform:translateY(4px);} to{opacity:1;transform:translateY(0);} }
+        @keyframes twinkle { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
         input[type="range"] { -webkit-appearance:none; height:6px; border-radius:3px; background:#e5e7eb; outline:none; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#10b981; cursor:pointer; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.2); }
         button { transition:all .15s; cursor:pointer; font-size:12px; border-radius:4px; } button:active{transform:scale(.97);}
@@ -277,8 +279,23 @@
 <body class="h-screen overflow-hidden">
 <div class="flex h-full">
     <aside id="sidebar" class="w-52 bg-[#eef2f7] border-r border-[#d5dce3] flex flex-col flex-shrink-0 shadow-sm transition-all duration-200 overflow-hidden">
-        <div class="h-14 flex items-center px-4 border-b border-[#d5dce3] overflow-hidden">
-            <span class="text-xl font-bold tracking-wide whitespace-nowrap"><span class="text-blue-700">Wealthy</span></span>
+        <div class="h-14 flex items-center px-4 border-b border-[#d5dce3] overflow-hidden relative">
+            <!-- 弧线 -->
+            <svg class="absolute left-1 right-1 top-1/2 -translate-y-1/2 h-8 opacity-30 z-0 pointer-events-none" viewBox="0 0 120 30">
+                <ellipse cx="60" cy="15" rx="60" ry="18" fill="none" stroke="#d4a574" stroke-width="1.5" opacity="0.6"/>
+            </svg>
+            <!-- 金币 1 -->
+            <span class="absolute w-1.5 h-1.5 rounded-full z-10" style="top:10px;left:12px;background:radial-gradient(circle at 35% 35%, #fff8e1, #fbbf24 50%, #b8860b);animation:twinkle 2.5s ease-in-out infinite;"></span>
+            <!-- 金币 2 -->
+            <span class="absolute w-2 h-2 rounded-full z-10" style="top:6px;right:18px;background:radial-gradient(circle at 35% 35%, #fff8e1, #fbbf24 50%, #b8860b);animation:twinkle 2.5s 0.6s ease-in-out infinite;"></span>
+            <!-- 金币 3 -->
+            <span class="absolute w-1 h-1 rounded-full z-10" style="bottom:10px;right:8px;background:radial-gradient(circle at 35% 35%, #fff8e1, #fbbf24 50%, #b8860b);animation:twinkle 2.5s 1.2s ease-in-out infinite;"></span>
+            <!-- 金币 4 -->
+            <span class="absolute w-1.5 h-1.5 rounded-full z-10" style="bottom:6px;left:20px;background:radial-gradient(circle at 35% 35%, #fff8e1, #fbbf24 50%, #b8860b);animation:twinkle 2.5s 1.8s ease-in-out infinite;"></span>
+            <!-- 文字 -->
+            <span style="font-family:'Playfair Display',serif;font-style:italic;font-weight:500;font-size:1.25rem;letter-spacing:2px;z-index:2;white-space:nowrap;user-select:none;">
+                <span style="color:#003388;">W</span><span style="background:linear-gradient(135deg, #004ecb 0%, #0066dd 25%, #d4a574 60%, #fbbf24 85%, #b8860b 100%);-webkit-background-clip:text;background-clip:text;color:transparent;">ealthy</span>
+            </span>
         </div>
         <nav id="sideNav" class="flex-1 py-1 overflow-y-auto">
             <div class="menu-item active flex items-center px-4 py-2.5 text-gray-700 hover:bg-gray-50 cursor-pointer" data-page="overview"><span class="mr-3 text-base">📊</span><span class="menu-text">数据总览</span></div>
