@@ -921,7 +921,7 @@ function renderOrderDetail() {
             <div class="custom-select-wrapper" id="filterWinStatusWrapper"></div>
             <div class="custom-select-wrapper" id="filterReporterWrapper"></div>
         </div>
-        <div class="bg-white border border-gray-300 p-3 flex-shrink-0 rounded shadow-sm">
+        <div class="bg-white border border-gray-300 p-3 flex-shrink-0 rounded shadow-sm" id="drawAreaContainer">
             <div class="flex justify-around items-center">${drawHTML}</div>
         </div>
         <div class="grid grid-cols-4 gap-3 flex-1 min-h-[80px]">
@@ -1028,9 +1028,7 @@ function renderOperationLog() {
     setTopBar('');
     const redTypes = ['修改订单','剪切订单','复制订单','删除订单','粘贴订单','批量修改'];
     const today = State.currentFilterDate;
-    // 按日期过滤日志
     const filteredLogs = State.operationLogs.filter(log => {
-        // 日志时间格式: "2026-07-26 12:00:00"
         const logDate = log.time ? log.time.substring(0, 10) : '';
         return logDate === today;
     });

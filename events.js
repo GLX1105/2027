@@ -260,7 +260,7 @@ function refreshDrawHistoryData() {
             if (!ok) return;
             State.historyRecords = [];
             addOperationLog('清空开奖', '清空了全部开奖历史');
-            persistAll();
+            await persistAll();
             refreshDrawHistoryData();
         });
     }
@@ -283,45 +283,45 @@ function refreshOrderDetailData() {
         totalEl.textContent = formatMoney(total);
     }
 
-    // --- 更新开奖区域 ---
-    const drawContainer = document.querySelector('#orderDetailTableWrapper + div + div + div + div.bg-white.border.border-gray-300.p-3.flex-shrink-0.rounded.shadow-sm > div');
+    // --- 更新开奖区域（通过 id 定位） ---
+    const drawContainer = document.getElementById('drawAreaContainer');
     if (drawContainer) {
-        // 直接重新生成开奖 HTML 并替换
-        const areas = ['macau','hongkong','yuegang'];
-        const areaLabels = {macau:'澳门',hongkong:'香港',yuegang:'粤港'};
-        const todayDraw = getCurrentDrawData();
-        let drawHTML = '';
-        areas.forEach((area, idx) => {
-            const data = todayDraw[area] || {nums:[], shengs:[]};
-            let cellsHTML = '';
-            for(let i=0;i<7;i++){
-                const num = data.nums[i] || '';
-                const sheng = data.shengs[i] || '';
-                if (i === 6) {
-                    cellsHTML += `<div class="flex flex-col items-center justify-end" style="width:40px;">
-                        <span style="font-size:20px;font-weight:bold;line-height:40px;">+</span>
-                        <div style="height:28px;"></div>
+        const innerDiv = drawContainer.querySelector('div');
+        if (innerDiv) {
+            const areas = ['macau','hongkong','yuegang'];
+            const areaLabels = {macau:'澳门',hongkong:'香港',yuegang:'粤港'};
+            const todayDraw = getCurrentDrawData();
+            let drawHTML = '';
+            areas.forEach((area, idx) => {
+                const data = todayDraw[area] || {nums:[], shengs:[]};
+                let cellsHTML = '';
+                for(let i=0;i<7;i++){
+                    const num = data.nums[i] || '';
+                    const sheng = data.shengs[i] || '';
+                    if (i === 6) {
+                        cellsHTML += `<div class="flex flex-col items-center justify-end" style="width:40px;">
+                            <span style="font-size:20px;font-weight:bold;line-height:40px;">+</span>
+                            <div style="height:28px;"></div>
+                        </div>`;
+                    }
+                    cellsHTML += `<div class="flex flex-col items-center gap-1">
+                        ${buildBallHTML(num)}
+                        ${buildShengBlock(sheng)}
                     </div>`;
                 }
-                cellsHTML += `<div class="flex flex-col items-center gap-1">
-                    ${buildBallHTML(num)}
-                    ${buildShengBlock(sheng)}
+                const areaHist = State.historyRecords.filter(r => r.area === areaLabels[area] && r.date === State.currentFilterDate);
+                const latestQihao = areaHist.length ? areaHist[areaHist.length-1].qihao : '';
+                const qihaoShort = latestQihao ? String(latestQihao).slice(-3) + '期' : '';
+                let titleText = areaLabels[area] + '开奖';
+                if (area !== 'hongkong' && qihaoShort) titleText += ' ' + qihaoShort;
+                drawHTML += `<div class="flex flex-col items-center gap-1 px-2">
+                    <div class="text-[11px] font-medium text-gray-600">${titleText}</div>
+                    <div class="flex justify-center gap-1 flex-wrap items-end">${cellsHTML}</div>
                 </div>`;
-            }
-            const areaHist = State.historyRecords.filter(r => r.area === areaLabels[area] && r.date === State.currentFilterDate);
-            const latestQihao = areaHist.length ? areaHist[areaHist.length-1].qihao : '';
-            const qihaoShort = latestQihao ? String(latestQihao).slice(-3) + '期' : '';
-            let titleText = areaLabels[area] + '开奖';
-            if (area !== 'hongkong' && qihaoShort) titleText += ' ' + qihaoShort;
-            drawHTML += `<div class="flex flex-col items-center gap-1 px-2">
-                <div class="text-[11px] font-medium text-gray-600">${titleText}</div>
-                <div class="flex justify-center gap-1 flex-wrap items-end">
-                    ${cellsHTML}
-                </div>
-            </div>`;
-            if (idx < areas.length - 1) drawHTML += `<div class="border-l border-gray-300"></div>`;
-        });
-        drawContainer.innerHTML = drawHTML;
+                if (idx < areas.length - 1) drawHTML += `<div class="border-l border-gray-300"></div>`;
+            });
+            innerDiv.innerHTML = drawHTML;
+        }
     }
 
     // --- 更新兑奖结果框（若已兑奖） ---

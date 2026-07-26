@@ -693,8 +693,9 @@ function generateDuijiangReport() {
     });
 
     const reporters = Object.keys(reporterMap).sort();
-    let html = '<div style="font-family:Courier New,Microsoft YaHei,monospace;line-height:1.8;">';
-    html += '-------------------按照申报人兑奖结果--------------------------------<br><br>';
+    // 修改1：整体字体加粗，减少标题后间隔
+    let html = '<div style="font-family:Courier New,Microsoft YaHei,monospace;line-height:1.8;font-weight:bold;">';
+    html += '-------------------按照申报人兑奖结果--------------------------------<br>';
 
     const todayDraw = getCurrentDrawData();
     const areaDrawNums = {};
@@ -802,7 +803,8 @@ function generateDuijiangReport() {
         html += shangxiaTag;
         html += '申报人：' + reporter + '<br>';
         html += '订单金额明细：' + detailStr + '<br>';
-        html += '订单总额：' + formatMoney(totalAmount) + '<br>';
+        // 修改3：订单总额后面的数字用蓝色
+        html += '订单总额：<span style="color:#2563eb;font-weight:bold;">' + formatMoney(totalAmount) + '</span><br>';
         if (rebateAmount > 0) {
             html += '返水：' + rebateAmount + '<br>';
         }
@@ -811,13 +813,15 @@ function generateDuijiangReport() {
             html += winLines;
         }
         html += '盈亏情况：' + profitStr + '<br>';
-        html += '----------------------------------------<br><br>';
+        // 修改2：每个申报人报告结尾减少间隔
+        html += '----------------------------------------<br>';
     });
 
     html += '</div>';
     return html;
 }
 
+// 修改4：订单组明细右侧报告数据加粗 + 订单总额数字蓝色
 function generateReporterProfitReport(reporter, selectedRegions) {
     const areaLabels = { macau: '澳门', hongkong: '香港', yuegang: '粤港' };
     let orders = State.orderList.filter(o => o.date === State.currentFilterDate && o.reporter === reporter);
@@ -896,9 +900,11 @@ function generateReporterProfitReport(reporter, selectedRegions) {
     const profitColor = profitInt >= 0 ? '#059669' : '#dc2626';
     const profitStr = '<b><span style="color:' + profitColor + ';">' + profitInt + '</span></b>';
 
+    // 整体加粗
     let html = '<div style="font-size:12px;line-height:1.5;padding:4px 0;font-weight:bold;">';
     html += '申报人：' + reporter + '<br>';
-    html += '订单总额：<b>' + formatMoney(totalAmount) + '</b><br>';
+    // 订单总额数字蓝色
+    html += '订单总额：<b><span style="color:#2563eb;">' + formatMoney(totalAmount) + '</span></b><br>';
     if (rebateAmount > 0) {
         html += '返水：<b>' + rebateAmount + '</b><br>';
     }
