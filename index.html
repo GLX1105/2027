@@ -210,11 +210,11 @@
     </div>
   </div>
 </div>
-    <div class="database-modal" id="databaseModal" style="display:none;">
+
+<div class="database-modal" id="databaseModal" style="display:none;">
   <div class="database-modal-box" id="databaseModalBox">
     <div class="database-modal-header" id="databaseModalHeader"><h3>📊 号码数据库</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
-    <div class="database-modal-body" id="databaseModalContent">
-    </div>
+    <div class="database-modal-body" id="databaseModalContent"></div>
   </div>
 </div>
 
@@ -244,8 +244,10 @@
 <script src="odds.js"></script>
 <script src="duiJiang.js"></script>
 
-<!-- ===== 认证 → 入口 ===== -->
+<!-- ===== 认证 ===== -->
 <script src="auth.js"></script>
+
+<!-- ===== 入口（必须最后） ===== -->
 <script src="main.js"></script>
 </body>
 </html>
