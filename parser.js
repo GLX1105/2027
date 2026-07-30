@@ -1,6 +1,13 @@
-// ===== parser.js - 单行订单解析、继承上下文处理、地区提取与识别入口 =====
+// ===== parser.js - 单行订单解析（processOneLine）、继承上下文处理 =====
 
-// ===== 辅助：从当前行提取金额和关键字 =====
+// ===== 以下常量供 matchers.js 中的 collectSpecialMatches 使用 =====
+const SEP = '[\\s,\\-.。、+\\-*＊\\/\\\\|]';
+const SEP_CHARS = '[\\s,\\-.。、+\\-*＊\\/\\\\|]';
+const KW_GROUP = `(?:${KW_LIST.join('|')})`;
+const AMT_GROUP = '(\\d+(?:\\.\\d+)?(?:米|元|块|角|分|厘|眯|咪|井|#|快|斤)?)';
+const AMT_RE_STR = `(${KW_GROUP})?\\s*(${AMT_GROUP})`;
+const END_AMT_RE = `(${AMT_GROUP})\\s*$`;
+
 function extractAmtAndKw(fullText) {
   const kwMatch = fullText.match(new RegExp(`(${KW_GROUP})\\s*(${AMT_GROUP})`));
   if (kwMatch) {
@@ -13,7 +20,6 @@ function extractAmtAndKw(fullText) {
   return { kw: '', amt: 0 };
 }
 
-// ===== 特码段落解析（辅助，将如"01-02-03"展开为号码列表） =====
 function parseTeMaSegment(content) {
   if (!content || !content.trim()) return null;
   const items = content.split('-').map(i => i.trim()).filter(i => i);
@@ -54,7 +60,6 @@ function parseTeMaSegment(content) {
   return { allNumsArr: allNums, displayItems, totalCount: allNums.length, warnings };
 }
 
-// ===== 单行解析核心 =====
 function processOneLine(line) {
   if (!line.trim()) return [];
 
@@ -84,7 +89,6 @@ function processOneLine(line) {
 
   const ZODIAC_SET = new Set('鼠牛虎兔龙蛇马羊猴鸡狗猪'.split(''));
 
-  // ===== 放宽 tryMatchTeXiao =====
   function tryMatchTeXiao(content) {
     if (!content || !content.trim()) return null;
     if (/特码/.test(content)) return null;
@@ -119,7 +123,6 @@ function processOneLine(line) {
       while ((subMatch = kwReLocal.exec(content)) !== null) {
         const subContent = content.substring(subLast, subMatch.index);
         
-        // ===== 范围号码识别 =====
         if (subContent.includes('到') || (subMatch[0] && subMatch[0].includes('到'))) {
           const combined = subContent + (subMatch ? subMatch[0] : '');
           const rangeMatch = combined.match(/(\d{1,2})\s*到\s*(\d{1,2})/);
@@ -192,7 +195,6 @@ function processOneLine(line) {
     while ((subMatch = kwReLocal.exec(content)) !== null) {
       const subContent = content.substring(subLast, subMatch.index);
       
-      // ===== 范围号码识别 =====
       if (subContent.includes('到') || (subMatch[0] && subMatch[0].includes('到'))) {
         const combined = subContent + (subMatch ? subMatch[0] : '');
         const rangeMatch = combined.match(/(\d{1,2})\s*到\s*(\d{1,2})/);
@@ -398,7 +400,6 @@ function processOneLine(line) {
   return results;
 }
 
-// ===== 继承处理 =====
 function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
   if (!lineResults || lineResults.length === 0) return { results: lineResults, lastPlay: lastInheritablePlay };
 
@@ -577,7 +578,6 @@ function applyInlineInheritance(lineResults, lastInheritablePlay = null) {
   return { results: processed, lastPlay: outgoingPlay };
 }
 
-// ===== 地区提取 =====
 function extractRegion(line) {
   const allKeywords = [];
   for (const [region, keywords] of Object.entries(REGION_KEYWORDS)) {
@@ -600,7 +600,6 @@ function extractRegion(line) {
   return null;
 }
 
-// ===== 识别入口 =====
 function performRecognition(text) {
   const resultDiv = document.getElementById('orderResult');
   if (!text || !text.trim()) {
