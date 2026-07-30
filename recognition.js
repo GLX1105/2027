@@ -1094,8 +1094,13 @@ function performRecognition(text) {
     return;
   }
   let processedText = text;
-  processedText = applyReplacePresets(processedText);
-  processedText = applyCategoryAliases(processedText);
+  // 安全调用替换预设和分类别名
+  if (typeof applyReplacePresets === 'function') {
+    try { processedText = applyReplacePresets(processedText); } catch(e) { console.error('替换预设失败', e); }
+  }
+  if (typeof applyCategoryAliases === 'function') {
+    try { processedText = applyCategoryAliases(processedText); } catch(e) { console.error('分类别名失败', e); }
+  }
   processedText = preprocess(processedText);
   const lines = processedText.split('\n');
   const allResults = []; const lineRegions = [];
