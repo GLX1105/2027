@@ -1,16 +1,5 @@
 // ===== auth.js - 管理员登录、卡密认证、会话管理与访问控制 =====
 
-// ===== 密码解码函数 =====
-function decodePassword(encoded) { return atob(encoded); }
-
-// ===== 管理员密码 =====
-const ADMIN_PASSWORD_ENC = "MTUwNDA4";
-const ADMIN_PASSWORD = decodePassword(ADMIN_PASSWORD_ENC);
-
-// ===== 卡密密钥 =====
-const CARD_SECRET_ENC = "WEs5bVAyd1E3dkw1";
-const CARD_SECRET = decodePassword(CARD_SECRET_ENC);
-
 // ===== 卡密存储操作 =====
 function getCardKeys() { try { return JSON.parse(localStorage.getItem(CARD_KEYS_STORE) || '[]'); } catch (e) { return []; } }
 function saveCardKeys(keys) { localStorage.setItem(CARD_KEYS_STORE, JSON.stringify(keys)); }
