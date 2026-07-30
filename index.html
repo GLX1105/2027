@@ -218,22 +218,33 @@
   </div>
 </div>
 
+<!-- ===== 基础层：配置、工具、字典 ===== -->
 <script src="config.js"></script>
 <script src="utils.js"></script>
 <script src="dictionary.js"></script>
-<script src="odds.js"></script>
+
+<!-- ===== 识别引擎：预处理 → 解析器 → 匹配器 → 显示 ===== -->
+<script src="preprocess.js"></script>
+<script src="parser.js"></script>
+<script src="matchers.js"></script>
+<script src="display.js"></script>
+
+<!-- ===== 数据库层 ===== -->
 <script src="dbCore.js"></script>
 <script src="dbOrders.js"></script>
 <script src="dbLogs.js"></script>
-<script src="preprocess.js"></script>
-<script src="matchers.js"></script>
-<script src="parser.js"></script>
-<script src="display.js"></script>
+
+<!-- ===== 业务层：统计 → 表格渲染 → 智能决策 ===== -->
 <script src="statCore.js"></script>
 <script src="tableRender.js"></script>
 <script src="smartDecision.js"></script>
+
+<!-- ===== UI与工具层 ===== -->
 <script src="uiWindow.js"></script>
+<script src="odds.js"></script>
 <script src="duiJiang.js"></script>
+
+<!-- ===== 认证 → 入口 ===== -->
 <script src="auth.js"></script>
 <script src="main.js"></script>
 </body>
