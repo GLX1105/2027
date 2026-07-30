@@ -447,9 +447,7 @@ function fillPingtexiao() {
   lines.forEach(line => {
     const { zodiacs, amount } = countItemsInLine(line);
     if (zodiacs.length > 0 && amount > 0) {
-      zodiacs.forEach(z => {
-        zodiacAmounts[z] = (zodiacAmounts[z] || 0) + amount;
-      });
+      zodiacs.forEach(z => { zodiacAmounts[z] = (zodiacAmounts[z] || 0) + amount; });
     }
   });
   const matchedZodiacs = Object.keys(zodiacAmounts);
@@ -1601,4 +1599,7 @@ async function applyPrizeFilter() {
   if (pn) { for (const it of userOrders) { if (orderContainsTarget(it.content, pn)) filtered.push(it); } }
   const cont = document.getElementById('orderListContainer');
   if (!cont) return;
-  if (filtered.length === 0) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+  if (filtered.length === 0) { cont.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">暂无匹配订单</div>'; }
+  else { cont.innerHTML = filtered.map(it => { const ts = formatTimestampToCST(it.timestamp), ud = it.user || '未知', col = getUserColor(ud), ta = it.totalAmount || 0; const lines = it.content.split('\n'); const hl = lines.map(l => { const m = l.match(/^特码:(.+?)\s+各(?:数|)\s*(\d+)$/); if (!m) return l; const cont = m[1], amt = m[2]; const hc = highlightContent(cont, pn); return `特码:${hc} 各数 ${amt}`; }).join('<br>'); return `<div class="order-item"><input type="checkbox" class="order-check" data-id="${it.id}"><div class="order-content" data-id="${it.id}">${hl}</div><div class="order-info"><span class="order-total" style="color:#000;">合计：${ta}</span><span class="order-meta"><span style="color:${col};">用户：${ud}</span> &nbsp; ${ts}</span></div><button class="order-copy" onclick="copySingleOrderById('${it.id}')" style="background:#8e44ad;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:4px 10px;white-space:nowrap;margin-right:4px;">复制</button><button class="order-del" onclick="deleteOrderRecord('${it.id}')">删除</button></div>`; }).join(''); }
+  renderOrderStats(userOrders, userReports, uv, pn);
+}
