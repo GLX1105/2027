@@ -1,9 +1,11 @@
+<!-- ===== index.html - 主页面结构、样式与脚本加载入口 ===== -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>港澳识别系统 - 手机版</title>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -208,8 +210,7 @@
     </div>
   </div>
 </div>
-
-<div class="database-modal" id="databaseModal" style="display:none;">
+    <div class="database-modal" id="databaseModal" style="display:none;">
   <div class="database-modal-box" id="databaseModalBox">
     <div class="database-modal-header" id="databaseModalHeader"><h3>📊 号码数据库</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
     <div class="database-modal-body" id="databaseModalContent">
@@ -217,18 +218,23 @@
   </div>
 </div>
 
-<!-- 关键修复：settings.js 必须在 recognition.js 之前 -->
+<script src="config.js"></script>
+<script src="utils.js"></script>
 <script src="dictionary.js"></script>
-<script src="calculator.js"></script>
-<script src="state.js"></script>
-<script src="settings.js"></script>
-<script src="recognition.js"></script>
-<script src="db.js"></script>
-<script src="render.js"></script>
-<script src="ui.js"></script>
+<script src="odds.js"></script>
+<script src="dbCore.js"></script>
+<script src="dbOrders.js"></script>
+<script src="dbLogs.js"></script>
+<script src="preprocess.js"></script>
+<script src="matchers.js"></script>
+<script src="parser.js"></script>
+<script src="display.js"></script>
+<script src="statCore.js"></script>
+<script src="tableRender.js"></script>
+<script src="smartDecision.js"></script>
+<script src="uiWindow.js"></script>
+<script src="duiJiang.js"></script>
 <script src="auth.js"></script>
-<script src="windows.js"></script>
-<script src="interactions.js"></script>
 <script src="main.js"></script>
 </body>
 </html>
