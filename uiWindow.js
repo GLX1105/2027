@@ -1,6 +1,5 @@
-// ===== uiWindow.js - 通用浮动窗口管理（创建、拖拽、最大化、对话框、数据库弹窗、识别弹窗、截图等） =====
+// ===== uiWindow.js - 通用浮动窗口管理、识别弹窗、对话框、数据库弹窗、截图等 =====
 
-// ===== 自定义对话框系统 =====
 function showCustomDialog({ title = '提示', message = '', type = 'alert', defaultValue = '', placeholder = '' }) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay';
@@ -27,12 +26,10 @@ async function customAlert(message) { await showCustomDialog({ title: '提示', 
 async function customConfirm(message) { return await showCustomDialog({ title: '请确认', message, type: 'confirm' }); }
 async function customPrompt(message, defaultValue = '') { return await showCustomDialog({ title: '请输入', message, type: 'prompt', defaultValue }); }
 
-// 覆盖原生弹窗
 window.alert = async (msg) => { await customAlert(msg); };
 window.confirm = async (msg) => { return await customConfirm(msg); };
 window.prompt = async (msg, def) => { return await customPrompt(msg, def); };
 
-// ===== 浮动窗口拖拽（只允许标题栏拖拽 + 边界弹回） =====
 function makeWindowDraggable(winId) {
   const win = document.getElementById(winId);
   if (!win) return;
@@ -116,7 +113,6 @@ function makeWindowDraggable(winId) {
   win.addEventListener('mousedown', () => { highestZ += 1; win.style.zIndex = highestZ; });
 }
 
-// ===== 最大化窗口 =====
 function maximizeWindow(winId) {
   const win = document.getElementById(winId);
   if (!win) return;
@@ -156,7 +152,6 @@ function maximizeWindow(winId) {
   }
 }
 
-// ===== 数据库弹窗 =====
 async function showDatabase() {
   const pwd = await prompt("请输入数据库密码：","");
   if (pwd === PASSWORD) {
@@ -218,7 +213,6 @@ function renderDatabaseContent() {
   content.innerHTML = html;
 }
 
-// ===== 存储抽屉控制 =====
 let storageDrawerTimer = null;
 function toggleStorageDrawer() {
   const panel = document.getElementById('storagePanel');
@@ -256,7 +250,6 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// ===== 插入分类文字 =====
 function insertCategoryText(text) {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
@@ -268,9 +261,8 @@ function insertCategoryText(text) {
   performRecognition(ta.value);
 }
 
-// ===== 地区圆点切换函数 =====
 function setDotRegion(region) {
-  window._dotRegion = region;
+  State.dotRegion = region;
   const dotSmart = document.getElementById('dotSmart');
   const dotMacau = document.getElementById('dotMacau');
   const dotHongkong = document.getElementById('dotHongkong');
@@ -314,7 +306,6 @@ function setDotRegion(region) {
   }
 }
 
-// ===== 标记地区函数 =====
 function markRegion(region) {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
@@ -352,14 +343,13 @@ function markRegion(region) {
   showToast('已标记为' + (regionLabels[region] || region));
 }
 
-// ===== 识别弹窗 =====
 function showRecognizeModal() {
   if (document.getElementById('recognizeWin')) return;
   const regionLabel = currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港';
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'recognizeWin';
   win.style.width = '850px'; win.style.height = '650px'; win.style.left = '50%'; win.style.top = '50%'; win.style.transform = 'translate(-50%, -50%)';
   win.setAttribute('data-orig-width', '850px'); win.setAttribute('data-orig-height', '650px');
-  window._dotRegion = window._dotRegion || 'auto';
+  State.dotRegion = State.dotRegion || 'auto';
   const catWords = '各 各号 单 双 大 小 鼠 牛 虎 兔 龙 蛇 马 羊 猴 鸡 狗 猪 金 木 水 火 土 红波 蓝波 绿波 红单 红双 蓝单 蓝双 绿单 绿双 单数 双数 家禽 野兽 二中二 三中三 平特肖 平特尾 二连肖 三连肖 四连肖 五连肖 二连尾 三连尾 四连尾 五连尾 五不中 六不中 七不中 八不中 九不中 十不中 十一不中 十二不中 二中特 三中二 特串 复试';
   const catSpans = catWords.split(' ').map(w => `<span class="cat-insert-text" onclick="insertCategoryText('${w}')">${w}</span>`).join(' ');
   win.innerHTML = `
@@ -412,7 +402,7 @@ function showRecognizeModal() {
   makeWindowDraggable('recognizeWin'); highestZ += 1; win.style.zIndex = highestZ;
   win.setAttribute('data-window-type', 'recognize');
   
-  setTimeout(() => { if (typeof setDotRegion === 'function') setDotRegion(window._dotRegion || 'auto'); }, 100);
+  setTimeout(() => { if (typeof setDotRegion === 'function') setDotRegion(State.dotRegion || 'auto'); }, 100);
 
   if (window.innerWidth > 768) {
     const container = document.getElementById('catShortcutsContainer');
@@ -439,7 +429,6 @@ function markSelection() {
   performRecognition(ta.value);
 }
 
-// ===== 识别窗口内的辅助操作 =====
 async function pasteOrder() {
   try {
     const text = await navigator.clipboard.readText();
@@ -469,7 +458,6 @@ function replaceSeparators() {
   performRecognition(ta.value);
 }
 
-// ===== 语义转换 =====
 function semanticReplace() {
   const ta = document.querySelector('.source-order-input');
   if (!ta) return;
@@ -578,7 +566,6 @@ function semanticReplace() {
   showToast('语义转换完成：' + str);
 }
 
-// ===== 截图相关函数（通用） =====
 async function screenshotRiskCard() {
   const card = document.getElementById('riskReportCard');
   if (!card) { showToast('卡片不存在'); return; }
@@ -635,7 +622,6 @@ async function screenshotSingleComboCard(cardId) {
   } catch(e) { showToast('截图失败'); }
 }
 
-// ===== 前缀/后缀管理窗口 =====
 function showPrefixManager() {
   if (document.getElementById('prefixWin')) return;
   const prefixes = getCustomPrefixes();
@@ -733,7 +719,6 @@ async function deleteAmountSuffix(i) {
   renderAmountSuffixList();
 }
 
-// ===== 分类缩写管理 =====
 function showCategoryAliases() {
   if (document.getElementById('categoryAliasWin')) return;
   const a = getCategoryAliases();
@@ -770,7 +755,6 @@ async function deleteCategoryAlias(i) {
   renderAliasList();
 }
 
-// ===== 替换预设管理 =====
 function showReplacePreset() {
   if (document.getElementById('replacePresetWin')) return;
   const p = getReplacePresets();
@@ -780,30 +764,6 @@ function showReplacePreset() {
   document.body.appendChild(w); renderPresetList(); makeWindowDraggable('replacePresetWin'); highestZ += 1; w.style.zIndex = highestZ;
   document.getElementById('presetOld').addEventListener('keypress', (e) => { if (e.key === 'Enter') { document.getElementById('presetNew').focus(); } });
   document.getElementById('presetNew').addEventListener('keypress', (e) => { if (e.key === 'Enter') { addReplacePreset(); } });
-}
-function renderPresetList() {
-  const p = getReplacePresets(); const c = document.getElementById('presetList');
-  if (!c) return;
-  c.innerHTML = p.length === 0 ? '<div style="text-align:center;color:#666;padding:10px;">暂无替换预设</div>' : p.map((x, i) => `<div class="replace-preset-item"><span>${x.old} → ${x.new}</span><button onclick="deleteReplacePreset(${i})" style="margin-left:auto;padding:2px 8px;background:#e74c3c;color:#fff;border:none;border-radius:3px;">删除</button></div>`).join('');
-}
-async function addReplacePreset() {
-  const o = document.getElementById('presetOld')?.value.trim();
-  const n = document.getElementById('presetNew')?.value.trim();
-  if (!o || !n) { showToast('请输入原文字和替换文字'); return; }
-  const p = getReplacePresets();
-  if (p.some(x => x.old === o)) { showToast('已存在'); return; }
-  p.push({ old: o, new: n });
-  localStorage.setItem('replacePresets', JSON.stringify(p));
-  document.getElementById('presetOld').value = '';
-  document.getElementById('presetNew').value = '';
-  renderPresetList();
-}
-async function deleteReplacePreset(i) {
-  if (!(await confirm('确定删除？'))) return;
-  const p = getReplacePresets();
-  p.splice(i, 1);
-  localStorage.setItem('replacePresets', JSON.stringify(p));
-  renderPresetList();
 }
 async function resetPresetsToDefault() {
   if (!(await confirm('确定恢复替换预设和分类缩写为默认值吗？当前自定义数据将被覆盖。'))) return;
@@ -835,7 +795,6 @@ async function resetPresetsToDefault() {
   showToast('已恢复默认替换预设和分类缩写');
 }
 
-// ===== 用户管理窗口 =====
 function showUserManager() {
   if (document.getElementById('userManagerWin')) return;
   const win = document.createElement('div'); win.className = 'floating-window'; win.id = 'userManagerWin';
@@ -868,7 +827,6 @@ async function deleteUserAction(name) {
   showToast('用户已删除');
 }
 
-// ===== 卡密管理窗口（依赖 auth.js 中的卡密函数） =====
 function showCardManager() {
   if (!isAdmin()) { showToast('需要管理员权限'); return; }
   if (document.getElementById('cardManagerWin')) return;
@@ -878,51 +836,7 @@ function showCardManager() {
   win.innerHTML = `<div class="modal-header"><h3>🔑 卡密管理</h3><div class="window-controls"><button onclick="maximizeWindow('cardManagerWin')">🗖</button><button onclick="document.getElementById('cardManagerWin').remove()">×</button></div></div><div class="modal-body"><div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;"><input type="number" id="expireDaysInput" placeholder="有效天数" value="30" min="1" style="padding:5px;border-radius:4px;border:1px solid #ccc;width:80px;"><span>天</span><button onclick="generateCardKey()" style="padding:6px 15px;background:#28a745;color:#fff;border:none;border-radius:4px;">生成卡密</button></div><div id="cardListContainer"></div></div><div class="modal-footer"><button onclick="document.getElementById('cardManagerWin').remove()" style="padding:8px 16px;background:#6c757d;color:#fff;border:none;border-radius:4px;">关闭</button></div>`;
   document.body.appendChild(win); renderCardList(); makeWindowDraggable('cardManagerWin'); highestZ += 1; win.style.zIndex = highestZ;
 }
-function renderCardList() {
-  const keys = getCardKeys(); const container = document.getElementById('cardListContainer');
-  if (!container) return;
-  if (keys.length === 0) { container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">暂无卡密</div>'; return; }
-  container.innerHTML = keys.map((card, idx) => {
-    const created = card.createTime ? new Date(card.createTime).toLocaleString('zh-CN') : '未知';
-    const expired = card.expireDays ? `有效${card.expireDays}天` : '永久';
-    const statusClass = { active: 'green', disabled: 'red', expired: 'gray' }[card.status] || 'gray';
-    const statusText = card.status === 'active' ? '启用' : card.status === 'disabled' ? '禁用' : '过期';
-    return `<div style="border:1px solid #eee;border-radius:6px;padding:8px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-weight:bold;font-size:16px;">${card.code}</span><span style="color:${statusClass};font-size:12px;">[${statusText}]</span><span style="font-size:11px;color:#666;">创建:${created} ${expired}</span><div style="margin-left:auto;display:flex;gap:5px;">${card.status==='active'?`<button onclick="disableCard(${idx})" style="background:#f39c12;color:#fff;border:none;padding:3px 8px;border-radius:3px;">禁用</button>`:''}${card.status==='disabled'?`<button onclick="enableCard(${idx})" style="background:#2ecc71;color:#fff;border:none;padding:3px 8px;border-radius:3px;">启用</button>`:''}<button onclick="deleteCard(${idx})" style="background:#e74c3c;color:#fff;border:none;padding:3px 8px;border-radius:3px;">删除</button></div></div>`;
-  }).join('');
-}
-async function generateCardKey() {
-  const expireDays = parseInt(document.getElementById('expireDaysInput')?.value) || 30;
-  if (expireDays < 1) { showToast('有效期至少1天'); return; }
-  const code = generateSelfVerifyingCard(expireDays);
-  const keys = getCardKeys();
-  if (keys.find(k => k.code === code)) { showToast('卡密生成冲突，请重试'); return; }
-  keys.push({ code, status: 'active', createTime: new Date().toISOString(), expireDays });
-  saveCardKeys(keys);
-  renderCardList();
-  showToast(`卡密 ${code} 已生成，有效期${expireDays}天`);
-}
-async function disableCard(index) {
-  if (!(await confirm('确定禁用该卡密？'))) return;
-  const keys = getCardKeys();
-  keys[index].status = 'disabled';
-  saveCardKeys(keys);
-  renderCardList();
-}
-async function enableCard(index) {
-  const keys = getCardKeys();
-  keys[index].status = 'active';
-  saveCardKeys(keys);
-  renderCardList();
-}
-async function deleteCard(index) {
-  if (!(await confirm('确定删除该卡密？'))) return;
-  const keys = getCardKeys();
-  keys.splice(index, 1);
-  saveCardKeys(keys);
-  renderCardList();
-}
 
-// ===== 快捷添加与分词（保留在 uiWindow 以便识别窗口使用） =====
 function quickAddWithAmount(text, button) {
   const input = document.querySelector('.source-order-input');
   if (!input) return;
@@ -936,7 +850,6 @@ function quickAddWithAmount(text, button) {
   if (lastIndex !== -1) { const pos = lastIndex + 2; input.focus(); input.setSelectionRange(pos, pos); }
 }
 
-// ===== 全局更新下拉框 =====
 function updateSelects() {
   const users = getUsers();
   const orderSel = document.getElementById('orderUserSelect');

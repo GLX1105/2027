@@ -1,4 +1,4 @@
-// ===== statCore.js - 全局统计数据累加（tableBetData、numberCount 等）、主更新逻辑 =====
+// ===== statCore.js - 全局统计数据累加、主更新逻辑 =====
 
 function clearMemoryData() {
   tableBetData = {};
