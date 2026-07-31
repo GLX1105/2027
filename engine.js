@@ -724,6 +724,16 @@ function parseTeMaSegment(content) {
         });
         displayItems.push(item);
       }
+    } else if (/^[鼠牛虎兔龙蛇马羊猴鸡狗猪]+$/.test(item)) {
+      // 处理连续生肖字串（例如“鼠牛”）
+      for (const ch of item) {
+        if (ZODIAC_NUMS[ch]) {
+          ZODIAC_NUMS[ch].split(/[\s,，]+/).forEach(n => {
+            allNums.push(n.padStart(2, '0'));
+          });
+        }
+      }
+      displayItems.push(item);
     }
   });
   if (allNums.length === 0) return null;
