@@ -283,7 +283,8 @@ function collectSpecialMatches(text) {
       lockedIntervals.push({ start: mLX2.index, end: mLX2.index + mLX2[0].length });
   }
 
-  const reMultiLX = new RegExp(`([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)${SEP}((?:[${Z}]+${SEP_CHARS}+)+[${Z}]+)[\\s]*(?=${KW_LIST.join('|')})(?:${KW_LIST.join('|')})${SEP}${AMT_GROUP}`, 'g');
+  // 修复：去掉 SEP_CHARS 后面多余的 +
+  const reMultiLX = new RegExp(`([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)${SEP}((?:[${Z}]+${SEP_CHARS})+[${Z}]+)[\\s]*(?=${KW_LIST.join('|')})(?:${KW_LIST.join('|')})${SEP}${AMT_GROUP}`, 'g');
   let m;
   while ((m = reMultiLX.exec(text)) !== null) {
     const full = m[0];
@@ -312,8 +313,8 @@ function collectSpecialMatches(text) {
     lockedIntervals.push({ start: m.index, end: m.index + m[0].length });
   }
 
-  // 连尾多组
-  const reMultiLW = new RegExp(`([二三四五2345])(?:连尾|尾连)${SEP}((?:\\d+尾${SEP_CHARS}+)+\\d+尾)[\\s]*(?=${KW_LIST.join('|')})(?:${KW_LIST.join('|')})${SEP}${AMT_GROUP}`, 'g');
+  // 修复：去掉 SEP_CHARS 后面多余的 +
+  const reMultiLW = new RegExp(`([二三四五2345])(?:连尾|尾连)${SEP}((?:\\d+尾${SEP_CHARS})+\\d+尾)[\\s]*(?=${KW_LIST.join('|')})(?:${KW_LIST.join('|')})${SEP}${AMT_GROUP}`, 'g');
   while ((m = reMultiLW.exec(text)) !== null) {
     const full = m[0];
     const { amt, kw } = extractAmtAndKw(full);
@@ -782,14 +783,7 @@ function collectSpecialMatches(text) {
 // ===== 第三部分：单行解析与继承 =====
 
 function parseTeMaSegment(content) {
-  // 原有的特码段解析逻辑，返回 { displayItems, allNumsArr, warnings, totalCount }
-  // 此处为简化，直接从原代码复制，实际原代码中该函数很大，但我们的流程中 processOneLine 不再调用 parseTeMaSegment，
-  // 原代码中 processOneLine 处理特码有自己逻辑，无需单独 parseTeMaSegment（已被 collectSpecialMatches 替代）。
-  // 为了不遗漏任何代码，将原代码的 parseTeMaSegment 完整保留，虽然在新流程中可能未使用。
   if (!content || !content.trim()) return null;
-  // 原代码中的 parseTeMaSegment 实现（略），为保持完整性，此处以空实现代替，但不会影响现有流程。
-  // 实际原代码中 processOneLine 并不依赖 parseTeMaSegment，而是直接使用 collectSpecialMatches 和自身解析，
-  // 因此此处可以留空或实现最小占位。
   return null;
 }
 
@@ -899,9 +893,6 @@ function processOneLine(line) {
         if (teXiaoResult) {
           results.push(teXiaoResult);
         } else {
-          // 尝试解析特码段，此处简化：如果子内容包含字典元素，直接作为特码处理？
-          // 原代码中 parseTeMaSegment 较复杂，这里直接按未识别处理
-          // 但为了不漏掉，我们可以通过 containsDictElement 判断，有内容则记录为未识别
           if (subContent && containsDictElement(subContent)) {
             results.push({ cat: '__unrecognized__', nums: [], amt: 0, cnt: 0, total: 0, kw: '', warnings: ['无法识别的格式'], rawLine: subContent });
           }
