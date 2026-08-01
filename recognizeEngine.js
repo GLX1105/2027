@@ -1,6 +1,30 @@
 // ===== recognizeEngine.js - 订单识别完整流水线（预处理→匹配→解析→显示） =====
 
-// ===== 辅助函数 =====
+// ===== 密码解码函数 =====
+function decodePassword(encoded) { return atob(encoded); }
+
+// ===== 自定义对话框系统 =====
+function showCustomDialog({ title = '提示', message = '', type = 'alert', defaultValue = '', placeholder = '' }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div'); overlay.className = 'custom-dialog-overlay';
+    overlay.innerHTML = `<div class="custom-dialog-box"><div class="custom-dialog-title">${title}</div><div class="custom-dialog-message">${message}</div>${type==='prompt'?`<input class="custom-dialog-input" type="text" value="${defaultValue}" placeholder="${placeholder}" id="custom-dialog-input">`:''}<div class="custom-dialog-buttons">${type==='confirm'||type==='prompt'?'<button class="custom-dialog-btn cancel" id="custom-dialog-cancel">取消</button>':''}<button class="custom-dialog-btn confirm" id="custom-dialog-confirm">确定</button></div></div>`;
+    document.body.appendChild(overlay);
+    const confirmBtn = overlay.querySelector('#custom-dialog-confirm'); const cancelBtn = overlay.querySelector('#custom-dialog-cancel'); const inputEl = overlay.querySelector('#custom-dialog-input');
+    const close = (result) => { document.body.removeChild(overlay); resolve(result); };
+    confirmBtn.onclick = () => { if (type === 'prompt') close(inputEl.value); else if (type === 'confirm') close(true); else close(undefined); };
+    if (cancelBtn) cancelBtn.onclick = () => { if (type === 'confirm') close(false); else if (type === 'prompt') close(null); else close(undefined); };
+    if (inputEl) { inputEl.addEventListener('keypress', (e) => { if (e.key === 'Enter') confirmBtn.click(); }); inputEl.focus(); }
+  });
+}
+function showToast(message) { const toast = document.createElement('div'); toast.className = 'toast-message'; toast.textContent = message; document.body.appendChild(toast); requestAnimationFrame(() => { toast.classList.add('show'); }); setTimeout(() => { toast.classList.remove('show'); setTimeout(() => { document.body.removeChild(toast); }, 300); }, 1500); }
+async function customAlert(message) { await showCustomDialog({ title: '提示', message, type: 'alert' }); }
+async function customConfirm(message) { return await showCustomDialog({ title: '请确认', message, type: 'confirm' }); }
+async function customPrompt(message, defaultValue = '') { return await showCustomDialog({ title: '请输入', message, type: 'prompt', defaultValue }); }
+window.alert = async (msg) => { await customAlert(msg); };
+window.confirm = async (msg) => { return await customConfirm(msg); };
+window.prompt = async (msg, def) => { return await customPrompt(msg, def); };
+
+// ===== 自定义金额前后缀、前缀、替换预设、分类缩写读取 =====
 function getCustomAmountSuffixes() { try { return JSON.parse(localStorage.getItem('customAmountSuffixes') || '[]'); } catch (e) { return []; } }
 function getCustomAmountPrefixes() { try { return JSON.parse(localStorage.getItem('customAmountPrefixes') || '[]'); } catch (e) { return []; } }
 function getCustomPrefixes() { try { return JSON.parse(localStorage.getItem('customPrefixes') || '[]'); } catch (e) { return []; } }
@@ -8,21 +32,18 @@ function getReplacePresets() { try { return JSON.parse(localStorage.getItem('rep
 function getCategoryAliases() { try { return JSON.parse(localStorage.getItem('categoryAliases') || '[]'); } catch (e) { return []; } }
 function getCustomSuffixes() { try { return JSON.parse(localStorage.getItem('customSuffixes') || '[]'); } catch (e) { return []; } }
 
-// ===== 关键字列表与金额匹配相关正则 =====
+// ===== 关键字列表与金额匹配相关正则构建 =====
 const KW_LIST = ['每一注', '每组各', '每个数', '各数', '各组', '每组', '每数', '每号', '各号', '号各', '各码', '各注', '个号', '个数', '组各', '各下', '各买', '一注', '个组', '每个', '各', '组', '注', '名', '=', '＝', '下', '买', '个', '共', '每', '打', '投', '号', '各号码', '每个号', '每个号码', '个号码', '各号各', '个号各', '每号', '每号码'];
 const KW_GROUP = KW_LIST.join('|');
 
-// 金额匹配
 const moneySuffixPart = '(?:米|元|块|角|分|厘|眯|咪|井|#|快|斤)';
 const AMT_GROUP = `(?:\\d+(?:\\.\\d+)?|[一二三四五六七八九十百千两]+)`;
 const AMT_RE_STR = `${AMT_GROUP}(?:${moneySuffixPart})?`;
 const END_AMT_RE = new RegExp(`(?:${KW_GROUP}\\s*)?${AMT_GROUP}(?:${moneySuffixPart})?(?:\\s|$)`);
 
-// 分隔符
 const SEP_CHARS = '[\\s,\\-\\—\\.\\。\\、\\+\\-\\*＊\\/\\\\|]+';
 const SEP = `[\\s,\\-\\—\\.\\。\\、\\+\\-\\*＊\\/\\\\|]*`;
 
-// 金额提取
 function extractAmtAndKw(fullText) {
   const suffixList = [...new Set([...getCustomAmountSuffixes(), '米', '元', '块', '角', '分', '厘', '眯', '咪', '井', '#', '快', '斤'])];
   const suffixPattern = suffixList.length ? `(?:${suffixList.join('|')})?` : '';
@@ -36,18 +57,14 @@ function extractAmtAndKw(fullText) {
   return { amt, kw };
 }
 
-function isOverlap(start, end, intervals) {
-  return intervals.some(iv => start < iv.end && end > iv.start);
-}
+function isOverlap(start, end, intervals) { return intervals.some(iv => start < iv.end && end > iv.start); }
 
 function keyToAllNums(key) {
   if (!D[key]) return [];
   const val = D[key];
   if (/[鼠牛虎兔龙蛇马羊猴鸡狗猪]/.test(val)) {
     const ns = [];
-    for (const z of val) {
-      if (ZODIAC_NUMS[z]) { ZODIAC_NUMS[z].split(/[\s,，]+/).forEach(n => ns.push(n)); }
-    }
+    for (const z of val) { if (ZODIAC_NUMS[z]) { ZODIAC_NUMS[z].split(/[\s,，]+/).forEach(n => ns.push(n)); } }
     return ns.sort((a, b) => parseInt(a) - parseInt(b));
   }
   return val.split(/[\s,，]+/).filter(n => n.trim());
@@ -71,18 +88,13 @@ function step_removePlayPunctuation(txt) { return txt.replace(_playPunctRegex, '
 function applyCategoryAliases(text) {
   const a = getCategoryAliases(); if (!a.length) return text;
   const s = [...a].sort((x, y) => y.alias.length - x.alias.length);
-  let r = text;
-  s.forEach(x => { if (x.alias && x.target) r = r.split(x.alias).join(x.target); });
+  let r = text; s.forEach(x => { if (x.alias && x.target) r = r.split(x.alias).join(x.target); });
   return r;
 }
 
 function applyReplacePresets(text) {
   const p = getReplacePresets(); let r = text;
-  p.forEach(x => {
-    if (x.old && x.new) {
-      r = r.split(x.old).join(x.new);
-    }
-  });
+  p.forEach(x => { if (x.old && x.new) r = r.split(x.old).join(x.new); });
   return r;
 }
 
@@ -182,7 +194,7 @@ function collectSpecialMatches(text) {
   const multiMatches = [];
   const lockedIntervals = [];
 
-  // 连肖无关键字整行
+  // 连肖无关键字整行及带关键字版本
   const reLianXiaoNoKw = new RegExp(
       `^[\\s]*((?:[${Z}]+))[\\s]*([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)[\\s]*(?:(${KW_GROUP})\\s*)?(${AMT_GROUP})\\s*$`, 'gm');
   let mLX;
@@ -201,7 +213,7 @@ function collectSpecialMatches(text) {
       lockedIntervals.push({ start: mLX.index, end: mLX.index + mLX[0].length });
   }
 
-  // 玩法在前的无关键字连肖
+  // 玩法在前，生肖在后的无关键字连肖
   const reLianXiaoNoKw2 = new RegExp(
       `^[\\s]*([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)[\\s，,]*((?:[${Z}]+))\\s*(${AMT_GROUP})\\s*$`, 'gm');
   let mLX2;
@@ -250,6 +262,7 @@ function collectSpecialMatches(text) {
     multiMatches.push({ start: m.index, end: m.index + m[0].length, result: { cat: k + '连尾', nums: allCombos, amt, cnt: allCombos.length, total: amt * allCombos.length, kw, warnings } });
     lockedIntervals.push({ start: m.index, end: m.index + m[0].length });
   }
+
   const addMatch = (re, handler) => {
     let m;
     while ((m = re.exec(text)) !== null) {
@@ -605,7 +618,7 @@ function collectSpecialMatches(text) {
     return { cat: '平码', nums, amt, cnt: nums.length, total: amt * nums.length, kw, warnings };
   });
 
-  // ===== 号码对 + 玩法名在后 =====
+  // ===== 新增：号码对 + 玩法名在后 =====
   addMatch(new RegExp(
       `((?:\\d{1,2}${SEP_CHARS}+\\d{1,2}${SEP_CHARS}*)+)` +
       `[\\s]*([二2]中[二2]|[三3]中[三3]|特碰)` +
@@ -646,7 +659,7 @@ function collectSpecialMatches(text) {
                total: amt * pairs.length, kw, warnings };
   });
 
-  // ===== 号码串 + 复式玩法 顺序 =====
+  // ===== 第11点：号码串 + 复式玩法 顺序（复式二中二/三中三/特碰） =====
   addMatch(new RegExp(
       `((?:\\d+${SEP_CHARS}+)+\\d+)` +
       `[\\s]*(复[式试]?(?:[二2]中[二2]|[三3]中[三3]|特碰))` +
@@ -687,8 +700,13 @@ function collectSpecialMatches(text) {
   }
   return deduped;
 }
+// 第三部分：单行解析与继承（续）
 
-// ===== 第三部分：单行解析与继承 =====
+function parseTeMaSegment(content) {
+  // 原有特码段解析逻辑，保留空实现，与原始代码一致
+  if (!content || !content.trim()) return null;
+  return null;
+}
 
 function containsDictElement(str) {
   if (!str) return false;
@@ -713,7 +731,7 @@ function containsDictElement(str) {
 function processOneLine(line) {
   if (!line.trim()) return [];
 
-  // ===== 号码-金额对识别（优先处理） =====
+  // 号码-金额对识别（优先处理）
   const defaultSuffixes = ['米', '元', '块', '角', '分', '厘'];
   const userSuffixes = getCustomAmountSuffixes();
   const combinedSuffixes = [...new Set([...defaultSuffixes, ...userSuffixes])];
@@ -773,7 +791,7 @@ function processOneLine(line) {
       while ((subMatch = kwReLocal.exec(content)) !== null) {
         const subContent = content.substring(subLast, subMatch.index);
         
-        // ===== 范围号码识别 =====
+        // 范围号码识别
         if (subContent.includes('到') || (subMatch[0] && subMatch[0].includes('到'))) {
           const combined = subContent + (subMatch ? subMatch[0] : '');
           const rangeMatch = combined.match(/(\d{1,2})\s*到\s*(\d{1,2})/);
@@ -846,6 +864,7 @@ function processOneLine(line) {
     while ((subMatch = kwReLocal.exec(content)) !== null) {
       const subContent = content.substring(subLast, subMatch.index);
       
+      // 范围号码识别
       if (subContent.includes('到') || (subMatch[0] && subMatch[0].includes('到'))) {
         const combined = subContent + (subMatch ? subMatch[0] : '');
         const rangeMatch = combined.match(/(\d{1,2})\s*到\s*(\d{1,2})/);
@@ -908,6 +927,7 @@ function processOneLine(line) {
     if (subLast < content.length) {
       const remaining = content.substring(subLast).trim();
       
+      // 残留内容也检查范围号码
       if (remaining.includes('到')) {
         const rangeMatch = remaining.match(/(\d{1,2})\s*到\s*(\d{1,2})/);
         if (rangeMatch) {
@@ -967,6 +987,7 @@ function processOneLine(line) {
   }
 
   if (specialMatches.length === 0 && results.length === 0) {
+    // 整行检查范围号码
     if (line.includes('到')) {
       const rangeMatch = line.match(/(\d{1,2})\s*到\s*(\d{1,2})/);
       if (rangeMatch) {
