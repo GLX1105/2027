@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>港澳识别系统 - 手机版</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 </head>
 <body>
 <div id="dbWarning">⚠ 数据库不可用，请检查浏览器设置或存储空间</div>
@@ -34,8 +35,7 @@
     <button class="btn btn-clear" onclick="logout()">退出</button>
   </div>
 </div>
-
-<div class="container" id="mainContent">
+    <div class="container" id="mainContent">
   <div class="recognize-wrap">
       <!-- 下注统计大卡片：号码次数 + 生肖次数 + 上报号码金额 -->
       <div class="card" style="margin-top:0;">
@@ -214,20 +214,23 @@
       <p style="cursor:pointer;color:#e74c3c;" onclick="clearOperationLog()"><span class="label">🧹 清除日志</span></p>
     </div>
   </div>
-
-  <!-- 数据库弹窗 -->
-  <div class="database-modal" id="databaseModal" style="display:none;">
-    <div class="database-modal-box" id="databaseModalBox">
-      <div class="database-modal-header" id="databaseModalHeader"><h3>📊 号码数据库</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
-      <div class="database-modal-body" id="databaseModalContent">
-        <!-- 动态填充 -->
-      </div>
+</div>
+    <div class="database-modal" id="databaseModal" style="display:none;">
+  <div class="database-modal-box" id="databaseModalBox">
+    <div class="database-modal-header" id="databaseModalHeader"><h3>📊 号码数据库</h3><div class="window-controls"><button onclick="maximizeWindow('databaseModalBox')" title="最大化">🗖</button><button class="close-database-btn" onclick="hideDatabase()">×</button></div></div>
+    <div class="database-modal-body" id="databaseModalContent">
+      <!-- 动态填充 -->
     </div>
   </div>
+</div>
 
-<script src="dict.js"></script>
+<script src="config.js"></script>
+<script src="dictionary.js"></script>
+<script src="db.js"></script>
+<script src="auth.js"></script>
 <script src="parser.js"></script>
-<script src="business.js"></script>
 <script src="ui.js"></script>
+<script src="analytics.js"></script>
+<script src="main.js"></script>
 </body>
 </html>
