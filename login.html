@@ -178,7 +178,7 @@ body {
     <!-- 管理员登录 -->
     <div id="adminSection">
       <div class="input-group">
-        <input type="password" id="passwordInput" placeholder="管理员密码" autocomplete="off">
+        <input type="password" id="passwordInput" placeholder="管理员密码" autocomplete="off" autofocus>
       </div>
       <button class="btn-login" id="adminLoginBtn">管理员登录</button>
     </div>
@@ -283,8 +283,10 @@ function switchToAdmin() {
   setTimeout(() => document.getElementById('passwordInput').focus(), 100);
 }
 
-// 自动聚焦
-setTimeout(() => document.getElementById('passwordInput').focus(), 200);
+// 页面加载后自动聚焦
+window.addEventListener('load', function() {
+  document.getElementById('passwordInput').focus();
+});
 </script>
 </body>
 </html>

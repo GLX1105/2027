@@ -673,6 +673,18 @@ function collectSpecialMatches(text) {
     return { cat: k + '连肖', nums: results, amt, cnt, total: amt * cnt, kw, warnings };
   });
 
+  // ===== 生肖串 + N连肖 + 复试（复式在玩法名之后，数字在连肖之前） =====
+  addMatch(new RegExp(`((?:[${Z}]+))[\\s]*([二三四五2345两])(?:连肖|连[肖]?|肖连|肖全中|连?肖|肖中|连)[\\s]*复[式试]?[\\s]*${END_AMT_RE}`, 'g'), m => {
+    const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
+    const zPart = m[1]; const zChars = (zPart.match(new RegExp(`[${Z}]`, 'g')) || []).join('');
+    const k = toNum(m[2].replace(/[^0-9二三四五两]/g, '')); if (!k || k < 2 || k > 5) return null;
+    if (!zChars || zChars.length < k) return null;
+    const comb = zCombosKeepOrder(zChars, k);
+    const warnings = [];
+    if (!kw) warnings.push('缺少金额关键字');
+    return { cat: k + '连肖', nums: comb, amt, cnt: comb.length, total: amt * comb.length, kw, warnings };
+  });
+
   // ===== 复式连尾 =====
   addMatch(new RegExp(`([二三四五2345])(?:连尾|尾连)${SEP}复[式试]?${SEP}((?:\\d+尾${SEP_CHARS}+)+\\d+尾)\\s*${END_AMT_RE}`, 'g'), m => {
     const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
@@ -699,6 +711,18 @@ function collectSpecialMatches(text) {
     }
     const comb = tailCKeepOrder(digits.join(','), k);
     if (comb.length > 1 && !kw) warnings.push('缺少金额关键字');
+    return { cat: k + '连尾', nums: comb, amt, cnt: comb.length, total: amt * comb.length, kw, warnings };
+  });
+
+  // ===== 尾数串 + N连尾 + 复试（复式在玩法名之后，数字在连尾之前） =====
+  addMatch(new RegExp(`((?:\\d+尾(?:${SEP_CHARS}*\\d+尾)*))[\\s]*([二三四五2345])(?:连尾|尾连)[\\s]*复[式试]?[\\s]*${END_AMT_RE}`, 'g'), m => {
+    const full = m[0]; const { amt, kw } = extractAmtAndKw(full); if (!amt || amt <= 0) return null;
+    const tailPart = m[1]; const digits = (tailPart.match(/\d/g) || []);
+    const k = toNum(m[2]); if (!k || k < 2 || k > 5) return null;
+    if (digits.length < k) return null;
+    const comb = tailCKeepOrder(digits.join(','), k);
+    const warnings = [];
+    if (!kw) warnings.push('缺少金额关键字');
     return { cat: k + '连尾', nums: comb, amt, cnt: comb.length, total: amt * comb.length, kw, warnings };
   });
 
@@ -1542,14 +1566,16 @@ function displayResults(rs, container) {
   // 地区颜色映射
   const regionColorMap = { 'macau': '#e74c3c', 'hongkong': '#3498db', 'yuegang': '#27ae60' };
 
-  for (const r of rs) {
+  for (let i = 0; i < rs.length; i++) {
+    const r = rs[i];
     if (r.category === '__unrecognized__') {
       const regionLabel = REGION_LABELS[r.region] || '';
       const warnText = (r.warnings && r.warnings.length) ? r.warnings.join('；') : '缺少金额关键字或有效玩法';
       if (r.region && r.region !== currentRegion && !r.warnings.length) {
-        html += `<div class="result-line"><span style="color:${regionColorMap[r.region] || '#333'};">${regionLabel}·</span>${r.rawLine} <span style="color:red;">[已提取地区${regionLabel}，但内容无法识别]</span></div>`;
+        html += `<div class="result-line" data-line-index="${i}"><span style="color:${regionColorMap[r.region] || '#333'};">${regionLabel}·</span>${r.rawLine} <span style="color:red;">[已提取地区${regionLabel}，但内容无法识别]</span></div>`;
       } else {
-        html += `<div class="result-line"><span style="color:${r.region !== currentRegion ? (regionColorMap[r.region] || '#e74c3c') : '#000'};">${regionLabel}·</span>${r.rawLine} <span style="color:red;">[${warnText}]</span></div>`;
+        const warnClick = (r.warnings && r.warnings.length) ? ` onclick="jumpToInputLine(${i})" style="color:red;cursor:pointer;text-decoration:underline dotted;" title="点击跳转到输入行"` : '';
+        html += `<div class="result-line" data-line-index="${i}"><span style="color:${r.region !== currentRegion ? (regionColorMap[r.region] || '#e74c3c') : '#000'};">${regionLabel}·</span>${r.rawLine} <span${warnClick}>[${warnText}]</span></div>`;
       }
       continue;
     }
@@ -1565,8 +1591,10 @@ function displayResults(rs, container) {
     if (r._inherited) {
       line += ` <span style="color:#27ae60;">[继承]</span>`;
     }
-    if (r.warnings && r.warnings.length) { line += ` <span style="color:red;">[${r.warnings.join('；')}]</span>`; }
-    html += `<div class="result-line">${line}</div>`;
+    if (r.warnings && r.warnings.length) {
+      line += ` <span onclick="jumpToInputLine(${i})" style="color:red;cursor:pointer;text-decoration:underline dotted;" title="点击跳转到输入行">[${r.warnings.join('；')}]</span>`;
+    }
+    html += `<div class="result-line" data-line-index="${i}">${line}</div>`;
     const pureNumStr = formatNums(r.category, r.numbers);
     pureLines.push(`${r.category}:${pureNumStr} ${kwDisplay} ${Math.round(r.unitAmount)}`);
     pureRegions.push(r.region);
@@ -1584,6 +1612,33 @@ function displayResults(rs, container) {
   window._pureOrderLines = pureLines;
   window._pureOrderRegions = pureRegions;
   window._cachedMaxLossData = maxLossData;
+}
+
+// ===== 点击报警跳转到输入框对应行 =====
+function jumpToInputLine(lineIndex) {
+  const textarea = document.querySelector('.source-order-input');
+  if (!textarea) return;
+  const lines = textarea.value.split('\n');
+  let nonEmptyIdx = 0;
+  let pos = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (nonEmptyIdx === lineIndex) {
+      const lineEnd = pos + lines[i].length;
+      textarea.focus();
+      textarea.setSelectionRange(lineEnd, lineEnd);
+      // 滚动使该行可见（居中偏上）
+      const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20;
+      const pad = textarea.clientHeight / 3;
+      textarea.scrollTop = Math.max(0, (i * lineHeight) - pad);
+      // 临时高亮提示
+      textarea.style.outline = '2px solid #e74c3c';
+      textarea.style.outlineOffset = '-2px';
+      setTimeout(() => { textarea.style.outline = ''; textarea.style.outlineOffset = ''; }, 1500);
+      return;
+    }
+    pos += lines[i].length + 1; // +1 换行符
+    nonEmptyIdx++;
+  }
 }
 
 function formatNums(cat, numsArr) {
