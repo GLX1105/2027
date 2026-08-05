@@ -2674,15 +2674,21 @@ function checkAllReport() { document.querySelectorAll('.report-order-check').for
 function uncheckAllReport() { document.querySelectorAll('.report-order-check').forEach(cb => cb.checked = false); }
 
 async function resetTable() {
-  if (!(await confirm('确定清空当前地区所有订单和上报数据吗？此操作不可恢复！'))) return;
-  const pwd = await prompt('输入清空密码：', '');
-  if (pwd !== PASSWORD) { await alert('密码错误'); return; }
-  await clearAllOrderRecordsFromIDB(currentRegion);
-  clearMemoryData();
-  addOperationLog('reset', '清空全部数据');
-  clearStatsCache();
-  await updateTableFromRecords();
-  showToast('数据已清空');
+  if (resetLock) return; resetLock = true;
+  try {
+    const regionName = currentRegion === 'macau' ? '澳门' : currentRegion === 'hongkong' ? '香港' : '粤港';
+    const confirmed = await confirm(`确定清空当前地区（${regionName}）的所有订单和上报数据吗？此操作不可恢复。`);
+    if (!confirmed) { resetLock = false; return; }
+    const pwd = await prompt('输入清空密码：', '');
+    if (pwd !== PASSWORD) { await alert('密码错误'); resetLock = false; return; }
+    clearMemoryData();
+    await clearAllOrderRecordsFromIDB(currentRegion);
+    await clearAllReportOrderRecordsFromIDB(currentRegion);
+    await clearAllComboOrderRecordsFromIDB(currentRegion);
+    for (let i = localStorage.length - 1; i >= 0; i--) { const key = localStorage.key(i); if (key && key.startsWith(`pingtexiao_${currentRegion}_`)) localStorage.removeItem(key); if (key && key.startsWith(`ptHighlight_${currentRegion}_`)) localStorage.removeItem(key); }
+    renderAllTablesPlaceholder(); calculateStorageUsage(); updateAmountDisplays(); renderPingtexiaoTable();
+    addOperationLog('reset', `清空${regionName}所有订单和上报记录`); showToast(`已清空${regionName}的所有订单和上报记录`);
+  } catch(e) {} finally { resetLock = false; }
 }
 
 async function pasteOrder() { try { const text = await navigator.clipboard.readText(); if(text) { const si = document.querySelector('.source-order-input'); if(si) { si.value = text; performRecognition(text); } } } catch(err) { showToast('无法访问剪贴板'); } }
