@@ -465,12 +465,7 @@ tr.selected-row{background-color:#dceeff!important;font-weight:bold;box-shadow:i
 .highlight-number{color:red;font-weight:bold;}
 .toast-message{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:10px 24px;border-radius:0;font-size:14px;z-index:99999;opacity:0;transition:opacity 0.3s;pointer-events:none;}
 .toast-message.show{opacity:1;}
-.login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;}
-.login-box{background:#fff;backdrop-filter:none;border-radius:6px;padding:30px 20px;width:90%;max-width:380px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.2);border:1px solid #ddd;}
-.login-box h3{margin-bottom:20px;color:#1a1a2e;}
-.login-box input{width:100%;padding:10px;border:1px solid #ccc;border-radius:0;font-size:16px;margin-bottom:12px;}
-.login-box .btn{width:100%;margin-bottom:8px;}
-.login-box .link{font-size:13px;color:#3498db;cursor:pointer;margin-top:5px;}
+/* 登录样式已移至 login.html */
 .order-input-container{display:flex;width:100%;min-height:280px;height:auto;border:1px solid #ddd;}
 .input-column,.result-column{flex:1;display:flex;flex-direction:column;}
 .box-label{font-size:12px;color:#666;padding:3px 8px;background:#fafafa;border-bottom:1px solid #eee;}

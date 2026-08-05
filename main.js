@@ -14,7 +14,8 @@ window.onload = async () => {
   updateLiveClock(); setInterval(updateLiveClock, 1000);
   window._systemReady = async () => { await updateTableFromRecords(); calculateStorageUsage(); updateOrderTotalDisplay(); updateReportAmountTotal(); updateRecentDrawTexts(); renderPingtexiaoTable(); updateCardA(); renderSmartDecision(); addOperationLog('login', '系统登录'); };
   if (!checkCurrentAccess()) {
-    showLoginScreen();
+    window.location.href = 'login.html';
+    return;
   } else {
     if (isAdmin()) document.getElementById('cardMgrBtn').style.display = '';
     await window._systemReady();
