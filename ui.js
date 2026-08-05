@@ -2585,9 +2585,20 @@ function replaceSeparators() { const ta=document.querySelector('.source-order-in
 // ===== 其他UI函数 (restored from original) =====
 
 function switchRiskReport() {
-  const reportView = document.getElementById('reportView'); const riskView = document.getElementById('riskView');
-  if (reportView) reportView.style.display = reportView.style.display === 'none' ? '' : 'none';
-  if (riskView) riskView.style.display = riskView.style.display === 'none' ? '' : 'none';
+  const val = document.getElementById('riskReportSwitcher').value;
+  document.querySelectorAll('#riskTable .selected-row, #reportTable .selected-row').forEach(el => el.classList.remove('selected-row'));
+  if (val === 'total') {
+    document.getElementById('riskSection').style.display = '';
+    document.getElementById('reportSection').style.display = 'none';
+    document.getElementById('viewUserSelect').style.display = 'none';
+  } else if (val === 'user') {
+    document.getElementById('riskSection').style.display = '';
+    document.getElementById('reportSection').style.display = 'none';
+    document.getElementById('viewUserSelect').style.display = 'inline-block';
+  } else if (val === 'report') {
+    document.getElementById('riskSection').style.display = 'none';
+    document.getElementById('reportSection').style.display = '';
+  }
   updateTableFromRecords();
 }
 
